@@ -6,7 +6,7 @@ using System.Net.Http;
 namespace LiveBot
 {
     internal static class CustomMethod
-    {//testing pull request
+    {//testing pull request thing
         /// <summary>
         /// Gets the database connection string
         /// </summary>
