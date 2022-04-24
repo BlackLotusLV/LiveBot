@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220416_A";
+        public static readonly string BotVersion = $"20220424_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -186,7 +186,7 @@ namespace LiveBot
             await Task.Delay(-1);
         }
 
-                private Task Client_Ready(DiscordClient Client, ReadyEventArgs e)
+        private Task Client_Ready(DiscordClient Client, ReadyEventArgs e)
         {
             Client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
             return Task.CompletedTask;
