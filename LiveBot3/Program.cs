@@ -186,7 +186,7 @@ namespace LiveBot
             await Task.Delay(-1);
         }
 
-                private Task Client_Ready(DiscordClient Client, ReadyEventArgs e)
+        private Task Client_Ready(DiscordClient Client, ReadyEventArgs e)
         {
             Client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
             return Task.CompletedTask;
