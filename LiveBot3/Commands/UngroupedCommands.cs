@@ -503,34 +503,20 @@ namespace LiveBot.Commands
 
             DB.DBLists.UpdateVehicleList(SelectedVehicles.Where(w => w.ID_Vehicle.Equals(SelectedVehicles[row].ID_Vehicle)).Select(s => { s.IsSelected = true; return s; }).ToArray());
 
-            DiscordColor embedColour = new();
-
-            switch (SelectedVehicles[row].VehicleTier)
+            DiscordColor embedColour = SelectedVehicles[row].VehicleTier switch
             {
-                case 'S':
-                    embedColour = new DiscordColor(0x00ffff);
-                    break;
+                "S+" => new DiscordColor(0xe02eff),
+                "S" => new DiscordColor(0x00ffff),
+                "A" => new DiscordColor(0x00ff77),
+                "B" => new DiscordColor(0x6fff00),
+                "C" => new DiscordColor(0xf2ff00),
+                "D" => new DiscordColor(0xff9500),
+                "E" => new DiscordColor(0xff0000),
+                "F" => new DiscordColor(0x5c1500),
+                "F-" => new DiscordColor(0x37005c),
+                _ => new DiscordColor(0xffffff)
 
-                case 'A':
-                    embedColour = new DiscordColor(0x00ff00);
-                    break;
-
-                case 'B':
-                    embedColour = new DiscordColor(0xffff00);
-                    break;
-
-                case 'C':
-                    embedColour = new DiscordColor(0xff9900);
-                    break;
-
-                case 'D':
-                    embedColour = new DiscordColor(0xda5b5b);
-                    break;
-
-                case 'E':
-                    embedColour = new DiscordColor(0x9f4ad8);
-                    break;
-            }
+            };
 
             DiscordEmbedBuilder embed = new()
             {

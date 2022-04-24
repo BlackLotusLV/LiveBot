@@ -48,6 +48,6 @@ namespace LiveBot.DB
 
         [Required]
         [Column("tier")]
-        public char VehicleTier { get; set; }
+        public string VehicleTier { get; set; }
     }
 }
