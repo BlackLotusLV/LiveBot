@@ -506,13 +506,13 @@ namespace LiveBot.Commands
             DiscordColor embedColour = SelectedVehicles[row].VehicleTier switch
             {
                 "S+" => new DiscordColor(0xe02eff),
-                "S" => new DiscordColor(0x00ffff),
-                "A" => new DiscordColor(0x00ff77),
-                "B" => new DiscordColor(0x6fff00),
-                "C" => new DiscordColor(0xf2ff00),
-                "D" => new DiscordColor(0xff9500),
-                "E" => new DiscordColor(0xff0000),
-                "F" => new DiscordColor(0x5c1500),
+                "S " => new DiscordColor(0x00ffff),
+                "A " => new DiscordColor(0x00ff77),
+                "B " => new DiscordColor(0x6fff00),
+                "C " => new DiscordColor(0xf2ff00),
+                "D " => new DiscordColor(0xff9500),
+                "E " => new DiscordColor(0xff0000),
+                "F " => new DiscordColor(0x5c1500),
                 "F-" => new DiscordColor(0x37005c),
                 _ => new DiscordColor(0xffffff)
 
