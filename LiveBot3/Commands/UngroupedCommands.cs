@@ -14,7 +14,7 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Auto moderator won't add extra warnings to users already banned/kicked\n" +
+            string changelog = "[NEW] Mod tools improved with slash commands. Warn, Unwar, AddNote, Prune\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
