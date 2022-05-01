@@ -9,10 +9,10 @@ namespace LiveBot.SlashCommands
     {
         [SlashCommand("warn", "Warn a user.")]
         [SlashRequireGuild]
-        public async Task Warning(InteractionContext ctx, [Option("user", "User to warn")] DiscordUser username, [Option("reason", "Why the user is being warned")] string reason)
+        public async Task Warning(InteractionContext ctx, [Option("user", "User to warn")] DiscordUser user, [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            await Services.WarningService.WarnUserAsync(username, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
+            await Services.WarningService.WarnUserAsync(user, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
         [SlashCommand("Prune", "Prune the message in the channel")]
         public async Task Prune(InteractionContext ctx,
@@ -26,6 +26,31 @@ namespace LiveBot.SlashCommands
             IReadOnlyList<DiscordMessage> messageList = await ctx.Channel.GetMessagesAsync((int)MessageCount);
             await ctx.Channel.DeleteMessagesAsync(messageList);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
+        }
+
+        [SlashCommand("AddNote","Adds a note in the database without warning the user")]
+        public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note","Contents of the note.")] string note)
+        {
+            await ctx.DeferAsync(true);
+            DB.Warnings newEntry = new()
+            {
+                Server_ID = ctx.Guild.Id,
+                Active = false,
+                Admin_ID = ctx.User.Id,
+                Type = "note",
+                User_ID = user.Id,
+                Time_Created = DateTime.UtcNow,
+                Reason = note
+            };
+            DB.DBLists.InsertWarnings(newEntry);
+            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
+            if (serverSettings.WKB_Log != 0)
+            {
+                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
+                await CustomMethod.SendModLog(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
+            }
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
+
         }
         /*
         [SlashCommand("news", "Posts news article to the news channel")]
