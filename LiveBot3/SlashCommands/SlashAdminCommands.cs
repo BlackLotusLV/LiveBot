@@ -9,11 +9,75 @@ namespace LiveBot.SlashCommands
     {
         [SlashCommand("warn", "Warn a user.")]
         [SlashRequireGuild]
-        public async Task Warning(InteractionContext ctx, [Option("user", "User to warn")] DiscordUser user, [Option("reason", "Why the user is being warned")] string reason)
+        public async Task Warning(InteractionContext ctx,
+            [Option("user", "User to warn")] DiscordUser user,
+            [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
             await Services.WarningService.WarnUserAsync(user, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
+
+        [SlashCommand("unwarn", "Removes a warning from the user")]
+        public async Task RemoveWarning(InteractionContext ctx,
+            [Option("user", "User to remove the warning for")] DiscordUser user,
+            [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long WarningID = -1)
+        {
+            await ctx.DeferAsync(true);
+            var WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => ctx.Guild.Id == f.Server_ID && user.Id == f.User_ID);
+            var ServerSettings = DB.DBLists.ServerSettings.FirstOrDefault(f => ctx.Guild.Id == f.ID_Server);
+            var Warnings = DB.DBLists.Warnings.Where(f => ctx.Guild.Id == f.Server_ID && user.Id == f.User_ID).ToList();
+            StringBuilder modmsgBuilder = new();
+            DiscordMember member = null;
+            if (ServerSettings.WKB_Log == 0)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
+                return;
+            }
+            try
+            {
+                member = await ctx.Guild.GetMemberAsync(user.Id);
+            }
+            catch (Exception)
+            {
+                modmsgBuilder.AppendLine($"{user.Mention} is no longer in the server.");
+            }
+
+            DiscordChannel modlog = ctx.Guild.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
+            if (WarnedUserStats is null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This user, {user.Username}, has no warning history."));
+                return;
+            }
+            if (WarnedUserStats.Warning_Level == 0)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This user, {user.Username}, warning level is already 0."));
+                return;
+            }
+
+            WarnedUserStats.Warning_Level -= 1;
+            DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
+            if (entry is null)
+            {
+                entry = Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
+            }
+            entry.Active = false;
+            DB.DBLists.UpdateWarnings(entry);
+            DB.DBLists.UpdateServerRanks(WarnedUserStats);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Warning level lowered for {user.Username}"));
+
+            string Description = $"{user.Mention} has been unwarned by {ctx.User.Mention}. Warning level now {WarnedUserStats.Warning_Level}";
+            try
+            {
+                await member.SendMessageAsync($"Your warning level in **{ctx.Guild.Name}** has been lowered to {WarnedUserStats.Warning_Level} by {ctx.User.Mention}");
+            }
+            catch
+            {
+                modmsgBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
+            }
+
+            await CustomMethod.SendModLog(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
+        }
+
         [SlashCommand("Prune", "Prune the message in the channel")]
         public async Task Prune(InteractionContext ctx,
             [Option("Message_Count", "The amount of messages to delete (1-100)")] long MessageCount)
