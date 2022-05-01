@@ -149,7 +149,7 @@ namespace LiveBot.Services
                 }
                 else
                 {
-                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}, Has been warned!"));
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{admin.Mention}, The user {user.Mention}({user.Id}) has been warned. Please check the log for aditional info."));
                     await Task.Delay(10000).ContinueWith(t => ctx.DeleteResponseAsync());
                 }
             }
