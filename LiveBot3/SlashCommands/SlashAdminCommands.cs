@@ -14,6 +14,19 @@ namespace LiveBot.SlashCommands
             await ctx.DeferAsync(true);
             await Services.WarningService.WarnUserAsync(username, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
+        [SlashCommand("Prune", "Prune the message in the channel")]
+        public async Task Prune(InteractionContext ctx,
+            [Option("Message_Count", "The amount of messages to delete (1-100)")] long MessageCount)
+        {
+            await ctx.DeferAsync(true);
+            if (MessageCount > 100)
+            {
+                MessageCount = 100;
+            }
+            IReadOnlyList<DiscordMessage> messageList = await ctx.Channel.GetMessagesAsync((int)MessageCount);
+            await ctx.Channel.DeleteMessagesAsync(messageList);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
+        }
         /*
         [SlashCommand("news", "Posts news article to the news channel")]
         [SlashRequireGuild]
