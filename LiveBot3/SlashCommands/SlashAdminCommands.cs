@@ -123,6 +123,33 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
         }
+        [SlashCommand("FAQ","Creates a new FAQ message")]
+        public async Task FAQ(InteractionContext ctx, [Option("Question", "The question to ask")] string question, [Option("Answer", "The answer to the question")] string answer)
+        {
+            await ctx.DeferAsync(true);
+            await new DiscordMessageBuilder()
+                .WithContent($"**Q: {question}**\n *A: {answer.TrimEnd()}*")
+                .SendAsync(ctx.Channel);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("FAQ message sent"));
+        }
+
+        [SlashCommand("FAQ-Edit", "Edits an existing FAQ message, using the message ID")]
+        public async Task FAQEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageID, [Option("Question", "The question to ask")] string question = null, [Option("Answer", "The answer to the question")] string answer = null)
+        {
+            await ctx.DeferAsync(true);
+            DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageID));
+            string ogMessage = message.Content.Replace("*", string.Empty);
+            if (question==null)
+            {
+                question = ogMessage.Substring(ogMessage.IndexOf(":") + 1,ogMessage.Length-ogMessage.Substring(ogMessage.IndexOf("A:")).Length).TrimStart();
+            }
+            if (answer == null)
+            {
+                answer = ogMessage.Substring(ogMessage.IndexOf("A:") + 2).TrimStart();
+            }
+
+            await message.ModifyAsync($"**Q: {question}**\n *A: {answer.TrimEnd()}*");
+        }
         /*
         [SlashCommand("news", "Posts news article to the news channel")]
         [SlashRequireGuild]
