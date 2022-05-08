@@ -14,7 +14,7 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Mod tools improved with slash commands. Warn, Unwar, AddNote, Prune\n" +
+            string changelog = "[NEW] Admin slash command added `infractions`. Same as getkicks.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder

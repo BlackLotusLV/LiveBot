@@ -116,6 +116,13 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
 
         }
+        [SlashCommand("Infractions", "Shows the infractions of the user")]
+        public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
+        {
+            await ctx.DeferAsync();
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
+        }
         /*
         [SlashCommand("news", "Posts news article to the news channel")]
         [SlashRequireGuild]
