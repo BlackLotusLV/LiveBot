@@ -3,7 +3,7 @@ using DSharpPlus.SlashCommands.Attributes;
 
 namespace LiveBot.SlashCommands
 {
-    [SlashCommandGroup("Admin", "Admin commands")]
+    [SlashCommandGroup("Admin", "Admin commands",false)]
     [SlashRequirePermissions(Permissions.KickMembers)]
     internal class SlashAdminCommands : ApplicationCommandModule
     {
