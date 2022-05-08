@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220501_A";
+        public static readonly string BotVersion = $"20220508_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -171,7 +171,7 @@ namespace LiveBot
                 Client.ComponentInteractionCreated += ModMail.ModMailButton;
 
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>(150283740172517376);
+                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>();
             }
             else
             {
