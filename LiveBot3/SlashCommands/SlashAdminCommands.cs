@@ -124,31 +124,47 @@ namespace LiveBot.SlashCommands
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
         }
         [SlashCommand("FAQ","Creates a new FAQ message")]
-        public async Task FAQ(InteractionContext ctx, [Option("Question", "The question to ask")] string question, [Option("Answer", "The answer to the question")] string answer)
+        public async Task FAQ(InteractionContext ctx)
         {
-            await ctx.DeferAsync(true);
-            await new DiscordMessageBuilder()
-                .WithContent($"**Q: {question}**\n *A: {answer.TrimEnd()}*")
-                .SendAsync(ctx.Channel);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("FAQ message sent"));
+            string customID = $"FAQ-{ctx.User.Id}";
+            var modal = new DiscordInteractionResponseBuilder().WithTitle("New FAQ entry").WithCustomId(customID)
+                .AddComponents(new TextInputComponent("Question", "Question", null, null, true, TextInputStyle.Paragraph))
+                .AddComponents(new TextInputComponent("Answer", "Answer", "Answer to the question", null, true, TextInputStyle.Paragraph));
+            await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
+
+            var interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            if (!response.TimedOut)
+            {
+                await new DiscordMessageBuilder()
+                    .WithContent($"**Q: {response.Result.Values["Question"]}**\n *A: {response.Result.Values["Answer"].TrimEnd()}*")
+                    .SendAsync(ctx.Channel);
+                await response.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("FAQ message created!").AsEphemeral());
+            }
         }
 
         [SlashCommand("FAQ-Edit", "Edits an existing FAQ message, using the message ID")]
-        public async Task FAQEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageID, [Option("Question", "The question to ask")] string question = null, [Option("Answer", "The answer to the question")] string answer = null)
+        public async Task FAQEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageID)
         {
-            await ctx.DeferAsync(true);
             DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageID));
             string ogMessage = message.Content.Replace("*", string.Empty);
-            if (question==null)
-            {
-                question = ogMessage.Substring(ogMessage.IndexOf(":") + 1,ogMessage.Length-ogMessage.Substring(ogMessage.IndexOf("A:")).Length).TrimStart();
-            }
-            if (answer == null)
-            {
-                answer = ogMessage.Substring(ogMessage.IndexOf("A:") + 2).TrimStart();
-            }
+            string question = ogMessage.Substring(ogMessage.IndexOf(":") + 1, ogMessage.Length - (ogMessage[ogMessage.IndexOf("\n")..].Length + 2)).TrimStart();
+            string answer = ogMessage[(ogMessage.IndexOf("\n") + 4)..].TrimStart();
+            
+            string customID = $"FAQ-Editor-{ctx.User.Id}";
+            var modal = new DiscordInteractionResponseBuilder().WithTitle("FAQ Editor").WithCustomId(customID)
+                .AddComponents(new TextInputComponent("Question", "Question", null, question, true, TextInputStyle.Paragraph))
+                .AddComponents(new TextInputComponent("Answer", "Answer", null, answer, true, TextInputStyle.Paragraph));
+            
+            await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
-            await message.ModifyAsync($"**Q: {question}**\n *A: {answer.TrimEnd()}*");
+            var interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            if (!response.TimedOut)
+            {
+                await message.ModifyAsync($"**Q: {response.Result.Values["Question"]}**\n *A: {response.Result.Values["Answer"].TrimEnd()}*");
+                await response.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("FAQ message edited").AsEphemeral());
+            }
         }
         /*
         [SlashCommand("news", "Posts news article to the news channel")]
