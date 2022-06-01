@@ -14,8 +14,7 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Admin slash command added `infractions`. Same as getkicks.\n" +
-                "[NEW] Added a new way to handle FAQ via modals.\n" +
+            string changelog = "[REMOVED] Hub commands now only present as slash commands\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder

@@ -128,7 +128,6 @@ namespace LiveBot
             this.Commands.RegisterCommands<Commands.OCommands>();
             this.Commands.RegisterCommands<Commands.ModMailCommands>();
             this.Commands.RegisterCommands<Commands.ProfileCommands>();
-            this.Commands.RegisterCommands<Commands.TheCrewHubCommands>();
 
             //*/
 
