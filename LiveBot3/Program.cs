@@ -80,7 +80,7 @@ namespace LiveBot
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
             {
                 CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
-                Console.WriteLine($"Running live version: {BotVersion}");
+                Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
 
                 TestBuild = false;
                 logLevel = LogLevel.Information;
@@ -174,9 +174,10 @@ namespace LiveBot
             }
             else
             {
-                Console.WriteLine($"Running test build!");
+                Client.Logger.LogInformation("Running in test build mode");
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
                 this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
             }
