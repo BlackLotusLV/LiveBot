@@ -170,13 +170,13 @@ namespace LiveBot
                 Client.ComponentInteractionCreated += ModMail.ModMailButton;
 
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>();
+                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>();
             }
             else
             {
                 Console.WriteLine($"Running test build!");
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
             }

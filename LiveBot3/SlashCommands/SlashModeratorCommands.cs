@@ -3,10 +3,10 @@ using DSharpPlus.SlashCommands.Attributes;
 
 namespace LiveBot.SlashCommands
 {
-    [SlashCommandGroup("Admin", "Admin commands",false)]
+    [SlashCommandGroup("Mod", "Admin commands",false)]
     [SlashRequirePermissions(Permissions.KickMembers)]
     [SlashRequireGuild]
-    internal class SlashAdminCommands : ApplicationCommandModule
+    internal class SlashModeratorCommands : ApplicationCommandModule
     {
         [SlashCommand("warn", "Warn a user.")]
         [SlashRequireGuild]
