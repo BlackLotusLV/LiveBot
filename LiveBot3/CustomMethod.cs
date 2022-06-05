@@ -239,8 +239,16 @@ namespace LiveBot
             Missions.Append("```");
             return Missions.ToString();
         }
-
-        public static async Task SendModLog(DiscordChannel ModLogChannel, DiscordUser TargetUser, string Description, ModLogType type, string Content = null)
+        /// <summary>
+        /// Sends a message in the moderator log channel
+        /// </summary>
+        /// <param name="ModLogChannel">Channel where the message will be sent.</param>
+        /// <param name="TargetUser">The user against who an action is being taken against.</param>
+        /// <param name="Description">The description of the action taken.</param>
+        /// <param name="type">The type of action taken.</param>
+        /// <param name="Content">Additional content outside of the embed</param>
+        /// <returns></returns>
+        public static async Task SendModLogAsync(DiscordChannel ModLogChannel, DiscordUser TargetUser, string Description, ModLogType type, string Content = null)
         {
             DiscordColor color = DiscordColor.NotQuiteBlack;
             string FooterText = string.Empty;
@@ -272,6 +280,13 @@ namespace LiveBot
 
                 case ModLogType.Unban:
                     FooterText = "User Unbanned";
+                    break;
+                case ModLogType.TimedOut:
+                    color = new DiscordColor(0xFFBA01);
+                    FooterText = "User Timed Out";
+                    break;
+                case ModLogType.TimeOutRemoved:
+                    FooterText = "User Timeout Removed";
                     break;
 
                 default:
@@ -502,7 +517,9 @@ namespace LiveBot
             Info,
             Warning,
             Unwarn,
-            Unban
+            Unban,
+            TimedOut,
+            TimeOutRemoved
         }
     }
 }

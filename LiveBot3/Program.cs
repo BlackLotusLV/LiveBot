@@ -158,6 +158,7 @@ namespace LiveBot
                 Client.GuildBanAdded += AutoMod.User_Banned_Log;
                 Client.GuildBanRemoved += AutoMod.User_Unbanned_Log;
                 Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
+                Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
 
@@ -180,7 +181,7 @@ namespace LiveBot
                 this.Slash.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
-            }
+            }                
             DiscordActivity BotActivity = new($"DM {CFGJson.CommandPrefix}modmail to open chat with mods", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);
             await Task.Delay(-1);

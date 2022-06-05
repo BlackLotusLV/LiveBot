@@ -140,7 +140,7 @@ namespace LiveBot.Services
                     await server.BanMemberAsync(user.Id, 0, "Exceeded warning limit!");
                 }
 
-                await CustomMethod.SendModLog(modlog, user, warningDescription, CustomMethod.ModLogType.Warning, modinfo);
+                await CustomMethod.SendModLogAsync(modlog, user, warningDescription, CustomMethod.ModLogType.Warning, modinfo);
 
                 if (ctx == null)
                 {

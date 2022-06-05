@@ -76,7 +76,7 @@ namespace LiveBot.SlashCommands
                 modmsgBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
             }
 
-            await CustomMethod.SendModLog(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
+            await CustomMethod.SendModLogAsync(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
         }
 
         [SlashCommand("Prune", "Prune the message in the channel")]
@@ -112,7 +112,7 @@ namespace LiveBot.SlashCommands
             if (serverSettings.WKB_Log != 0)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
-                await CustomMethod.SendModLog(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
+                await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
 
