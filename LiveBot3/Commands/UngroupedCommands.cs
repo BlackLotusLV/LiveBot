@@ -16,8 +16,9 @@ namespace LiveBot.Commands
             TimeSpan time = current - Program.start;
             string changelog = "[REMOVED] Hub commands now only present as slash commands\n" +
                 "[CHANGE] Admin commands renamed to Mod commands\n" +
-                "[NEW] Added ModMail block command\n" +
-                "[NEW] Added ModMail unblock command\n" +
+                "[NEW] Added ModMail block command(Blocklist not implemented in MM 1.0)\n" +
+                "[NEW] Added ModMail unblock command(Blocklist not implemented in MM 1.0)\n" +
+                "[NEW] Added timeout logging(very basic)\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
