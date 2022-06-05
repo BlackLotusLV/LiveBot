@@ -59,5 +59,8 @@ namespace LiveBot.DB
 
         [Required, Column("has_everyone_protection")]
         public bool HasEveryoneProtection { get; set; }
+
+        [Required, Column("mod_mail_enabled")]
+        public bool ModMailEnabled { get; set; } = false;
     }
 }
