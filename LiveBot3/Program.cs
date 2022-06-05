@@ -114,7 +114,7 @@ namespace LiveBot
 
             this.Slash = Client.UseSlashCommands();
             this.Commands = Client.UseCommandsNext(ccfg);
-
+            
             this.Commands.CommandExecuted += this.Commands_CommandExecuted;
             this.Commands.CommandErrored += this.Commands_CommandErrored;
 

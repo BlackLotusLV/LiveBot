@@ -5,6 +5,7 @@ namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("Admin", "Admin commands",false)]
     [SlashRequirePermissions(Permissions.KickMembers)]
+    [SlashRequireGuild]
     internal class SlashAdminCommands : ApplicationCommandModule
     {
         [SlashCommand("warn", "Warn a user.")]
