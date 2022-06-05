@@ -97,7 +97,7 @@ namespace LiveBot.Commands
                         {
                             modmsg = $":exclamation::exclamation:{username.Mention} could not be contacted via DM.";
                         }
-                        await CustomMethod.SendModLog(modlog, username, Description, CustomMethod.ModLogType.Unwarn, modmsg);
+                        await CustomMethod.SendModLogAsync(modlog, username, Description, CustomMethod.ModLogType.Unwarn, modmsg);
                     }
                     DiscordMessage msg = await ctx.RespondAsync(MSGOut);
                     await Task.Delay(10000);
@@ -298,7 +298,7 @@ namespace LiveBot.Commands
                 var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
                 if (ss != null && ss.WKB_Log != 0)
                 {
-                    await CustomMethod.SendModLog(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Added]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{BannedWord}```**", CustomMethod.ModLogType.Info);
+                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Added]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{BannedWord}```**", CustomMethod.ModLogType.Info);
                 }
             }
             else
@@ -332,7 +332,7 @@ namespace LiveBot.Commands
                 var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
                 if (ss != null && ss.WKB_Log != 0)
                 {
-                    await CustomMethod.SendModLog(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Removed]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{word}```", CustomMethod.ModLogType.Info);
+                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Removed]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{word}```", CustomMethod.ModLogType.Info);
                 }
             }
             else
@@ -493,7 +493,7 @@ namespace LiveBot.Commands
             if (serverSettings.WKB_Log != 0)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
-                await CustomMethod.SendModLog(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
+                await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
 
             DiscordMessage response = await new DiscordMessageBuilder()

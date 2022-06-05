@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220508_A";
+        public static readonly string BotVersion = $"20220605_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -80,7 +80,7 @@ namespace LiveBot
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
             {
                 CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
-                Console.WriteLine($"Running live version: {BotVersion}");
+                Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
 
                 TestBuild = false;
                 logLevel = LogLevel.Information;
@@ -114,7 +114,7 @@ namespace LiveBot
 
             this.Slash = Client.UseSlashCommands();
             this.Commands = Client.UseCommandsNext(ccfg);
-
+            
             this.Commands.CommandExecuted += this.Commands_CommandExecuted;
             this.Commands.CommandErrored += this.Commands_CommandErrored;
 
@@ -128,7 +128,6 @@ namespace LiveBot
             this.Commands.RegisterCommands<Commands.OCommands>();
             this.Commands.RegisterCommands<Commands.ModMailCommands>();
             this.Commands.RegisterCommands<Commands.ProfileCommands>();
-            this.Commands.RegisterCommands<Commands.TheCrewHubCommands>();
 
             //*/
 
@@ -159,6 +158,7 @@ namespace LiveBot
                 Client.GuildBanAdded += AutoMod.User_Banned_Log;
                 Client.GuildBanRemoved += AutoMod.User_Unbanned_Log;
                 Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
+                Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
 
@@ -171,16 +171,17 @@ namespace LiveBot
                 Client.ComponentInteractionCreated += ModMail.ModMailButton;
 
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>();
+                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>();
             }
             else
             {
-                Console.WriteLine($"Running test build!");
+                Client.Logger.LogInformation("Running in test build mode");
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdminCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
-            }
+            }                
             DiscordActivity BotActivity = new($"DM {CFGJson.CommandPrefix}modmail to open chat with mods", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);
             await Task.Delay(-1);

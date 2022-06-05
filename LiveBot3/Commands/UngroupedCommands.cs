@@ -14,8 +14,11 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Admin slash command added `infractions`. Same as getkicks.\n" +
-                "[NEW] Added a new way to handle FAQ via modals.\n" +
+            string changelog = "[REMOVED] Hub commands now only present as slash commands\n" +
+                "[CHANGE] Admin commands renamed to Mod commands\n" +
+                "[NEW] Added ModMail block command\n" +
+                "[NEW] Added ModMail unblock command\n" +
+                "[NEW] Added timeout logging(very basic)\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -865,7 +868,7 @@ namespace LiveBot.Commands
                 DateTime now = DateTime.UtcNow;
 
                 await new DiscordMessageBuilder()
-                    .WithContent($"Time untill you can use daily {(24 - now.Hour) - 1}:{(60 - now.Minute) - 1}:{(60 - now.Second) - 1}.")
+                    .WithContent($"Time until you can use daily {(24 - now.Hour) - 1}:{(60 - now.Minute) - 1}:{(60 - now.Second) - 1}.")
                     .WithReply(ctx.Message.Id, true)
                     .SendAsync(ctx.Channel);
             }
@@ -904,7 +907,7 @@ namespace LiveBot.Commands
                 {
                     DateTime now = DateTime.UtcNow;
 
-                    output = $"Time untill you can use cookie command again - {(24 - now.Hour) - 1}:{(60 - now.Minute) - 1}:{(60 - now.Second) - 1}.";
+                    output = $"Time until you can use cookie command again - {(24 - now.Hour) - 1}:{(60 - now.Minute) - 1}:{(60 - now.Second) - 1}.";
                 }
             }
             await new DiscordMessageBuilder()

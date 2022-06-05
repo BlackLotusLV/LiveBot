@@ -42,6 +42,12 @@ namespace LiveBot.Commands
                 else
                 {
                     DiscordGuild Guild = GuildNameDict.FirstOrDefault(w => w.Value.ToLower() == serverName.ToLower()).Key;
+
+                    if (DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == Guild.Id && w.User_ID == ctx.User.Id).MM_Blocked)
+                    {
+                        await ctx.RespondAsync("You are blocked from starting mod-mail.");
+                        return;
+                    }
                     bool serverCheck = true;
                     try
                     {
@@ -52,7 +58,7 @@ namespace LiveBot.Commands
                         await ctx.RespondAsync("You are not in this server. If you think this is an error, please make sure you are set as online and are in fact in the server.");
                         serverCheck = false;
                     }
-                    if (serverCheck && DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == ctx.User.Id && w.IsActive) == null)
+                    if (serverCheck && DBLists.ModMail.FirstOrDefault(w => w.User_ID == ctx.User.Id && w.IsActive) == null)
                     {
                         Random r = new();
                         string colorID = string.Format("#{0:X6}", r.Next(0x1000000));

@@ -39,5 +39,9 @@ namespace LiveBot.DB
         [Required]
         [Column("ban_count")]
         public int Ban_Count { get; set; } = 0;
+
+        [Required]
+        [Column("mm_blocked")]
+        public bool MM_Blocked { get; set; } = false;
     }
 }

@@ -231,7 +231,7 @@ namespace LiveBot.Automation
             DiscordChannel wkbLog = Guild.GetChannel(GuildSettings.WKB_Log);
             if (logs[0].CreationTimestamp >= beforetime && logs[0].CreationTimestamp <= aftertime)
             {
-                await CustomMethod.SendModLog(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);
+                await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);
 
                 var UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID);
                 if (UserSettings is null)
@@ -270,7 +270,7 @@ namespace LiveBot.Automation
                     if (banEntry != null)
                     {
                         Console.WriteLine("Ban reason search succeeded");
-                        await CustomMethod.SendModLog(wkbLog, banEntry.Target, $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
+                        await CustomMethod.SendModLogAsync(wkbLog, banEntry.Target, $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
                         DB.DBLists.InsertWarnings(new DB.Warnings { Reason = banEntry.Reason ?? "No reason specified", Active = false, Time_Created = DateTime.UtcNow, Admin_ID = banEntry.UserResponsible.Id, User_ID = banEntry.Target.Id, Server_ID = e.Guild.Id, Type = "ban" });
                     }
                     else
@@ -306,7 +306,7 @@ namespace LiveBot.Automation
                     await Task.Delay(1000);
                     var logs = await Guild.GetAuditLogsAsync(1, action_type: AuditLogActionType.Unban);
                     DiscordChannel wkbLog = Guild.GetChannel(wkb_Settings[0].WKB_Log);
-                    await CustomMethod.SendModLog(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", CustomMethod.ModLogType.Unban);
+                    await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", CustomMethod.ModLogType.Unban);
                 }
             });
             await Task.Delay(1);
@@ -436,6 +436,26 @@ namespace LiveBot.Automation
             if (e?.After?.Channel != e?.Before?.Channel)
             {
                 await VCActivityLogChannel.SendMessageAsync(embed);
+            }
+        }
+        
+        public static async Task User_Timed_Out_Log(object Client, GuildMemberUpdateEventArgs e)
+        {
+            if (e.Member.IsBot) return;
+            DB.ServerSettings SS = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == e.Guild.Id);
+            if (SS.WKB_Log == 0) return;
+
+            if (e.CommunicationDisabledUntilBefore == e.CommunicationDisabledUntilAfter) return;
+            DiscordChannel UserTimedOutLogChannel = e.Guild.GetChannel(SS.WKB_Log);
+
+            DateTimeOffset dto = e.Member.CommunicationDisabledUntil.GetValueOrDefault();
+            if (e.CommunicationDisabledUntilAfter != null && e.CommunicationDisabledUntilBefore == null)
+            {
+                await CustomMethod.SendModLogAsync(UserTimedOutLogChannel, e.Member, $"**Timed Out Until:** <t:{dto.ToUnixTimeSeconds()}:F>(<t:{dto.ToUnixTimeSeconds()}:R>)", CustomMethod.ModLogType.TimedOut);
+            }
+            else if (e.CommunicationDisabledUntilAfter == null && e.CommunicationDisabledUntilBefore != null)
+            {
+                await CustomMethod.SendModLogAsync(UserTimedOutLogChannel, e.Member, $"**Timed Out Until:** -", CustomMethod.ModLogType.TimeOutRemoved);
             }
         }
 
