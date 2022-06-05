@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220605_A";
+        public static readonly string BotVersion = $"20220605_B";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -80,7 +80,6 @@ namespace LiveBot
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
             {
                 CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
-                Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
 
                 TestBuild = false;
                 logLevel = LogLevel.Information;
@@ -140,6 +139,7 @@ namespace LiveBot
 
             if (!TestBuild) //Only enables these when using live version
             {
+                Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
                 Client.PresenceUpdated += LiveStream.Stream_Notification;
 
                 Client.MessageCreated += Leveling.Level_Gaining_System;
