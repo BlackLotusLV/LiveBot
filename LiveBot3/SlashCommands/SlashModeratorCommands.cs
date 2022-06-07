@@ -9,7 +9,6 @@ namespace LiveBot.SlashCommands
     internal class SlashModeratorCommands : ApplicationCommandModule
     {
         [SlashCommand("warn", "Warn a user.")]
-        [SlashRequireGuild]
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
             [Option("reason", "Why the user is being warned")] string reason)
