@@ -134,7 +134,7 @@ namespace LiveBot.SlashCommands
             using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             DiscordFollowupMessageBuilder msgBuilder = new()
             {
-                Content = $"Summit tier lists.\n *Summit ends on <t:{JSummit[0].End_Date}>.*"
+                Content = $"Summit tier lists.\n *Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>)*"
             };
             msgBuilder.AddFile(upFile);
             msgBuilder.AddMention(new UserMention());
@@ -284,7 +284,7 @@ namespace LiveBot.SlashCommands
                     }
                     BaseImage.Save(imageLoc);
 
-                    OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UserInfo.Platform == "x1" ? "Xbox" : UserInfo.Platform == "ps4" ? "PlayStation" : UserInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{JSummit[0].End_Date}>. Scoreboard powered by The Crew Hub and The Crew Exchange!*";
+                    OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UserInfo.Platform == "x1" ? "Xbox" : UserInfo.Platform == "ps4" ? "PlayStation" : UserInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub and The Crew Exchange!*";
                     SendImage = true;
                 }
                 else
@@ -378,7 +378,7 @@ namespace LiveBot.SlashCommands
                 TotalPoints += 100000;
             }
             BaseImage.Save(imageLoc);
-            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].End_Date}>. Scoreboard powered by The Crew Hub and The Crew Exchange!*";
+            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub and The Crew Exchange!*";
 
             using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             var msgBuilder = new DiscordFollowupMessageBuilder

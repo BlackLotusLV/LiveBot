@@ -14,11 +14,7 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[REMOVED] Hub commands now only present as slash commands\n" +
-                "[CHANGE] Admin commands renamed to Mod commands\n" +
-                "[NEW] Added ModMail block command\n" +
-                "[NEW] Added ModMail unblock command\n" +
-                "[NEW] Added timeout logging(very basic)\n" +
+            string changelog = "[UPDATE] Added how long till summit ends in () for hub commands\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
