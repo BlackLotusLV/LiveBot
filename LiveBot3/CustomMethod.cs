@@ -487,29 +487,6 @@ namespace LiveBot
             }
         }
 
-        public static async Task<TCHubJson.TceSummit> GetTCEInfo(ulong UserID)
-        {
-            string link = $"{Program.TCEJson.Link}api/tchub/profileId/{Program.TCEJson.Key}/{UserID}";
-
-            TCHubJson.TceSummit JTCE;
-            using (HttpClient wc = new())
-            {
-                try
-                {
-                    string Jdown = await wc.GetStringAsync(link);
-                    JTCE = JsonConvert.DeserializeObject<TCHubJson.TceSummit>(Jdown);
-                }
-                catch (Exception)
-                {
-                    JTCE = new TCHubJson.TceSummit
-                    {
-                        Error = "No Connection."
-                    };
-                }
-            }
-            return JTCE;
-        }
-
         public enum ModLogType
         {
             Kick,

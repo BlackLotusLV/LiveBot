@@ -9,7 +9,6 @@ namespace LiveBot.SlashCommands
     internal class SlashModeratorCommands : ApplicationCommandModule
     {
         [SlashCommand("warn", "Warn a user.")]
-        [SlashRequireGuild]
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
             [Option("reason", "Why the user is being warned")] string reason)
@@ -206,6 +205,31 @@ namespace LiveBot.SlashCommands
             rank.MM_Blocked = false;
             DB.DBLists.UpdateServerRanks(rank);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) has been unblocked from using modmail"));
+        }
+
+        [SlashCommand("info","Shows general info about the user.")]
+        public async Task Info(InteractionContext ctx, [Option("User","User who to get the info about.")] DiscordUser user)
+        {
+            await ctx.DeferAsync();
+            DiscordMember member = await ctx.Guild.GetMemberAsync(user.Id);
+
+            DiscordEmbedBuilder embedBuilder = new()
+            {
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    Name = user.Username,
+                    IconUrl = user.AvatarUrl
+                },
+                Title = $"{user.Username} Info",
+                ImageUrl = user.AvatarUrl
+            };
+            embedBuilder
+                .AddField("Nickname", (member.Nickname ?? "None"), true)
+                .AddField("ID", user.Id.ToString(), true)
+                .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
+                .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
         }
     }
 }

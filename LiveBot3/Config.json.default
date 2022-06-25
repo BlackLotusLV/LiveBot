@@ -14,10 +14,6 @@
     "database": "Database name",
     "port": "****"
   },
-  "TCE": {
-    "key": "TCE key here",
-    "link": "link to tce website"
-  },
   "TCHub": {
     "summit": "TCHub API link for Summit info",
     "gamedata": "TCHub API link for game data",
