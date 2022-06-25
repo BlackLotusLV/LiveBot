@@ -94,7 +94,7 @@ namespace LiveBot
             return HubText;
         }
 
-        public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, TCHubJson.TceSummitSubs UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
+        public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             Image<Rgba32> EventImage = Image.Load<Rgba32>(EventImageBytes);
 
@@ -150,12 +150,12 @@ namespace LiveBot
                 {
                     ThisEventNameID = Program.TCHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
                 }
-                TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_ID}"));
+                TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
                 string
                     EventTitle = (NameIDLookup(ThisEventNameID)),
                     ActivityResult = $"Score: {Activity.Score}",
                     VehicleInfo = string.Empty;
-                TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_ID);
+                TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_Id);
                 if (Event.Constraint_Text_ID.Contains("60871"))
                 {
                     VehicleInfo = "Forced Vehicle";

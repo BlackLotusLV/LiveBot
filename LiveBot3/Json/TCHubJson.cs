@@ -162,27 +162,6 @@ namespace LiveBot.Json
             public int Rank { get; private set; }
         }
 
-        public class TceSummit
-        {
-            [JsonProperty("discord_id")]
-            public ulong Discord_ID { get; private set; }
-
-            [JsonProperty("subs")]
-            public TceSummitSubs[] Subs { get; private set; }
-
-            [JsonProperty("error")]
-            public string Error { get; set; }
-        }
-
-        public class TceSummitSubs
-        {
-            [JsonProperty("platform")]
-            public string Platform { get; set; }
-
-            [JsonProperty("profile_id")]
-            public string Profile_ID { get; set; }
-        }
-
         public class SummitLeaderboardEntries
         {
             [JsonProperty("profile_id")]

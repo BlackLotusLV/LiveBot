@@ -17,6 +17,7 @@ namespace LiveBot.Commands
             string changelog = "[UPDATE] Added how long till summit ends in () for hub commands\n" +
                 "[REMOVED] Removed patreon link from bot info command. Thanks to everyone who supported so far.\n" +
                 "[NEW] General info command added to mod tools\n" +
+                "[NEW] TC-Hub account linking now done through live bot\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -123,28 +124,6 @@ namespace LiveBot.Commands
             else
             {
                 content = CustomMethod.GetCommandOutput(ctx, "maxlvl", language, username);
-            }
-            await new DiscordMessageBuilder()
-                .WithContent(content)
-                .WithAllowedMention(new UserMention())
-                .SendAsync(ctx.Channel);
-        }
-
-        [Command("tce")] //The Crew Exchange info command
-        [Cooldown(1, 10, CooldownBucketType.Channel)]
-        [Description("Informs the user about The Crew Exchange website.")]
-        public async Task TCE(CommandContext ctx, [Description("Specifies the user the bot will mention, use ID or mention the user. If left blank, it will mention you.")] DiscordMember username = null, [Description("Specifies in what language the bot will respond. example, fr-french")] string language = null)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            string content;
-            if (username is null)
-            {
-                content = CustomMethod.GetCommandOutput(ctx, "tce", language, ctx.Member);
-            }
-            else
-            {
-                content = CustomMethod.GetCommandOutput(ctx, "tce", language, username);
             }
             await new DiscordMessageBuilder()
                 .WithContent(content)

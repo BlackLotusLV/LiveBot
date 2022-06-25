@@ -25,7 +25,6 @@ namespace LiveBot
         public static Dictionary<string, string> TCHubDictionary { get; set; }
         public static TCHubJson.TCHub TCHub { get; set; }
         public static List<TCHubJson.Summit> JSummit { get; set; }
-        public static ConfigJson.TheCrewExchange TCEJson { get; set; }
         public static ConfigJson.Bot CFGJson { get; set; }
 
         // Lists
@@ -67,7 +66,6 @@ namespace LiveBot
             var json = string.Empty;
             using (var sr = new StreamReader(File.OpenRead("Config.json"), new UTF8Encoding(false)))
                 json = await sr.ReadToEndAsync();
-            TCEJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCE;
             CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DevBot;
 
             // Start The Crew Hub service

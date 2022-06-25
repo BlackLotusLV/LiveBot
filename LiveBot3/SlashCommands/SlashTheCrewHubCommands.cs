@@ -154,39 +154,22 @@ namespace LiveBot.SlashCommands
 
             string search = string.Empty;
 
-            TCHubJson.TceSummit JTCE = await CustomMethod.GetTCEInfo(ctx.User.Id);
 
-            TCHubJson.TceSummitSubs UserInfo = new();
-
-            if (JTCE.Error != null)
+            List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.User.Id).ToList();
+            DB.UbiInfo UbiInfo = new();
+            if (UbiInfo == null)
             {
-                if (JTCE.Error == "Unregistered user")
-                {
-                    OutMessage = $"{ctx.User.Mention}, You have not linked your TCE account, please check out <#302818290336530434> on how to do so.";
-                }
-                else if (JTCE.Error == "Invalid API key !" || JTCE.Error == "No Connection.")
-                {
-                    OutMessage = $"{ctx.User.Mention}, the API is down, check <#257513574061178881> and please try again later.\n" +
-                        $"<@85017957343694848> Rip API";
-                }
-                else if (JTCE.Error == "TCHub down")
-                {
-                    OutMessage = $"{ctx.User.Mention}, The Crew Hub seems to be down, there might be a maintenance. Please try again later.";
-                }
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "Could not find any profile data, please link your ubisoft account with Live bot." });
+                return;
             }
-            else if (JTCE.Subs.Length == 1)
-            {
-                UserInfo = JTCE.Subs[0];
-                search = UserInfo.Platform;
-            }
-            else if (JTCE.Subs.Length > 1)
+            UbiInfo = UbiInfoList[0];
+            if (UbiInfoList.Count > 1)
             {
                 switch (platform)
                 {
                     case Platforms.pc:
                         search = "pc";
                         break;
-
                     case Platforms.x1:
                         search = "x1";
                         break;
@@ -199,98 +182,90 @@ namespace LiveBot.SlashCommands
                         search = "stadia";
                         break;
                 }
-                if (JTCE.Subs.Count(w => w.Platform.Equals(search)) == 1)
+                if (UbiInfoList.Count(w => w.Platform.Equals(search)) == 1)
                 {
-                    UserInfo = JTCE.Subs.FirstOrDefault(w => w.Platform.Equals(search));
-                }
-                else if (JTCE.Subs.Count(w => w.Platform.Equals(search)) != 1)
-                {
-                    UserInfo = JTCE.Subs[0];
+                    UbiInfo = UbiInfoList.FirstOrDefault(w => w.Platform == search);
                 }
             }
-
-            if (UserInfo.Profile_ID != null)
+            string SJson;
+            List<TCHubJson.Summit> JSummit = Program.JSummit;
+            using (HttpClient wc = new())
             {
-                string SJson;
-                List<TCHubJson.Summit> JSummit = Program.JSummit;
-                using (HttpClient wc = new())
+                SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{UbiInfo.Platform}/profile/{UbiInfo.Profile_Id}");
+            }
+            TCHubJson.Rank Events = JsonConvert.DeserializeObject<TCHubJson.Rank>(SJson);
+
+            if (Events.Points != 0)
+            {
+                int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
+                Font SummitCaps15 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 15);
+                Font SummitCaps12 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 12.5f);
+                var AllignTopLeft = new TextOptions()
                 {
-                    SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{UserInfo.Platform}/profile/{UserInfo.Profile_ID}");
-                }
-                TCHubJson.Rank Events = JsonConvert.DeserializeObject<TCHubJson.Rank>(SJson);
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
 
-                if (Events.Points != 0)
+                Image<Rgba32> BaseImage = new(1127, 765);
+
+                await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, token) =>
                 {
-                    int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-                    Font SummitCaps15 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 15);
-                    Font SummitCaps12 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 12.5f);
-                    var AllignTopLeft = new TextOptions()
+                    int i = JSummit[0].Events.Select((element, index) => new { element, index })
+                           .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
+                    Image image = await HubMethods.BuildEventImage(
+                            Event,
+                            Events,
+                            UbiInfo,
+                            Event.Image_Byte,
+                            i == 7,
+                            i == 8);
+                    BaseImage.Mutate(ctx => ctx
+                    .DrawImage(
+                        image,
+                        new Point(WidthHeight[i, 0], WidthHeight[i, 1]),
+                    1)
+                );
+                });
+                using (Image<Rgba32> TierBar = Image.Load<Rgba32>("Assets/Summit/TierBar.png"))
+                {
+                    TierBar.Mutate(ctx => ctx.DrawImage(new Image<Rgba32>(new Configuration(), TierBar.Width, TierBar.Height, backgroundColor: Color.Black), new Point(0, 0), 0.35f));
+                    int[] TierXPos = new int[4] { 845, 563, 281, 0 };
+                    bool[] Tier = new bool[] { false, false, false, false };
+                    Parallel.For(0, Events.Tier_entries.Length, (i, state) =>
                     {
-                        HorizontalAlignment = HorizontalAlignment.Left,
-                        VerticalAlignment = VerticalAlignment.Top
-                    };
-
-                    Image<Rgba32> BaseImage = new(1127, 765);
-
-                    await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, token) =>
-                    {
-                        int i = JSummit[0].Events.Select((element, index) => new { element, index })
-                               .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
-                        Image image = await HubMethods.BuildEventImage(
-                                Event,
-                                Events,
-                                new TCHubJson.TceSummitSubs { Platform = UserInfo.Platform, Profile_ID = UserInfo.Profile_ID },
-                                Event.Image_Byte,
-                                i == 7,
-                                i == 8);
-                        BaseImage.Mutate(ctx => ctx
-                        .DrawImage(
-                            image,
-                            new Point(WidthHeight[i, 0], WidthHeight[i, 1]),
-                        1)
-                    );
-                    });
-                    using (Image<Rgba32> TierBar = Image.Load<Rgba32>("Assets/Summit/TierBar.png"))
-                    {
-                        TierBar.Mutate(ctx => ctx.DrawImage(new Image<Rgba32>(new Configuration(), TierBar.Width, TierBar.Height, backgroundColor: Color.Black), new Point(0, 0), 0.35f));
-                        int[] TierXPos = new int[4] { 845, 563, 281, 0 };
-                        bool[] Tier = new bool[] { false, false, false, false };
-                        Parallel.For(0, Events.Tier_entries.Length, (i, state) =>
+                        if (Events.Tier_entries[i].Points == 4294967295)
                         {
-                            if (Events.Tier_entries[i].Points == 4294967295)
+                            Tier[i] = true;
+                        }
+                        else
+                        {
+                            if (Events.Tier_entries[i].Points <= Events.Points)
                             {
                                 Tier[i] = true;
                             }
-                            else
-                            {
-                                if (Events.Tier_entries[i].Points <= Events.Points)
-                                {
-                                    Tier[i] = true;
-                                }
 
-                                TierBar.Mutate(ctx => ctx
-                                .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Points Needed: {Events.Tier_entries[i].Points}", SummitCaps12, Color.White, new PointF(TierXPos[i] + 5, 15))
-                                );
-                            }
-                        });
+                            TierBar.Mutate(ctx => ctx
+                            .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Points Needed: {Events.Tier_entries[i].Points}", SummitCaps12, Color.White, new PointF(TierXPos[i] + 5, 15))
+                            );
+                        }
+                    });
 
-                        TierBar.Mutate(ctx => ctx
-                                .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Summit Rank: {Events.UserRank + 1} Score: {Events.Points}", SummitCaps15, Color.White, new PointF(TierXPos[Tier.Count(c => c) - 1] + 5, 0))
-                                );
+                    TierBar.Mutate(ctx => ctx
+                            .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Summit Rank: {Events.UserRank + 1} Score: {Events.Points}", SummitCaps15, Color.White, new PointF(TierXPos[Tier.Count(c => c) - 1] + 5, 0))
+                            );
 
-                        BaseImage.Mutate(ctx => ctx
-                        .DrawImage(TierBar, new Point(0, BaseImage.Height - 30), 1)
-                        );
-                    }
-                    BaseImage.Save(imageLoc);
-
-                    OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UserInfo.Platform == "x1" ? "Xbox" : UserInfo.Platform == "ps4" ? "PlayStation" : UserInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub and The Crew Exchange!*";
-                    SendImage = true;
+                    BaseImage.Mutate(ctx => ctx
+                    .DrawImage(TierBar, new Point(0, BaseImage.Height - 30), 1)
+                    );
                 }
-                else
-                {
-                    OutMessage = $"{ctx.User.Mention}, You have not completed any summit event!";
-                }
+                BaseImage.Save(imageLoc);
+
+                OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UbiInfo.Platform == "x1" ? "Xbox" : UbiInfo.Platform == "ps4" ? "PlayStation" : UbiInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub*";
+                SendImage = true;
+            }
+            else
+            {
+                OutMessage = $"{ctx.User.Mention}, You have not completed any summit event!";
             }
 
             if (SendImage)
@@ -360,7 +335,7 @@ namespace LiveBot.SlashCommands
                 Image image = await HubMethods.BuildEventImage(
                         Event,
                         Rank,
-                        new TCHubJson.TceSummitSubs { Platform = search, Profile_ID = Activity.Entries[0].Profile_ID },
+                        DB.DBLists.UbiInfo.FirstOrDefault(w=>w.Platform==search && w.Profile_Id == Activity.Entries[0].Profile_ID),
                         Event.Image_Byte,
                         i == 7,
                         i == 8);
@@ -378,7 +353,7 @@ namespace LiveBot.SlashCommands
                 TotalPoints += 100000;
             }
             BaseImage.Save(imageLoc);
-            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub and The Crew Exchange!*";
+            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub*";
 
             using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             var msgBuilder = new DiscordFollowupMessageBuilder
@@ -538,6 +513,42 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddFile(upFile);
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
+        }
+
+        [SlashCommand("link-hub","Links your hub information with Live bot.")]
+        public async Task LinkHub(InteractionContext ctx, [Option("link","Your Ubisoft avatar link.")] string link, [Option("platform", "The platform you want to link")] Platforms platform)
+        {
+            await ctx.DeferAsync(true);
+            link = Regex.Replace(link, "https://ubisoft-avatars.akamaized.net/|/default(.*)", "");
+
+            string search = platform switch
+            {
+                Platforms.pc => "pc",
+                Platforms.ps4 => "ps4",
+                Platforms.x1 => "x1",
+                Platforms.stadia => "stadia"
+            };
+            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w =>w.Platform == search && w.Profile_Id == link);
+            if (info!=null)
+            {
+                if (info.Discord_Id != ctx.User.Id)
+                {
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "The Ubisoft account you are trying to link has already been linked with a different Discord account." });
+                    return;
+                }
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "These accounts have already been linked" });
+                return;
+            }
+
+            DB.UbiInfo newEntry = new()
+            {
+                Discord_Id = ctx.User.Id,
+                Profile_Id = link,
+                Platform = search
+            };
+
+            DB.DBLists.InsertUbiInfo(newEntry);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = $"Your Discord account has been linked with {link} account ID on {search} platform." });
         }
 
         public enum Week
