@@ -15,6 +15,8 @@ namespace LiveBot.Commands
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
             string changelog = "[UPDATE] Added how long till summit ends in () for hub commands\n" +
+                "[REMOVED] Removed patreon link from bot info command. Thanks to everyone who supported so far.\n" +
+                "[NEW] General info command added to mod tools\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -22,8 +24,7 @@ namespace LiveBot.Commands
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
                     IconUrl = user.AvatarUrl,
-                    Name = user.Username,
-                    Url = "https://www.patreon.com/BlackLotusLV"
+                    Name = user.Username
                 }
             };
             embed.AddField("Version:", Program.BotVersion, true);
@@ -32,7 +33,6 @@ namespace LiveBot.Commands
             embed.AddField("Programmed in:", "C#", true);
             embed.AddField("Programmed by:", "<@86725763428028416>", true);
             embed.AddField("LiveBot info", "General purpose bot with a level system, stream notifications, greeting people and various other functions related to The Crew franchise");
-            embed.AddField("Patreon:", "You can support the development of Live Bot and The Crew Community Discord here: https://www.patreon.com/BlackLotusLV");
             embed.AddField("Change log:", changelog);
             await ctx.RespondAsync(embed: embed);
         }
