@@ -7,7 +7,6 @@ namespace LiveBot.Commands
 {
     public class UngroupedCommands : BaseCommandModule
     {
-
         [Command("bot")]//list of Live bot changes
         [Description("Info about the bot. Latest changes, how to support, how long it has been up.")]
         public async Task Bot(CommandContext ctx)

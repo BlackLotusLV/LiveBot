@@ -48,7 +48,7 @@ namespace LiveBot.Automation
             }
         }
 
-        public static async Task Media_Only_Filter(DiscordClient Client, MessageCreateEventArgs e)
+        public static Task Media_Only_Filter(DiscordClient Client, MessageCreateEventArgs e)
         {
             _ = Task.Run(async () =>
                 {
@@ -61,7 +61,7 @@ namespace LiveBot.Automation
                         Client.Logger.LogInformation(CustomLogEvents.PhotoCleanup, "User tried to send text in photomdoe channel. Message deleted");
                     }
                 });
-            await Task.Delay(1);
+            return Task.CompletedTask;
         }
 
         public static async Task Delete_Log(DiscordClient Client, MessageDeleteEventArgs e)
@@ -246,7 +246,7 @@ namespace LiveBot.Automation
             }
         }
 
-        public static async Task User_Banned_Log(DiscordClient Client, GuildBanAddEventArgs e)
+        public static Task User_Banned_Log(DiscordClient Client, GuildBanAddEventArgs e)
         {
             _ = Task.Run(async () =>
             {
@@ -290,10 +290,10 @@ namespace LiveBot.Automation
                 UserSettings.Followers = 0;
                 DB.DBLists.UpdateServerRanks(UserSettings);
             });
-            await Task.Delay(1);
+            return Task.CompletedTask;
         }
 
-        public static async Task User_Unbanned_Log(DiscordClient Client, GuildBanRemoveEventArgs e)
+        public static Task User_Unbanned_Log(DiscordClient Client, GuildBanRemoveEventArgs e)
         {
             _ = Task.Run(async () =>
             {
@@ -309,7 +309,7 @@ namespace LiveBot.Automation
                     await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", CustomMethod.ModLogType.Unban);
                 }
             });
-            await Task.Delay(1);
+            return Task.CompletedTask;
         }
 
         public static async Task Spam_Protection(object o, MessageCreateEventArgs e)
