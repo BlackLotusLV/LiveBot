@@ -117,14 +117,14 @@
             }
         }
 
-        public static async Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
+        public static Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
         {
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == e.Member.Id && lb.Server_ID == e.Guild.Id);
             if (local is null)
             {
                 CustomMethod.AddUserToServerRanks(e.Member, e.Guild);
             }
-            await Task.Delay(1);
+            return Task.CompletedTask;
         }
     }
 

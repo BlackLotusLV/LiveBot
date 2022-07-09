@@ -335,10 +335,10 @@ namespace LiveBot.SlashCommands
                 Image image = await HubMethods.BuildEventImage(
                         Event,
                         Rank,
-                        DB.DBLists.UbiInfo.FirstOrDefault(w=>w.Platform==search && w.Profile_Id == Activity.Entries[0].Profile_ID),
+                        new DB.UbiInfo { Platform = search, Profile_Id = Activity.Entries[0].Profile_ID },
                         Event.Image_Byte,
                         i == 7,
-                        i == 8);
+                        i == 8) ;
                 BaseImage.Mutate(ctx => ctx
                 .DrawImage(
                     image,
@@ -521,6 +521,13 @@ namespace LiveBot.SlashCommands
             await ctx.DeferAsync(true);
             link = Regex.Replace(link, "https://ubisoft-avatars.akamaized.net/|/default(.*)", "");
 
+            if (!Guid.TryParse(link, out _))
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "The link you provided does not contain your Ubisoft Guid. Please check the tutorial again of how to get the right link" });
+                return;
+            }
+
+#pragma warning disable CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
             string search = platform switch
             {
                 Platforms.pc => "pc",
@@ -528,6 +535,7 @@ namespace LiveBot.SlashCommands
                 Platforms.x1 => "x1",
                 Platforms.stadia => "stadia"
             };
+#pragma warning restore CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
             DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w =>w.Platform == search && w.Profile_Id == link);
             if (info!=null)
             {
