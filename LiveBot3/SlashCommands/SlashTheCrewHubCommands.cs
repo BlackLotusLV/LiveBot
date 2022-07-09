@@ -335,10 +335,10 @@ namespace LiveBot.SlashCommands
                 Image image = await HubMethods.BuildEventImage(
                         Event,
                         Rank,
-                        DB.DBLists.UbiInfo.FirstOrDefault(w=>w.Platform==search && w.Profile_Id == Activity.Entries[0].Profile_ID),
+                        new DB.UbiInfo { Platform = search, Profile_Id = Activity.Entries[0].Profile_ID },
                         Event.Image_Byte,
                         i == 7,
-                        i == 8);
+                        i == 8) ;
                 BaseImage.Mutate(ctx => ctx
                 .DrawImage(
                     image,

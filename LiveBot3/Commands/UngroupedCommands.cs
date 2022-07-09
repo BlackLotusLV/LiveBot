@@ -13,10 +13,7 @@ namespace LiveBot.Commands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[UPDATE] Added how long till summit ends in () for hub commands\n" +
-                "[REMOVED] Removed patreon link from bot info command. Thanks to everyone who supported so far.\n" +
-                "[NEW] General info command added to mod tools\n" +
-                "[NEW] TC-Hub account linking now done through live bot\n" +
+            string changelog = "[FIX] Top summit command not generating an image fixed\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
