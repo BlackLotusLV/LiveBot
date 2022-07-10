@@ -236,7 +236,7 @@ namespace LiveBot.Automation
                 var UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID);
                 if (UserSettings is null)
                 {
-                    CustomMethod.AddUserToServerRanks((DiscordUser)e.Member, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard((DiscordUser)e.Member, e.Guild);
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Kick_Count++;
@@ -283,7 +283,7 @@ namespace LiveBot.Automation
                 if (UserSettings == null)
                 {
                     DiscordUser user = await Client.GetUserAsync(e.Member.Id);
-                    CustomMethod.AddUserToServerRanks(user, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard(user, e.Guild);
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Ban_Count += 1;

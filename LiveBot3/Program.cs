@@ -132,6 +132,7 @@ namespace LiveBot
 
             Services.WarningService.StartService();
             Services.StreamNotificationService.StartService();
+            Services.LeaderboardService.StartService();
 
             //
 

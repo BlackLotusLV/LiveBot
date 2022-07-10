@@ -57,7 +57,7 @@
             {
                 if (DB.DBLists.Leaderboard.AsParallel().FirstOrDefault(w => w.ID_User == e.Author.Id) == null)
                 {
-                    CustomMethod.AddUserToLeaderboard(e.Author);
+                    Services.LeaderboardService.AddUserToLeaderboard(e.Author);
                 }
                 var dbEntry = DB.DBLists.Leaderboard.AsParallel().FirstOrDefault(w => w.ID_User == e.Author.Id);
                 dbEntry.Followers += FollowersAdded;
@@ -88,7 +88,7 @@
             {
                 if (DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(w => w.User_ID == e.Author.Id && w.Server_ID == e.Guild.Id) == null)
                 {
-                    CustomMethod.AddUserToServerRanks(e.Author, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard(e.Author, e.Guild);
                 }
                 var dbEntry = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(w => w.User_ID == e.Author.Id && w.Server_ID == e.Guild.Id);
                 dbEntry.Followers += FollowersAdded;
@@ -122,7 +122,7 @@
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == e.Member.Id && lb.Server_ID == e.Guild.Id);
             if (local is null)
             {
-                CustomMethod.AddUserToServerRanks(e.Member, e.Guild);
+                Services.LeaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
             }
             return Task.CompletedTask;
         }
