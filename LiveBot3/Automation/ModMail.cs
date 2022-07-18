@@ -86,21 +86,21 @@
 
         public static async Task ModMailButton(object Client, ComponentInteractionCreateEventArgs e)
         {
-            if (e.Interaction.Type == InteractionType.Component && !e.Interaction.User.IsBot && e.Interaction.Guild != null && e.Interaction.Data.CustomId.Contains("close"))
-            {
-                var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.Server_ID == e.Interaction.Guild.Id && w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
-                if (MMEntry != null)
-                {
-                    await CloseModMail(
-                        MMEntry,
-                        e.Interaction.User,
-                        $" Mod Mail closed by {e.Interaction.User.Username}",
-                        $"**Mod Mail closed by {e.Interaction.User.Username}!\n----------------------------------------------------**");
+            if (e.Interaction.Type != InteractionType.Component && e.Interaction.User.IsBot && !e.Interaction.Data.CustomId.Contains("close")) return;
+            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Interaction.User.Id && w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
+            if (MMEntry == null) return;
+            await CloseModMail(
+                MMEntry,
+                e.Interaction.User,
+                $" Mod Mail closed by {e.Interaction.User.Username}",
+                $"**Mod Mail closed by {e.Interaction.User.Username}!\n----------------------------------------------------**");
 
-                    DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
-                    await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.AddEmbed(e.Message.Embeds[0]));
-                }
+            DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
+            if (e.Message.Embeds.Count>0)
+            {
+                discordInteractionResponseBuilder.AddEmbeds(e.Message.Embeds);
             }
+            await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
         }
     }
 }
