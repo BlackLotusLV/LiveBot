@@ -10,7 +10,10 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[FIX] Top summit command not generating an image fixed\n" +
+            string changelog = "[NEW] Mod Mail initialised with slash commands in server now\n" +
+                "[NEW] Moderators can use slash command to respond to a mod mail. It provides ID's of open MM's\n" +
+                "[NEW] Users can now close the mod mail via a button in their DMs.\n" +
+                "[NEW] My-Summit command will only show platforms that you have linked. You can still not specify any and it will default to one, but if you need to chose you can select.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder

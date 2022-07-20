@@ -141,8 +141,35 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
+        public class PlatformOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.UbiInfo.Where(w=>w.Discord_Id == ctx.Member.Id))
+                {
+                    switch (item.Platform)
+                    {
+                        case "pc":
+                            result.Add(new DiscordAutoCompleteChoice("PC", "pc"));
+                            break;
+                        case "x1":
+                            result.Add(new DiscordAutoCompleteChoice("Xbox", "x1"));
+                            break;
+                        case "ps4":
+                            result.Add(new DiscordAutoCompleteChoice("PlayStation", "ps4"));
+                            break;
+                        case "stadia":
+                            result.Add(new DiscordAutoCompleteChoice("Stadia", "stadia"));
+                            break;
+                    }
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+
         [SlashCommand("my-summit", "Shows your summit scores.")]
-        public async Task MySummit(InteractionContext ctx, [Option("platform", "Which platform leaderboard you want to see")] Platforms platform = Platforms.pc)
+        public async Task MySummit(InteractionContext ctx, [Autocomplete(typeof(PlatformOptions))][Option("platform", "Which platform leaderboard you want to see")] string platform = "pc")
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
@@ -167,19 +194,19 @@ namespace LiveBot.SlashCommands
             {
                 switch (platform)
                 {
-                    case Platforms.pc:
-                        search = "pc";
-                        break;
-                    case Platforms.x1:
+                    case "x1":
                         search = "x1";
                         break;
 
-                    case Platforms.ps4:
+                    case "ps4":
                         search = "ps4";
                         break;
 
-                    case Platforms.stadia:
+                    case "stadia":
                         search = "stadia";
+                        break;
+                    default:
+                        search = "pc";
                         break;
                 }
                 if (UbiInfoList.Count(w => w.Platform.Equals(search)) == 1)
