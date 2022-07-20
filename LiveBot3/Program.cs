@@ -89,7 +89,8 @@ namespace LiveBot
                 AutoReconnect = true,
                 ReconnectIndefinitely = false,
                 MinimumLogLevel = logLevel,
-                Intents = DiscordIntents.All
+                Intents = DiscordIntents.All,
+                LogUnknownEvents = false
             };
             Client = new DiscordClient(cfg);
             DB.DBLists.LoadAllLists(); // loads data from database
