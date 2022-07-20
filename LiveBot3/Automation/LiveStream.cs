@@ -8,7 +8,7 @@
 
         public static async Task Stream_Notification(object Client, PresenceUpdateEventArgs e)
         {
-            if (e.User == null || e.User.IsBot) return;
+            if (e.User == null || e.User.IsBot || e.User.Presence == null) return;
             DiscordGuild guild = e.User.Presence.Guild;
             List<DB.StreamNotifications> streamNotifications = DB.DBLists.StreamNotifications.Where(w => w.Server_ID == guild.Id).ToList();
             if (streamNotifications.Count < 1) return;
