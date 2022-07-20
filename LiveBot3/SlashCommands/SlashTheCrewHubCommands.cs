@@ -192,23 +192,13 @@ namespace LiveBot.SlashCommands
             UbiInfo = UbiInfoList[0];
             if (UbiInfoList.Count > 1)
             {
-                switch (platform)
+                search = platform switch
                 {
-                    case "x1":
-                        search = "x1";
-                        break;
-
-                    case "ps4":
-                        search = "ps4";
-                        break;
-
-                    case "stadia":
-                        search = "stadia";
-                        break;
-                    default:
-                        search = "pc";
-                        break;
-                }
+                    "x1" => platform,
+                    "ps4" => platform,
+                    "stadia" => platform,
+                    _ => "pc",
+                };
                 if (UbiInfoList.Count(w => w.Platform.Equals(search)) == 1)
                 {
                     UbiInfo = UbiInfoList.FirstOrDefault(w => w.Platform == search);
