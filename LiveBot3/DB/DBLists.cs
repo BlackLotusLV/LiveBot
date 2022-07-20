@@ -829,5 +829,17 @@ namespace LiveBot.DB
         }
 
         #endregion Insert Functions
+        
+        #region Delete Functions
+
+        public static void DeleteUbiInfo(params UbiInfo[] o)
+        {
+            using var ctx = new UbiInfoContext();
+            ctx.UbiInfo.RemoveRange(o);
+            ctx.SaveChanges();
+            LoadUbiInfo();
+        }
+
+        #endregion Delete Functions
     }
 }

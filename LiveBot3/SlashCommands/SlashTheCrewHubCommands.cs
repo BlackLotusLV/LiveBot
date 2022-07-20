@@ -184,7 +184,7 @@ namespace LiveBot.SlashCommands
 
             List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.User.Id).ToList();
             DB.UbiInfo UbiInfo = new();
-            if (UbiInfo == null)
+            if (UbiInfoList.Count==0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "Could not find any profile data, please link your ubisoft account with Live bot." });
                 return;
@@ -574,6 +574,33 @@ namespace LiveBot.SlashCommands
 
             DB.DBLists.InsertUbiInfo(newEntry);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = $"Your Discord account has been linked with {link} account ID on {search} platform." });
+        }
+
+        [SlashCommand("unlink-hub","Unlinks a specific hub account from your discord")]
+        public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))][Option("Account","The account to unlink")] long ID)
+        {
+            await ctx.DeferAsync(true);
+            DB.UbiInfo entry = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Id == ID);
+            if (entry == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find a listing with this ID, please make sure you select from provided items in the list"));
+                return;
+            }
+            DB.DBLists.DeleteUbiInfo(entry);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.Profile_Id}** - **{entry.Platform}** from your Discord account"));
+        }
+
+        public class LinkedAccountOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
+                {
+                    result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.Profile_Id}", (long)item.Id));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
 
         public enum Week

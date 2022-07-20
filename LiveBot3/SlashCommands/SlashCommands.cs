@@ -14,6 +14,7 @@ namespace LiveBot.SlashCommands
                 "[NEW] Moderators can use slash command to respond to a mod mail. It provides ID's of open MM's\n" +
                 "[NEW] Users can now close the mod mail via a button in their DMs.\n" +
                 "[NEW] My-Summit command will only show platforms that you have linked. You can still not specify any and it will default to one, but if you need to chose you can select.\n" +
+                "[NEW] You can now unlink your hub account from discord.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
