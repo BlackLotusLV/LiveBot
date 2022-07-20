@@ -52,18 +52,18 @@ namespace LiveBot.SlashCommands
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod mail #{id} reply sent"));
         }
-    }
 
-    public class ReplyOption : IAutocompleteProvider
-    {
-        public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        sealed class ReplyOption : IAutocompleteProvider
         {
-            List<DiscordAutoCompleteChoice> result = new ();
-            foreach (var item in DB.DBLists.ModMail.Where(w=>w.Server_ID == ctx.Guild.Id && w.IsActive).Select(item=>item.ID))
+             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
-                result.Add(new DiscordAutoCompleteChoice($"#{item}", item));
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.ModMail.Where(w => w.Server_ID == ctx.Guild.Id && w.IsActive).Select(item => item.ID))
+                {
+                    result.Add(new DiscordAutoCompleteChoice($"#{item}", item));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
-            return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
         }
     }
 }

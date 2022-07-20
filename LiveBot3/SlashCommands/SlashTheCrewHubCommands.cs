@@ -141,7 +141,7 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
-        public class PlatformOptions : IAutocompleteProvider
+        sealed class PlatformOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
@@ -590,7 +590,7 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.Profile_Id}** - **{entry.Platform}** from your Discord account"));
         }
 
-        public class LinkedAccountOptions : IAutocompleteProvider
+        sealed class LinkedAccountOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
