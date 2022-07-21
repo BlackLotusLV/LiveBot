@@ -16,7 +16,7 @@ namespace LiveBot.SlashCommands
                 "[NEW] My-Summit command will only show platforms that you have linked. You can still not specify any and it will default to one, but if you need to chose you can select.\n" +
                 "[NEW] You can now unlink your hub account from discord.\n" +
                 "[FIX] Bunch of back end fixes and improvements for the bot\n" +
-                "";
+                "[NEW] Slash command bot DM now adds a button to open a mod mail directly.";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -36,6 +36,7 @@ namespace LiveBot.SlashCommands
             await ctx.CreateResponseAsync(embed: embed);
         }
 
+        [SlashRequireGuild]
         [SlashCommand("Send-ModMail","Creates a new ModMailChannel",false)]
         public async Task ModMail(InteractionContext ctx, [Option("subject","Short Description of the issue")] string subject = "*Subject left blank*")
         {

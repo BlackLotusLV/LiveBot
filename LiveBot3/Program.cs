@@ -168,7 +168,8 @@ namespace LiveBot
                 Client.GuildMemberUpdated += MembershipScreening.AcceptRules;
 
                 Client.MessageCreated += ModMail.ModMailDM;
-                Client.ComponentInteractionCreated += ModMail.ModMailButton;
+                Client.ComponentInteractionCreated += ModMail.ModMailCloseButton;
+                Client.ComponentInteractionCreated += ModMail.ModMailDMOpenButton;
 
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
                 this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>();
@@ -185,6 +186,8 @@ namespace LiveBot
                 this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
+                Client.ComponentInteractionCreated += ModMail.ModMailCloseButton;
+                Client.ComponentInteractionCreated += ModMail.ModMailDMOpenButton;
             }                
             DiscordActivity BotActivity = new($"DM {CFGJson.CommandPrefix}modmail to open chat with mods", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);

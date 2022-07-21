@@ -211,7 +211,16 @@ namespace LiveBot.SlashCommands
         public async Task Info(InteractionContext ctx, [Option("User","User who to get the info about.")] DiscordUser user)
         {
             await ctx.DeferAsync();
-            DiscordMember member = await ctx.Guild.GetMemberAsync(user.Id);
+            DiscordMember member;
+            try
+            {
+                member = await ctx.Guild.GetMemberAsync(user.Id);
+            }
+            catch (DSharpPlus.Exceptions.NotFoundException)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The user is not in the server, can't find information!"));
+                return;
+            }
 
             DiscordEmbedBuilder embedBuilder = new()
             {
@@ -230,6 +239,51 @@ namespace LiveBot.SlashCommands
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
+        }
+
+        [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]
+        public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
+        {
+            await ctx.DeferAsync(true);
+            DB.ServerSettings guildSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
+            if (guildSettings?.ModMailID == 0)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
+                return;
+            }
+
+            DiscordMember member;
+            try
+            {
+                member = await ctx.Guild.GetMemberAsync(user.Id);
+            }
+            catch (DSharpPlus.Exceptions.NotFoundException)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The user is not in the server, can't message."));
+                return;
+            }
+            string DMMessage = $"You are receiving a Moderator DM from **{ctx.Guild.Name}** Discord\n{ctx.User.Username} - {message}";
+            DiscordMessageBuilder messageBuilder = new();
+            messageBuilder.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"openmodmail{ctx.Guild.Id}", "Open Mod Mail"));
+            messageBuilder.WithContent(DMMessage);
+
+            await member.SendMessageAsync(messageBuilder);
+
+            DiscordChannel MMChannel = ctx.Guild.GetChannel(guildSettings.ModMailID);
+            DiscordEmbedBuilder embed = new()
+            {
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    IconUrl = member.AvatarUrl,
+                    Name = member.Username
+                },
+                Title = $"[MOD DM] Moderator DM to {member.Username}",
+                Description = DMMessage
+            };
+            await MMChannel.SendMessageAsync(embed: embed);
+            Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "A Dirrect message was sent to {Username}({UserId}) from {User2Name}({User2Id}) through Mod Mail system.", member.Username, member.Id, ctx.Member.Username, ctx.Member.Id);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }
     }
 }
