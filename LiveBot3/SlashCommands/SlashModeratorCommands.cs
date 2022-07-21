@@ -167,46 +167,6 @@ namespace LiveBot.SlashCommands
             }
         }
 
-        [SlashCommand("modmail-block", "Blocks a user from using modmail")]
-        public async Task ModMailBlock(InteractionContext ctx, [Option("user", "User to block")] DiscordUser user)
-        {
-            await ctx.DeferAsync(true);
-            DB.ServerRanks rank = DB.DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == ctx.Guild.Id && w.User_ID == user.Id);
-            if (rank == null)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is not a member of this server"));
-                return;
-            }
-            if (rank.MM_Blocked)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is already blocked from using modmail"));
-                return;
-            }
-            rank.MM_Blocked = true;
-            DB.DBLists.UpdateServerRanks(rank);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) has been blocked from using modmail"));
-        }
-
-        [SlashCommand("modmail-unblock", "Unblocks a user from using modmail")]
-        public async Task ModMailUnblock(InteractionContext ctx, [Option("user", "User to unblock")] DiscordUser user)
-        {
-            await ctx.DeferAsync(true);
-            DB.ServerRanks rank = DB.DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == ctx.Guild.Id && w.User_ID == user.Id);
-            if (rank == null)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is not a member of this server"));
-                return;
-            }
-            if (!rank.MM_Blocked)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is not blocked from using modmail"));
-                return;
-            }
-            rank.MM_Blocked = false;
-            DB.DBLists.UpdateServerRanks(rank);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) has been unblocked from using modmail"));
-        }
-
         [SlashCommand("info","Shows general info about the user.")]
         public async Task Info(InteractionContext ctx, [Option("User","User who to get the info about.")] DiscordUser user)
         {

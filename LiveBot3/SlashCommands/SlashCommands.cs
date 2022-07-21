@@ -17,7 +17,8 @@ namespace LiveBot.SlashCommands
                 "[NEW] You can now unlink your hub account from discord.\n" +
                 "[FIX] Bunch of back end fixes and improvements for the bot\n" +
                 "[NEW] Slash command bot DM now adds a button to open a mod mail directly.\n" +
-                "";
+                "[FIX] Delete log searching for incorrect file fixed\n" +
+                "[CHANGE] Mod mail blocklist commands moved from `/mod` to `/modmail` group and renamed to `blacklist` and `unlist`";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
