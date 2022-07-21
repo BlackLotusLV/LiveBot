@@ -109,8 +109,9 @@ namespace LiveBot.Automation
                 }
                 else
                 {
-                    File.WriteAllText($"{Program.tmpLoc}{e.Message.Id}-DeleteLog.txt", $"{Description}\n**Contents:** {converteddeletedmsg}");
-                    using var upFile = new FileStream($"{Program.tmpLoc}{e.Message.Id}-BulkDeleteLog.txt", FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+                    string location = $"{Program.tmpLoc}{e.Message.Id}-DeleteLog.txt";
+                    File.WriteAllText(location, $"{Description}\n**Contents:** {converteddeletedmsg}");
+                    using var upFile = new FileStream(location, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                     var msgBuilder = new DiscordMessageBuilder
                     {
                         Content = $"Deleted message and info too long, uploading fail instead."
