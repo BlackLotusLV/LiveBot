@@ -35,9 +35,6 @@ namespace LiveBot
 
         public static readonly string tmpLoc = Path.GetTempPath() + "/livebot-";
 
-        // guild
-        public static DiscordGuild TCGuild { get; private set; }
-
         // fonts
         public static FontCollection Fonts { get; set; } = new();
 
