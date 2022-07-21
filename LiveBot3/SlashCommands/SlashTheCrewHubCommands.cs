@@ -141,8 +141,35 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
+        sealed class PlatformOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.UbiInfo.Where(w=>w.Discord_Id == ctx.Member.Id))
+                {
+                    switch (item.Platform)
+                    {
+                        case "pc":
+                            result.Add(new DiscordAutoCompleteChoice("PC", "pc"));
+                            break;
+                        case "x1":
+                            result.Add(new DiscordAutoCompleteChoice("Xbox", "x1"));
+                            break;
+                        case "ps4":
+                            result.Add(new DiscordAutoCompleteChoice("PlayStation", "ps4"));
+                            break;
+                        case "stadia":
+                            result.Add(new DiscordAutoCompleteChoice("Stadia", "stadia"));
+                            break;
+                    }
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+
         [SlashCommand("my-summit", "Shows your summit scores.")]
-        public async Task MySummit(InteractionContext ctx, [Option("platform", "Which platform leaderboard you want to see")] Platforms platform = Platforms.pc)
+        public async Task MySummit(InteractionContext ctx, [Autocomplete(typeof(PlatformOptions))][Option("platform", "Which platform leaderboard you want to see")] string platform = "pc")
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
@@ -157,7 +184,7 @@ namespace LiveBot.SlashCommands
 
             List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.User.Id).ToList();
             DB.UbiInfo UbiInfo = new();
-            if (UbiInfo == null)
+            if (UbiInfoList.Count==0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "Could not find any profile data, please link your ubisoft account with Live bot." });
                 return;
@@ -165,23 +192,13 @@ namespace LiveBot.SlashCommands
             UbiInfo = UbiInfoList[0];
             if (UbiInfoList.Count > 1)
             {
-                switch (platform)
+                search = platform switch
                 {
-                    case Platforms.pc:
-                        search = "pc";
-                        break;
-                    case Platforms.x1:
-                        search = "x1";
-                        break;
-
-                    case Platforms.ps4:
-                        search = "ps4";
-                        break;
-
-                    case Platforms.stadia:
-                        search = "stadia";
-                        break;
-                }
+                    "x1" => platform,
+                    "ps4" => platform,
+                    "stadia" => platform,
+                    _ => "pc",
+                };
                 if (UbiInfoList.Count(w => w.Platform.Equals(search)) == 1)
                 {
                     UbiInfo = UbiInfoList.FirstOrDefault(w => w.Platform == search);
@@ -557,6 +574,33 @@ namespace LiveBot.SlashCommands
 
             DB.DBLists.InsertUbiInfo(newEntry);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = $"Your Discord account has been linked with {link} account ID on {search} platform." });
+        }
+
+        [SlashCommand("unlink-hub","Unlinks a specific hub account from your discord")]
+        public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))][Option("Account","The account to unlink")] long ID)
+        {
+            await ctx.DeferAsync(true);
+            DB.UbiInfo entry = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Id == ID);
+            if (entry == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find a listing with this ID, please make sure you select from provided items in the list"));
+                return;
+            }
+            DB.DBLists.DeleteUbiInfo(entry);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.Profile_Id}** - **{entry.Platform}** from your Discord account"));
+        }
+
+        sealed class LinkedAccountOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
+                {
+                    result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.Profile_Id}", (long)item.Id));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
 
         public enum Week

@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220709_A";
+        public static readonly string BotVersion = $"20220721_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -34,9 +34,6 @@ namespace LiveBot
         // string
 
         public static readonly string tmpLoc = Path.GetTempPath() + "/livebot-";
-
-        // guild
-        public static DiscordGuild TCGuild { get; private set; }
 
         // fonts
         public static FontCollection Fonts { get; set; } = new();
@@ -89,7 +86,8 @@ namespace LiveBot
                 AutoReconnect = true,
                 ReconnectIndefinitely = false,
                 MinimumLogLevel = logLevel,
-                Intents = DiscordIntents.All
+                Intents = DiscordIntents.All,
+                LogUnknownEvents = false
             };
             Client = new DiscordClient(cfg);
             DB.DBLists.LoadAllLists(); // loads data from database
@@ -132,6 +130,7 @@ namespace LiveBot
 
             Services.WarningService.StartService();
             Services.StreamNotificationService.StartService();
+            Services.LeaderboardService.StartService();
 
             //
 
@@ -166,10 +165,13 @@ namespace LiveBot
                 Client.GuildMemberUpdated += MembershipScreening.AcceptRules;
 
                 Client.MessageCreated += ModMail.ModMailDM;
-                Client.ComponentInteractionCreated += ModMail.ModMailButton;
+                Client.ComponentInteractionCreated += ModMail.ModMailCloseButton;
+                Client.ComponentInteractionCreated += ModMail.ModMailDMOpenButton;
 
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
                 this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>();
+                this.Slash.RegisterCommands<SlashCommands.SlashCommands>();
+                this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>();
             }
             else
             {
@@ -177,6 +179,8 @@ namespace LiveBot
                 this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
                 this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
                 this.Slash.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
+                this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
             }                

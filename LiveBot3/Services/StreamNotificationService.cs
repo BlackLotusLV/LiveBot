@@ -31,6 +31,7 @@ namespace LiveBot.Services
         {
             DiscordMember StreamMember = await guild.GetMemberAsync(e.User.Id);
             bool role = false, game = false;
+            if (e.User?.Presence?.Activities == null) return;
             string gameTitle = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").RichPresence.State;
             string streamTitle = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").RichPresence.Details;
             string streamURL = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").StreamUrl;

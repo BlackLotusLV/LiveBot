@@ -84,23 +84,77 @@
             await ModMailChannel.SendMessageAsync(DMNotif, embed: embed);
         }
 
-        public static async Task ModMailButton(object Client, ComponentInteractionCreateEventArgs e)
+        public static async Task ModMailCloseButton(object Client, ComponentInteractionCreateEventArgs e)
         {
-            if (e.Interaction.Type == InteractionType.Component && !e.Interaction.User.IsBot && e.Interaction.Guild != null && e.Interaction.Data.CustomId.Contains("close"))
+            if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("close")) return;
+            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Interaction.User.Id && w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
+            DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
+            if (e.Message.Embeds.Count>0)
             {
-                var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.Server_ID == e.Interaction.Guild.Id && w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
-                if (MMEntry != null)
-                {
-                    await CloseModMail(
-                        MMEntry,
-                        e.Interaction.User,
-                        $" Mod Mail closed by {e.Interaction.User.Username}",
-                        $"**Mod Mail closed by {e.Interaction.User.Username}!\n----------------------------------------------------**");
-
-                    DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
-                    await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.AddEmbed(e.Message.Embeds[0]));
-                }
+                discordInteractionResponseBuilder.AddEmbeds(e.Message.Embeds);
             }
+            await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
+            if (MMEntry == null) return;
+            await CloseModMail(
+                MMEntry,
+                e.Interaction.User,
+                $" Mod Mail closed by {e.Interaction.User.Username}",
+                $"**Mod Mail closed by {e.Interaction.User.Username}!\n----------------------------------------------------**");
+        }
+        public static async Task ModMailDMOpenButton(DiscordClient Client, ComponentInteractionCreateEventArgs e)
+        {
+            if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("openmodmail")) return;
+            await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+
+            DiscordGuild guild = await Client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace("openmodmail","")));
+            if (DB.DBLists.ServerRanks.FirstOrDefault(w=>w.Server_ID == guild.Id && w.User_ID == e.User.Id).MM_Blocked)
+            {
+                await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
+                return;
+            }
+            if (DB.DBLists.ModMail.Any(w => w.User_ID == e.User.Id && w.IsActive))
+            {
+                await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
+                return;
+            }
+
+            Random r = new();
+            string colorID = string.Format("#{0:X6}", r.Next(0x1000000));
+            DB.ModMail newEntry = new()
+            {
+                Server_ID = guild.Id,
+                User_ID = e.User.Id,
+                LastMSGTime = DateTime.UtcNow,
+                ColorHex = colorID,
+                IsActive = true,
+                HasChatted = false
+            };
+
+            long EntryID = DB.DBLists.InsertModMailGetID(newEntry);
+            DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
+
+            await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().AddComponents(CloseButton).WithContent($"**----------------------------------------------------**\n" +
+                            $"Modmail entry **open** with `{guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {TimeoutMinutes} minutes after last message is sent.*\n" +
+                            $"**Subject: No subject, Mod Mail Opened with button**"));
+
+            DiscordEmbedBuilder embed = new()
+            {
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    Name = $"{e.User.Username} ({e.User.Id})",
+                    IconUrl = e.User.AvatarUrl
+                },
+                Title = $"[NEW] #{EntryID} Mod Mail created by {e.User.Username}.",
+                Color = new DiscordColor(colorID),
+                Description = "No subject, Mod Mail Opened with button"
+            };
+
+            DiscordChannel modMailChannel = guild.GetChannel(DB.DBLists.ServerSettings.FirstOrDefault(w=>w.ID_Server== guild.Id).ModMailID);
+            await new DiscordMessageBuilder()
+                .AddComponents(CloseButton)
+                .WithEmbed(embed)
+                .SendAsync(modMailChannel);
+
         }
     }
 }

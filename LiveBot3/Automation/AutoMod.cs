@@ -109,8 +109,9 @@ namespace LiveBot.Automation
                 }
                 else
                 {
-                    File.WriteAllText($"{Program.tmpLoc}{e.Message.Id}-DeleteLog.txt", $"{Description}\n**Contents:** {converteddeletedmsg}");
-                    using var upFile = new FileStream($"{Program.tmpLoc}{e.Message.Id}-BulkDeleteLog.txt", FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+                    string location = $"{Program.tmpLoc}{e.Message.Id}-DeleteLog.txt";
+                    File.WriteAllText(location, $"{Description}\n**Contents:** {converteddeletedmsg}");
+                    using var upFile = new FileStream(location, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                     var msgBuilder = new DiscordMessageBuilder
                     {
                         Content = $"Deleted message and info too long, uploading fail instead."
@@ -236,7 +237,7 @@ namespace LiveBot.Automation
                 var UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID);
                 if (UserSettings is null)
                 {
-                    CustomMethod.AddUserToServerRanks((DiscordUser)e.Member, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard((DiscordUser)e.Member, e.Guild);
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Kick_Count++;
@@ -283,7 +284,7 @@ namespace LiveBot.Automation
                 if (UserSettings == null)
                 {
                     DiscordUser user = await Client.GetUserAsync(e.Member.Id);
-                    CustomMethod.AddUserToServerRanks(user, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard(user, e.Guild);
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Ban_Count += 1;

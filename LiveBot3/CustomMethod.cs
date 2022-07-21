@@ -29,51 +29,6 @@ namespace LiveBot
             DateTime f = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             return f.AddMilliseconds(ms);
         }
-        /// <summary>
-        /// Creates a new entry in the Leaderboard database
-        /// </summary>
-        /// <param name="user"></param>
-        public static void AddUserToLeaderboard(DiscordUser user)
-        {
-            if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) != null) return;
-
-            DB.Leaderboard newEntry = new()
-            {
-                ID_User = user.Id
-            };
-            DB.DBLists.InsertLeaderboard(newEntry);
-            DB.UserImages newUImage = new()
-            {
-                User_ID = user.Id
-            };
-            DB.DBLists.InsertUserImages(newUImage);
-            DB.UserSettings newUSettings = new()
-            {
-                User_ID = user.Id,
-                User_Info = "There is a difference between knowing the path and walking the path.",
-                Image_ID = newUImage.ID_User_Images
-            };
-            DB.DBLists.InsertUserSettings(newUSettings);
-        }
-
-        public static void AddUserToServerRanks(DiscordUser user, DiscordGuild guild)
-        {
-            if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) == null)
-            {
-                AddUserToLeaderboard(user);
-            }
-            DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(w=>w.User_ID==user.Id && w.Server_ID == guild.Id);
-            if (local is null)
-            {
-                DB.ServerRanks newEntry = new()
-                {
-                    User_ID = user.Id,
-                    Server_ID = guild.Id,
-                    Followers = 0
-                };
-                DB.DBLists.InsertServerRanks(newEntry);
-            }
-        }
 
         public static string ScoreToTime(int Time)
         {
@@ -384,7 +339,7 @@ namespace LiveBot
             var UserStats = ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
             if (UserStats == null)
             {
-                AddUserToServerRanks(User, Guild);
+                Services.LeaderboardService.AddToServerLeaderboard(User, Guild);
                 UserStats = ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
             }
             kcount = UserStats.Kick_Count;

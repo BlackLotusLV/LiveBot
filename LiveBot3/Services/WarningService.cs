@@ -37,7 +37,7 @@ namespace LiveBot.Services
 
             if (WarnedUserStats == null)
             {
-                CustomMethod.AddUserToServerRanks(user, server);
+                Services.LeaderboardService.AddToServerLeaderboard(user, server);
             }
 
             DiscordMember member = null;
