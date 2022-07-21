@@ -16,7 +16,8 @@ namespace LiveBot.SlashCommands
                 "[NEW] My-Summit command will only show platforms that you have linked. You can still not specify any and it will default to one, but if you need to chose you can select.\n" +
                 "[NEW] You can now unlink your hub account from discord.\n" +
                 "[FIX] Bunch of back end fixes and improvements for the bot\n" +
-                "[NEW] Slash command bot DM now adds a button to open a mod mail directly.";
+                "[NEW] Slash command bot DM now adds a button to open a mod mail directly.\n" +
+                "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
