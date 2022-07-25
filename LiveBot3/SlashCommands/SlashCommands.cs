@@ -39,7 +39,7 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashRequireGuild]
-        [SlashCommand("Send-ModMail","Creates a new ModMailChannel",false)]
+        [SlashCommand("Send-ModMail","Creates a new ModMailChannel")]
         public async Task ModMail(InteractionContext ctx, [Option("subject","Short Description of the issue")] string subject = "*Subject left blank*")
         {
             await ctx.DeferAsync(true);

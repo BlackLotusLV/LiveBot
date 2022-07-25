@@ -197,6 +197,11 @@ namespace LiveBot.SlashCommands
                 .AddField("ID", user.Id.ToString(), true)
                 .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
+            if (member.IsPending!=null)
+            {
+                bool ispending = member.IsPending ?? false;
+                embedBuilder.AddField("Accepted rules?", ispending?"No":"Yes");
+            }
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
         }

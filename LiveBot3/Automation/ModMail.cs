@@ -93,13 +93,13 @@
             {
                 discordInteractionResponseBuilder.AddEmbeds(e.Message.Embeds);
             }
-            await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
             if (MMEntry == null) return;
             await CloseModMail(
                 MMEntry,
                 e.Interaction.User,
                 $" Mod Mail closed by {e.Interaction.User.Username}",
                 $"**Mod Mail closed by {e.Interaction.User.Username}!\n----------------------------------------------------**");
+            await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
         }
         public static async Task ModMailDMOpenButton(DiscordClient Client, ComponentInteractionCreateEventArgs e)
         {
