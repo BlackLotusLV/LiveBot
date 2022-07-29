@@ -250,27 +250,5 @@ namespace LiveBot.SlashCommands
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }
-
-        [SlashCommand("Joins","Gets a list of users based on join date.")]
-        public async Task Joins(InteractionContext ctx)
-        {
-            List<Page> pages = new();
-            List<DiscordMember> members = new(await ctx.Guild.GetAllMembersAsync());
-            int index = 0, i=1;
-            DiscordEmbedBuilder eb = new();
-            foreach (DiscordMember member in members.OrderByDescending(o=>o.JoinedAt))
-            {
-                eb.AddField($"{member.Username}({member.Id})", $"{member.Mention} - <t:{member.JoinedAt.ToUnixTimeSeconds()}:F> - Agreed to rules? {member.IsPending}");
-                index++;
-                if (index >= 20||i==members.Count)
-                {
-                    pages.Add(new(embed: eb));
-                    eb = new();
-                    index = 0;
-                }
-                i++;
-            }
-            await ctx.Interaction.SendPaginatedResponseAsync(false, ctx.User, pages);
-        }
     }
 }
