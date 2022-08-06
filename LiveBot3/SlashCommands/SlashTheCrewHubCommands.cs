@@ -76,14 +76,6 @@ namespace LiveBot.SlashCommands
                     }
                 }
             }
-            DrawingOptions TierCutoffOptions = new()
-            {
-                TextOptions = new TextOptions()
-                {
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Top
-                }
-            };
 
             using (Image<Rgba32> PCImg = Image.Load<Rgba32>("Assets/Summit/PC.jpeg"))
             using (Image<Rgba32> PSImg = Image.Load<Rgba32>("Assets/Summit/PS.jpg"))
@@ -103,31 +95,49 @@ namespace LiveBot.SlashCommands
                     Color OutlineColour = Color.DarkSlateGray;
 
                     Point SummitLocation = new(0 + (300 * i), 0);
-                    Font Basefont = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 30);
-                    Font FooterFont = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 15);
-                    Font CutoffFont = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 17);
+                    
+                    Parallel.For(0, 4, (j, state) =>
+                    {
+                        TierImg.Mutate(ctx => ctx
+                            .DrawText(
+                                new TextOptions(new Font (Program.Fonts.Get("HurmeGeometricSans3W03-Blk"),17))
+                                {
+                                    Origin = new PointF(295, 340 + (j * 70)),
+                                    HorizontalAlignment = HorizontalAlignment.Right,
+                                    VerticalAlignment = VerticalAlignment.Top
+                                },
+                                 j == 3 ? "All Participants" : $"Top {TierCutoff[i, j]}",
+                                Brushes.Solid(TextColour),
+                                Pens.Solid(OutlineColour, outlineSize))
+                            );
+                    });
 
                     TierImg.Mutate(ctx => ctx
-                    .DrawText(TierCutoffOptions, $"Top {TierCutoff[i, 0]}", CutoffFont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(295, 340))
-                    .DrawText(TierCutoffOptions, $"Top {TierCutoff[i, 1]}", CutoffFont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(295, 410))
-                    .DrawText(TierCutoffOptions, $"Top {TierCutoff[i, 2]}", CutoffFont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(295, 480))
-                    .DrawText(TierCutoffOptions, "All Participants", CutoffFont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(295, 550))
                     .DrawLines(Color.Black, 1.5f, new PointF(0, 0), new PointF(TierImg.Width, 0), new PointF(TierImg.Width, TierImg.Height), new PointF(0, TierImg.Height))
                     );
                     FooterImg.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText($"TOTAL PARTICIPANTS: {Events[i].Player_Count}", FooterFont, TextColour, new PointF(10, 10))
+                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15)) { Origin = new PointF(10,10)}, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
                     );
                     BaseImg.Mutate(ctx => ctx
                         .DrawImage(SummitImg, SummitLocation, 1)
                         .DrawImage(TierImg, SummitLocation, 1)
-                        .DrawText(pts[i, 3], Basefont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(80 + (300 * i), 365))
-                        .DrawText(pts[i, 2], Basefont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(80 + (300 * i), 435))
-                        .DrawText(pts[i, 1], Basefont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(80 + (300 * i), 505))
-                        .DrawText(pts[i, 0], Basefont, Brushes.Solid(TextColour), Pens.Solid(OutlineColour, outlineSize), new PointF(80 + (300 * i), 575))
                         .DrawImage(FooterImg, new Point(0 + (300 * i), 613), 1)
                         .DrawImage(PlatformImg[i], new Point(0 + (300 * i), 0), 1)
                         );
+                    Parallel.For(0, 4, (j, state) =>
+                    {
+                        BaseImg.Mutate(ctx => ctx
+                        .DrawText(
+                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 30))
+                            {
+                                Origin = new PointF(80 + (300 * i), 575 - (j * 70))
+                            },
+                            pts[i, j],
+                            Brushes.Solid(TextColour),
+                            Pens.Solid(OutlineColour, outlineSize)
+                            ));
+                    });
                 });
                 BaseImg.Save(imageLoc);
             }
@@ -140,7 +150,6 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
         }
-
         sealed class PlatformOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
@@ -215,9 +224,12 @@ namespace LiveBot.SlashCommands
             if (Events.Points != 0)
             {
                 int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-                Font SummitCaps15 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 15);
-                Font SummitCaps12 = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 12.5f);
-                var AllignTopLeft = new TextOptions()
+                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 12.5f))
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top
@@ -262,14 +274,14 @@ namespace LiveBot.SlashCommands
                             }
 
                             TierBar.Mutate(ctx => ctx
-                            .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Points Needed: {Events.Tier_entries[i].Points}", SummitCaps12, Color.White, new PointF(TierXPos[i] + 5, 15))
+                            .DrawText(new TextOptions(AllignTopLeft12) { Origin = new PointF(TierXPos[i] + 5, 15) }, $"Points Needed: {Events.Tier_entries[i].Points}", Color.White)
                             );
                         }
                     });
 
                     TierBar.Mutate(ctx => ctx
-                            .DrawText(new DrawingOptions { TextOptions = AllignTopLeft }, $"Summit Rank: {Events.UserRank + 1} Score: {Events.Points}", SummitCaps15, Color.White, new PointF(TierXPos[Tier.Count(c => c) - 1] + 5, 0))
-                            );
+                    .DrawText(new TextOptions(AllignTopLeft15) { Origin = new PointF(TierXPos[Tier.Count(c => c) - 1] + 5, 0) }, $"Summit Rank: {Events.UserRank + 1} Score: {Events.Points}", Color.White)
+                    );
 
                     BaseImage.Mutate(ctx => ctx
                     .DrawImage(TierBar, new Point(0, BaseImage.Height - 30), 1)
@@ -393,7 +405,6 @@ namespace LiveBot.SlashCommands
             string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-summitrewards.png";
             int RewardWidth = 412;
             TCHubJson.Reward[] Rewards = Program.JSummit[(int)Week].Rewards;
-            Font Font = Program.Fonts.CreateFont("HurmeGeometricSans3W03-Blk", 25);
             using (Image<Rgba32> RewardsImage = new(4 * RewardWidth, 328))
             {
                 Parallel.For(0, Rewards.Length, (i, state) =>
@@ -501,14 +512,15 @@ namespace LiveBot.SlashCommands
                     TopBar.Mutate(ctx => ctx.
                     Fill(RewardColours[i])
                     );
-                    TextOptions TextOptions = new()
+                    TextOptions TextOptions = new(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 25))
                     {
-                        WrapTextWidth = RewardWidth
+                        WrappingLength = RewardWidth,
+                        Origin= new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15)
                     };
                     RewardsImage.Mutate(ctx => ctx
                     .DrawImage(RewardImage, new Point((4 - Rewards[i].Level) * RewardWidth, 0), 1)
                     .DrawImage(TopBar, new Point((4 - Rewards[i].Level) * RewardWidth, 0), 1)
-                    .DrawText(new DrawingOptions { TextOptions = TextOptions }, RewardTitle, Font, Brushes.Solid(Color.White), Pens.Solid(Color.Black, 1f), new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15))
+                    .DrawText(TextOptions, RewardTitle, Brushes.Solid(Color.White), Pens.Solid(Color.Black, 1f))
                     );
                     if (isParts)
                     {

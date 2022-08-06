@@ -11,6 +11,7 @@ namespace LiveBot.SlashCommands
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
             string changelog = "[FIX] Fixed a bug where mod mail can't be closed with the button by moderators\n" +
+                "[REMOVED] Removed the profile command, image generator needs a visual update, system need rework\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
