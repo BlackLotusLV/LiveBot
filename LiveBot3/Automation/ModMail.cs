@@ -47,7 +47,7 @@
             if (TimedOutEntry != null)
             {
                 DiscordUser User = await Program.Client.GetUserAsync(TimedOutEntry.User_ID);
-                await CloseModMail(
+                await CloseModMailAsync(
                     TimedOutEntry,
                     User,
                     "Mod Mail entry auto closed.",
@@ -55,7 +55,7 @@
             }
         }
 
-        public static async Task CloseModMail(DB.ModMail ModMail, DiscordUser Closer, string ClosingText, string ClosingTextToUser)
+        public static async Task CloseModMailAsync(DB.ModMail ModMail, DiscordUser Closer, string ClosingText, string ClosingTextToUser)
         {
             ModMail.IsActive = false;
             string DMNotif = string.Empty;
@@ -95,7 +95,7 @@
             }
             await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
             if (MMEntry == null) return;
-            await CloseModMail(
+            await CloseModMailAsync(
                 MMEntry,
                 e.Interaction.User,
                 $" Mod Mail closed by {e.Interaction.User.Username}",

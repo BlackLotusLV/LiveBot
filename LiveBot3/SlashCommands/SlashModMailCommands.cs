@@ -11,7 +11,7 @@ namespace LiveBot.SlashCommands
     internal class SlashModMailCommands : ApplicationCommandModule
     {
         [SlashCommand("Reply","Replies to a specific mod mail")]
-        public async Task Reply(InteractionContext ctx, [Autocomplete(typeof(ReplyOption))][Option("ID","Mod Mail Entry ID")] long id, [Option("Response","The message to send to the user")]string reply)
+        public async Task Reply(InteractionContext ctx, [Autocomplete(typeof(ActiveModMailOption))][Option("ID","Mod Mail Entry ID")] long id, [Option("Response","The message to send to the user")]string reply)
         {
             await ctx.DeferAsync(true);
             DB.ModMail MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.ID == id && w.IsActive);
@@ -53,7 +53,7 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod mail #{id} reply sent"));
         }
 
-        sealed class ReplyOption : IAutocompleteProvider
+        sealed class ActiveModMailOption : IAutocompleteProvider
         {
              public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
@@ -64,6 +64,20 @@ namespace LiveBot.SlashCommands
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
+        }
+
+        [SlashCommand("close","Closes a Mod Mail entry")]
+        public async Task Close(InteractionContext ctx, [Autocomplete(typeof(ActiveModMailOption))][Option("ID", "Mod Mail Entry ID")] long id)
+        {
+            await ctx.DeferAsync(true); 
+            DB.ModMail MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.ID == id && w.IsActive);
+            if (MMEntry == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find an active entry with this ID."));
+                return;
+            }
+            await Automation.ModMail.CloseModMailAsync(MMEntry,ctx.User, $" Mod Mail closed by {ctx.User.Username}",$"**Mod Mail closed by {ctx.User.Username}!\n----------------------------------------------------**");
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"ModMail entry #{id} closed."));
         }
 
         [SlashCommand("blacklist", "Blocks a user from using modmail")]

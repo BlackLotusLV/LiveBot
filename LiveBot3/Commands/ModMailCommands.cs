@@ -176,7 +176,7 @@ namespace LiveBot.Commands
             }
             else
             {
-                await Automation.ModMail.CloseModMail(modMail, ctx.User, "Mod Mail closed by the user", "**Mod Mail closed!\n----------------------------------------------------**");
+                await Automation.ModMail.CloseModMailAsync(modMail, ctx.User, "Mod Mail closed by the user", "**Mod Mail closed!\n----------------------------------------------------**");
                 Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "Mod mail entry #{EntryId} closed by the user", modMail.ID);
             }
         }
@@ -196,7 +196,7 @@ namespace LiveBot.Commands
             }
             else
             {
-                await Automation.ModMail.CloseModMail(
+                await Automation.ModMail.CloseModMailAsync(
                     modMail,
                     ctx.User,
                     $" Mod Mail closed by {ctx.User.Username}",
