@@ -5,7 +5,7 @@
         public static async Task AcceptRules(object Client, GuildMemberUpdateEventArgs e)
         {
             if (e.PendingBefore == null) return;
-            if (e.PendingBefore.Value && !e.PendingAfter.Value)
+            if (e.PendingBefore.Value && !e.PendingAfter.Value && e.RolesAfter.Count==0)
             {
                 var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
                 var JoinRole = (from rr in DB.DBLists.RankRoles
