@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220721_A";
+        public static readonly string BotVersion = $"20220806_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -40,7 +40,6 @@ namespace LiveBot
 
         // Timers
         private Timer StreamDelayTimer { get; set; } = new(e => TimerMethod.StreamListCheck(LiveStream.LiveStreamerList, LiveStream.StreamCheckDelay));
-
         private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
         private Timer MessageCacheClearTimer { get; set; } = new(e => AutoMod.ClearMSGCache());
         private Timer ModMailCloserTimer { get; set; } = new(async e => await ModMail.ModMailCloser());
@@ -54,11 +53,11 @@ namespace LiveBot
         public async Task RunBotAsync(string[] args)
         {
             // Load Fonts
-            Fonts.Install("Assets/Fonts/Hurme_Geometric_Sans_3_W03_Blk.ttf");
-            Fonts.Install("Assets/Fonts/RobotoMono-BoldItalic.ttf");
-            Fonts.Install("Assets/Fonts/RobotoMono-Bold.ttf");
-            Fonts.Install("Assets/Fonts/RobotoMono-Italic.ttf");
-            Fonts.Install("Assets/Fonts/RobotoMono-Regular.ttf");
+            Fonts.Add("Assets/Fonts/Hurme_Geometric_Sans_3_W03_Blk.ttf");
+            Fonts.Add("Assets/Fonts/RobotoMono-BoldItalic.ttf");
+            Fonts.Add("Assets/Fonts/RobotoMono-Bold.ttf");
+            Fonts.Add("Assets/Fonts/RobotoMono-Italic.ttf");
+            Fonts.Add("Assets/Fonts/RobotoMono-Regular.ttf");
             // Load Config
             var json = string.Empty;
             using (var sr = new StreamReader(File.OpenRead("Config.json"), new UTF8Encoding(false)))
@@ -122,7 +121,6 @@ namespace LiveBot
             this.Commands.RegisterCommands<Commands.AdminCommands>();
             this.Commands.RegisterCommands<Commands.OCommands>();
             this.Commands.RegisterCommands<Commands.ModMailCommands>();
-            this.Commands.RegisterCommands<Commands.ProfileCommands>();
 
             //*/
 

@@ -10,15 +10,9 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Mod Mail initialised with slash commands in server now\n" +
-                "[NEW] Moderators can use slash command to respond to a mod mail. It provides ID's of open MM's\n" +
-                "[NEW] Users can now close the mod mail via a button in their DMs.\n" +
-                "[NEW] My-Summit command will only show platforms that you have linked. You can still not specify any and it will default to one, but if you need to chose you can select.\n" +
-                "[NEW] You can now unlink your hub account from discord.\n" +
-                "[FIX] Bunch of back end fixes and improvements for the bot\n" +
-                "[NEW] Slash command bot DM now adds a button to open a mod mail directly.\n" +
-                "[FIX] Delete log searching for incorrect file fixed\n" +
-                "[CHANGE] Mod mail blocklist commands moved from `/mod` to `/modmail` group and renamed to `blacklist` and `unlist`";
+            string changelog = "[FIX] Fixed a bug where mod mail can't be closed with the button by moderators\n" +
+                "[REMOVED] Removed the profile command, image generator needs a visual update, system need rework\n" +
+                "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -39,7 +33,7 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashRequireGuild]
-        [SlashCommand("Send-ModMail","Creates a new ModMailChannel",false)]
+        [SlashCommand("Send-ModMail","Creates a new ModMailChannel")]
         public async Task ModMail(InteractionContext ctx, [Option("subject","Short Description of the issue")] string subject = "*Subject left blank*")
         {
             await ctx.DeferAsync(true);

@@ -257,7 +257,7 @@ namespace LiveBot.Automation
                 {
                     int timesRun = 0;
                     Console.WriteLine("--Ban triggered--");
-                    IReadOnlyList<DiscordAuditLogEntry> entries = await e.Guild.GetAuditLogsAsync(5, null, AuditLogActionType.Ban);
+                    IReadOnlyList<DiscordAuditLogEntry> entries = await e.Guild.GetAuditLogsAsync(20, null, AuditLogActionType.Ban);
                     DiscordAuditLogBanEntry banEntry = entries.Select(entry => entry as DiscordAuditLogBanEntry).FirstOrDefault(entry => entry.Target == e.Member);
                     while (banEntry == null && timesRun < 15)
                     {

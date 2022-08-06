@@ -87,7 +87,7 @@
         public static async Task ModMailCloseButton(object Client, ComponentInteractionCreateEventArgs e)
         {
             if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("close")) return;
-            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Interaction.User.Id && w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
+            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
             DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
             if (e.Message.Embeds.Count>0)
             {
