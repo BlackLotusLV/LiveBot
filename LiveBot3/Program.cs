@@ -182,7 +182,7 @@ namespace LiveBot
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
             }                
-            DiscordActivity BotActivity = new($"DM {CFGJson.CommandPrefix}modmail to open chat with mods", ActivityType.Playing);
+            DiscordActivity BotActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);
             await Task.Delay(-1);
         }
