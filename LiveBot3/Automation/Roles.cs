@@ -2,7 +2,6 @@
 {
     internal static class Roles
     {
-        public static List<ActivateRolesTimer> ActivateRolesTimer { get; set; } = new List<ActivateRolesTimer>();
 
         public static async Task Button_Roles(object Client, ComponentInteractionCreateEventArgs e)
         {
@@ -31,12 +30,5 @@
                 }
             }
         }
-    }
-
-    internal class ActivateRolesTimer
-    {
-        public DiscordGuild Guild { get; set; }
-        public DiscordRole Role { get; set; }
-        public DateTime Time { get; set; }
     }
 }
