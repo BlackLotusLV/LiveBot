@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220806_A";
+        public static readonly string BotVersion = $"20220813_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -182,7 +182,7 @@ namespace LiveBot
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
             }                
-            DiscordActivity BotActivity = new($"DM {CFGJson.CommandPrefix}modmail to open chat with mods", ActivityType.Playing);
+            DiscordActivity BotActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);
             await Task.Delay(-1);
         }

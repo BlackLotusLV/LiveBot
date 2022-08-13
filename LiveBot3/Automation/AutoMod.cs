@@ -228,8 +228,9 @@ namespace LiveBot.Automation
                                  select ss).FirstOrDefault();
             if (GuildSettings == null || GuildSettings.WKB_Log == 0) return;
             DiscordGuild Guild = Client.Guilds.FirstOrDefault(w => w.Value.Id == GuildSettings.ID_Server).Value;
-            var logs = await Guild.GetAuditLogsAsync(1, action_type: AuditLogActionType.Kick);
+            var logs = await Guild.GetAuditLogsAsync(5, action_type: AuditLogActionType.Kick);
             DiscordChannel wkbLog = Guild.GetChannel(GuildSettings.WKB_Log);
+            if (logs.Count == 0) return;
             if (logs[0].CreationTimestamp >= beforetime && logs[0].CreationTimestamp <= aftertime)
             {
                 await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);

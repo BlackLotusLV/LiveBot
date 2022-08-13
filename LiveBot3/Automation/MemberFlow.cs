@@ -43,7 +43,7 @@
             var ModMailEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Member.Id && w.Server_ID == e.Guild.Id && w.IsActive);
             if (ModMailEntry != null)
             {
-                await ModMail.CloseModMail(ModMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
+                await ModMail.CloseModMailAsync(ModMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
             }
         }
     }

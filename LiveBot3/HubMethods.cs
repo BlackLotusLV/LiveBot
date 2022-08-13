@@ -96,8 +96,11 @@ namespace LiveBot
         public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             Image<Rgba32> EventImage = Image.Load<Rgba32>(EventImageBytes);
-
-            TCHubJson.Activities Activity = Rank.Activities.FirstOrDefault(w => w.Activity_ID.Equals(Event.ID.ToString()));
+            TCHubJson.Activities Activity = null;
+            if (Rank != null)
+            {
+                Activity = Rank.Activities.FirstOrDefault(w => w.Activity_ID.Equals(Event.ID.ToString()));
+            }
             if (Event.Is_Mission && !isSpecial && !isCorner)
             {
                 EventImage.Mutate(ctx => ctx
