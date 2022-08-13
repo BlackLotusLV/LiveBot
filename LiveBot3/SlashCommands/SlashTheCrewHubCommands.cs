@@ -360,21 +360,27 @@ namespace LiveBot.SlashCommands
                 int i = JSummit[0].Events.Select((element, index) => new { element, index })
                        .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
                 TCHubJson.SummitLeaderboard Activity = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/leaderboard/{search}/{Event.ID}?page_size=1", CancellationToken.None));
-                TCHubJson.Rank Rank = JsonConvert.DeserializeObject<TCHubJson.Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{search}/profile/{Activity.Entries[0].Profile_ID}", CancellationToken.None));
+                TCHubJson.Rank Rank = null;
+                DB.UbiInfo ubiInfo = null;
+                if (Activity.Entries.Length != 0)
+                {
+                    Rank = JsonConvert.DeserializeObject<TCHubJson.Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{search}/profile/{Activity.Entries[0].Profile_ID}", CancellationToken.None));
+                    ubiInfo=new DB.UbiInfo{ Platform = search, Profile_Id = Activity.Entries[0].Profile_ID };
+                }
                 Image image = await HubMethods.BuildEventImage(
                         Event,
                         Rank,
-                        new DB.UbiInfo { Platform = search, Profile_Id = Activity.Entries[0].Profile_ID },
+                        ubiInfo,
                         Event.Image_Byte,
                         i == 7,
-                        i == 8) ;
+                        i == 8);
                 BaseImage.Mutate(ctx => ctx
                 .DrawImage(
                     image,
                     new Point(WidthHeight[i, 0], WidthHeight[i, 1]),
                     1)
                 );
-                TotalPoints += Activity.Entries[0].Points;
+                TotalPoints += (Activity.Entries.Length!=0? Activity.Entries[0].Points:0);
             });
 
             if (alleventscompleted)
