@@ -490,13 +490,6 @@ namespace LiveBot.DB
             ctx.SaveChanges();
         }
 
-        public static void UpdateCUC(params CommandsUsedCount[] o)
-        {
-            using var ctx = new CommandsUsedCountContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
         public static void UpdateBannedWords(params AMBannedWords[] o)
         {
             using var ctx = new AMBannedWordsContext();
@@ -580,14 +573,6 @@ namespace LiveBot.DB
         {
             using var ctx = new RankRolesContext();
             ctx.RankRoles.Add(o);
-            ctx.SaveChanges();
-            LoadRankRoles();
-        }
-
-        public static void InsertCUC(CommandsUsedCount o)
-        {
-            using var ctx = new CommandsUsedCountContext();
-            ctx.CommandsUsedCount.Add(o);
             ctx.SaveChanges();
             LoadRankRoles();
         }
