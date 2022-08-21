@@ -4,7 +4,7 @@ namespace LiveBot.DB
 {
     internal static class DBLists
     {
-        public static readonly int TableCount = 16;
+        public static readonly int TableCount = 15;
         public static int LoadedTableCount { get; set; } = 0;
 
         public static List<VehicleList> VehicleList { get; set; } = new(); //1
@@ -15,14 +15,13 @@ namespace LiveBot.DB
         public static List<Warnings> Warnings { get; set; } = new();//6
         public static List<ServerSettings> ServerSettings { get; set; } = new();//7
         public static List<RankRoles> RankRoles { get; set; } = new();//8
-        public static List<CommandsUsedCount> CommandsUsedCount { get; set; } = new();//9
-        public static List<BotOutputList> BotOutputList { get; set; } = new();//10
-        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//11
-        public static List<ModMail> ModMail { get; set; } = new();//12
-        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//13
-        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//14
-        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//15
-        public static List<UbiInfo> UbiInfo { get; set; } = new();//16
+        public static List<BotOutputList> BotOutputList { get; set; } = new();//9
+        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//10
+        public static List<ModMail> ModMail { get; set; } = new();//11
+        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//12
+        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//13
+        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//14
+        public static List<UbiInfo> UbiInfo { get; set; } = new();//15
 
         public static void LoadAllLists()
         {
@@ -40,7 +39,6 @@ namespace LiveBot.DB
                     () => LoadServerRanks(true, sw),
                     () => LoadWarnings(true, sw),
                     () => LoadRankRoles(true, sw),
-                    () => LoadCUC(true, sw),
                     () => LoadBannedWords(true, sw),
                     () => LoadBotOutputList(true, sw),
                     () => LoadModMail(true, sw),
@@ -307,28 +305,6 @@ namespace LiveBot.DB
             else
             {
                 Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"Rank Roles List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
-        public static void LoadCUC(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new CommandsUsedCountContext();
-            CommandsUsedCount = (from c in ctx.CommandsUsedCount
-                                 select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "Commands Used Count");
             }
         }
 

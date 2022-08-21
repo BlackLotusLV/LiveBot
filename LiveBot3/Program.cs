@@ -231,23 +231,6 @@ namespace LiveBot
         private Task Commands_CommandExecuted(CommandsNextExtension ext, CommandExecutionEventArgs e)
         {
             Client.Logger.LogInformation(CustomLogEvents.CommandExecuted, "{Username} successfully executed '{CommandName}' command", e.Context.User.Username, e.Command.QualifiedName);
-            DB.DBLists.LoadCUC();
-            string CommandName = e.Command.Name;
-            var DBEntry = DB.DBLists.CommandsUsedCount.FirstOrDefault(w => w.Name == CommandName);
-            if (DBEntry == null)
-            {
-                DB.CommandsUsedCount NewEntry = new()
-                {
-                    Name = e.Command.Name,
-                    Used_Count = 1
-                };
-                DB.DBLists.InsertCUC(NewEntry);
-            }
-            else
-            {
-                DBEntry.Used_Count++;
-                DB.DBLists.UpdateCUC(DBEntry);
-            }
             return Task.CompletedTask;
         }
 

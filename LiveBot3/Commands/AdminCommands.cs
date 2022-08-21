@@ -78,10 +78,7 @@ namespace LiveBot.Commands
                         WarnedUserStats.Warning_Level -= 1;
                         MSGOut = $"Warning level lowered for {username.Username}";
                         DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
-                        if (entry is null)
-                        {
-                            entry = Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
-                        }
+                        entry ??= Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
                         entry.Active = false;
                         DB.DBLists.UpdateWarnings(entry);
                         DB.DBLists.UpdateServerRanks(WarnedUserStats);
