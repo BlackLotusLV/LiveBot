@@ -4,7 +4,7 @@ namespace LiveBot.DB
 {
     internal static class DBLists
     {
-        public static readonly int TableCount = 17;
+        public static readonly int TableCount = 16;
         public static int LoadedTableCount { get; set; } = 0;
 
         public static List<VehicleList> VehicleList { get; set; } = new(); //1
@@ -17,20 +17,18 @@ namespace LiveBot.DB
         public static List<RankRoles> RankRoles { get; set; } = new();//8
         public static List<CommandsUsedCount> CommandsUsedCount { get; set; } = new();//9
         public static List<BotOutputList> BotOutputList { get; set; } = new();//10
-        public static List<WeatherSchedule> WeatherSchedule { get; set; } = new();//11
-        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//12
-        public static List<ModMail> ModMail { get; set; } = new();//13
-        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//14
-        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//15
-        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//16
-        public static List<UbiInfo> UbiInfo { get; set; } = new();//17
+        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//11
+        public static List<ModMail> ModMail { get; set; } = new();//12
+        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//13
+        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//14
+        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//15
+        public static List<UbiInfo> UbiInfo { get; set; } = new();//16
 
         public static void LoadAllLists()
         {
             CustomMethod.DBProgress(LoadedTableCount, TimeSpan.Zero);
             Stopwatch sw = Stopwatch.StartNew();
             LoadServerSettings(true, sw);
-            LoadWeatherSchedule(true, sw);
             new Thread(() =>
             {
                 Parallel.Invoke(
@@ -386,32 +384,6 @@ namespace LiveBot.DB
             }
         }
 
-        public static void LoadWeatherSchedule(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new WeatherScheduleContext();
-            WeatherSchedule = (from c in ctx.WeatherSchedule
-                               select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "WeatherSchedule");
-            }
-            else
-            {
-                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"WeatherSchedule List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
         public static void LoadModMail(bool progress = false, Stopwatch timer = null)
         {
             bool check = false;
@@ -563,13 +535,6 @@ namespace LiveBot.DB
             ctx.SaveChanges();
         }
 
-        public static void UpdateWeatherSchedule(params WeatherSchedule[] o)
-        {
-            using var ctx = new WeatherScheduleContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
         public static void UpdateModMail(params ModMail[] o)
         {
             using var ctx = new ModMailContext();
@@ -663,14 +628,6 @@ namespace LiveBot.DB
         {
             using var ctx = new BotOutputListContext();
             ctx.BotOutputList.Add(o);
-            ctx.SaveChanges();
-            LoadRankRoles();
-        }
-
-        public static void InsertWeatherSchedule(WeatherSchedule o)
-        {
-            using var ctx = new WeatherScheduleContext();
-            ctx.WeatherSchedule.Add(o);
             ctx.SaveChanges();
             LoadRankRoles();
         }
