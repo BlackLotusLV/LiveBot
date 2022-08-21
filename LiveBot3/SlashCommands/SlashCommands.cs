@@ -10,8 +10,7 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[FIX] `/hub top-summit` command error fixed when an event was not completed by anyone\n" +
-                "";
+            string changelog = "[NEW] `>rt [emoji]` now converted to a slash command.";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -102,6 +101,50 @@ namespace LiveBot.SlashCommands
                 .WithEmbed(embed)
                 .SendAsync(modMailChannel);
 
+        }
+
+        [SlashRequireGuild]
+        [SlashCommand("roletag","Pings a role under specific criteria.")]
+        public async Task RoleTag(InteractionContext ctx, [Autocomplete(typeof(RoleTagOptions))][Option("Role","Which role to tag")] long id)
+        {
+            await ctx.DeferAsync(true);
+            DB.RoleTagSettings roleTagSettings = DB.DBLists.RoleTagSettings.FirstOrDefault(w => w.ID == id);
+            if (roleTagSettings == null || roleTagSettings.Server_ID!=ctx.Guild.Id || roleTagSettings.Channel_ID != ctx.Channel.Id)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The role you tried to select does not exist or can't be tagged in this channel."));
+                return;
+            }
+            if (roleTagSettings.Last_Used > DateTime.UtcNow - TimeSpan.FromMinutes(roleTagSettings.Cooldown))
+            {
+                TimeSpan remainingTime = TimeSpan.FromMinutes(roleTagSettings.Cooldown) - (DateTime.UtcNow - roleTagSettings.Last_Used);
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This role can't be mentioned right now, cooldown has not passed yet. ({remainingTime.Hours} Hours {remainingTime.Minutes} Minutes {remainingTime.Seconds} Seconds left)"));
+                return;
+            }
+            DiscordRole role = ctx.Guild.GetRole(roleTagSettings.Role_ID);
+
+            await new DiscordMessageBuilder()
+                            .WithContent($"{role.Mention} - {ctx.Member.Mention}: {roleTagSettings.Message}")
+                            .WithAllowedMention(new RoleMention(role))
+                            .SendAsync(ctx.Channel);
+
+            await ctx.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent("Role Tagged"));
+            roleTagSettings.Last_Used = DateTime.UtcNow;
+            DB.DBLists.UpdateRoleTagSettings(roleTagSettings);
+                
+        }
+
+        sealed class RoleTagOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.RoleTagSettings.Where(w=>w.Server_ID==ctx.Guild.Id && w.Channel_ID == ctx.Channel.Id))
+                {
+                    result.Add(new DiscordAutoCompleteChoice($"{(item.Last_Used > DateTime.UtcNow - TimeSpan.FromMinutes(item.Cooldown) ? "(On cooldown) ":"")}{item.Description}", item.ID));
+                }
+
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
     }
 }

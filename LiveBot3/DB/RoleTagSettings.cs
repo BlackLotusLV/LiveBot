@@ -8,7 +8,7 @@ namespace LiveBot.DB
     {
         [Key]
         [Column("id_role_tag")]
-        public int ID { get; set; }
+        public long ID { get; set; }
 
         [Required]
         [Column("server_id")]
@@ -49,5 +49,8 @@ namespace LiveBot.DB
         [Required]
         [Column("message")]
         public string Message { get; set; }
+
+        [Column("description")]
+        public string Description { get; set; }
     }
 }
