@@ -2,7 +2,6 @@
 {
     internal static class Roles
     {
-
         public static async Task Button_Roles(object Client, ComponentInteractionCreateEventArgs e)
         {
             if (e.Interaction.Type == InteractionType.Component && !e.Interaction.User.IsBot && e.Interaction.Guild != null)

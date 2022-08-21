@@ -401,7 +401,7 @@ namespace LiveBot.Automation
         {
             DB.ServerSettings SS = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == e.Guild.Id);
 
-            if (SS.VCLog == 0) return; 
+            if (SS.VCLog == 0) return;
             DiscordChannel VCActivityLogChannel = e.Guild.GetChannel(SS.VCLog);
             DiscordEmbedBuilder embed = new()
             {
@@ -440,7 +440,7 @@ namespace LiveBot.Automation
                 await VCActivityLogChannel.SendMessageAsync(embed);
             }
         }
-        
+
         public static async Task User_Timed_Out_Log(object Client, GuildMemberUpdateEventArgs e)
         {
             if (e.Member.IsBot) return;

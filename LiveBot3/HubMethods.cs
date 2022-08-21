@@ -93,6 +93,7 @@ namespace LiveBot
             HubText = HubText.Replace("&#8209;", "-");
             return HubText;
         }
+
         public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             Image<Rgba32> EventImage = Image.Load<Rgba32>(EventImageBytes);
@@ -214,7 +215,6 @@ namespace LiveBot
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top
             };
-
 
             using Image<Rgba32> TitleBar = new(EventImage.Width, 40);
             using Image<Rgba32> ScoreBar = new(EventImage.Width, 60);

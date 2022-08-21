@@ -5,13 +5,12 @@ namespace LiveBot.SlashCommands
 {
     internal class SlashCommands : ApplicationCommandModule
     {
-        [SlashCommand("Livebot-info","Information about live bot")]
+        [SlashCommand("Livebot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[FIX] `/hub top-summit` command error fixed when an event was not completed by anyone\n" +
-                "";
+            string changelog = "[NEW] `>rt [emoji]` now converted to a slash command.";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -32,11 +31,11 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashRequireGuild]
-        [SlashCommand("Send-ModMail","Creates a new ModMailChannel")]
-        public async Task ModMail(InteractionContext ctx, [Option("subject","Short Description of the issue")] string subject = "*Subject left blank*")
+        [SlashCommand("Send-ModMail", "Creates a new ModMailChannel")]
+        public async Task ModMail(InteractionContext ctx, [Option("subject", "Short Description of the issue")] string subject = "*Subject left blank*")
         {
             await ctx.DeferAsync(true);
-            if (ctx.Guild==null)
+            if (ctx.Guild == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command requires to be exectued in the server you wish to contact."));
                 return;
@@ -49,18 +48,17 @@ namespace LiveBot.SlashCommands
             }
             DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
 
-            if (serverSettings.ModMailID==0)
+            if (serverSettings.ModMailID == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been set up in this server. Can't open ModMail."));
                 return;
             }
 
-            if (DB.DBLists.ModMail.Any(w=>w.User_ID==ctx.User.Id && w.IsActive))
+            if (DB.DBLists.ModMail.Any(w => w.User_ID == ctx.User.Id && w.IsActive))
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
                 return;
             }
-
 
             Random r = new();
             string colorID = string.Format("#{0:X6}", r.Next(0x1000000));
@@ -76,9 +74,8 @@ namespace LiveBot.SlashCommands
 
             long EntryID = DB.DBLists.InsertModMailGetID(newEntry);
             DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
-            
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{EntryID} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{EntryID} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
             await ctx.Member.SendMessageAsync(new DiscordMessageBuilder().AddComponents(CloseButton).WithContent($"**----------------------------------------------------**\n" +
                             $"Modmail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {Automation.ModMail.TimeoutMinutes} minutes after last message is sent.*\n" +
@@ -101,7 +98,49 @@ namespace LiveBot.SlashCommands
                 .AddComponents(CloseButton)
                 .WithEmbed(embed)
                 .SendAsync(modMailChannel);
+        }
 
+        [SlashRequireGuild]
+        [SlashCommand("roletag", "Pings a role under specific criteria.")]
+        public async Task RoleTag(InteractionContext ctx, [Autocomplete(typeof(RoleTagOptions))][Option("Role", "Which role to tag")] long id)
+        {
+            await ctx.DeferAsync(true);
+            DB.RoleTagSettings roleTagSettings = DB.DBLists.RoleTagSettings.FirstOrDefault(w => w.ID == id);
+            if (roleTagSettings == null || roleTagSettings.Server_ID != ctx.Guild.Id || roleTagSettings.Channel_ID != ctx.Channel.Id)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The role you tried to select does not exist or can't be tagged in this channel."));
+                return;
+            }
+            if (roleTagSettings.Last_Used > DateTime.UtcNow - TimeSpan.FromMinutes(roleTagSettings.Cooldown))
+            {
+                TimeSpan remainingTime = TimeSpan.FromMinutes(roleTagSettings.Cooldown) - (DateTime.UtcNow - roleTagSettings.Last_Used);
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This role can't be mentioned right now, cooldown has not passed yet. ({remainingTime.Hours} Hours {remainingTime.Minutes} Minutes {remainingTime.Seconds} Seconds left)"));
+                return;
+            }
+            DiscordRole role = ctx.Guild.GetRole(roleTagSettings.Role_ID);
+
+            await new DiscordMessageBuilder()
+                            .WithContent($"{role.Mention} - {ctx.Member.Mention}: {roleTagSettings.Message}")
+                            .WithAllowedMention(new RoleMention(role))
+                            .SendAsync(ctx.Channel);
+
+            await ctx.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent("Role Tagged"));
+            roleTagSettings.Last_Used = DateTime.UtcNow;
+            DB.DBLists.UpdateRoleTagSettings(roleTagSettings);
+        }
+
+        private sealed class RoleTagOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.RoleTagSettings.Where(w => w.Server_ID == ctx.Guild.Id && w.Channel_ID == ctx.Channel.Id))
+                {
+                    result.Add(new DiscordAutoCompleteChoice($"{(item.Last_Used > DateTime.UtcNow - TimeSpan.FromMinutes(item.Cooldown) ? "(On cooldown) " : "")}{item.Description}", item.ID));
+                }
+
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
     }
 }

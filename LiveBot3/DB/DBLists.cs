@@ -4,36 +4,30 @@ namespace LiveBot.DB
 {
     internal static class DBLists
     {
-        public static readonly int TableCount = 20;
+        public static readonly int TableCount = 15;
         public static int LoadedTableCount { get; set; } = 0;
 
         public static List<VehicleList> VehicleList { get; set; } = new(); //1
         public static List<DisciplineList> DisciplineList { get; set; } = new();//2
         public static List<StreamNotifications> StreamNotifications { get; set; } = new();//3
-        public static List<BackgroundImage> BackgroundImage { get; set; } = new();//4
-        public static List<Leaderboard> Leaderboard { get; set; } = new();//5
-        public static List<ServerRanks> ServerRanks { get; set; } = new();//6
-        public static List<UserImages> UserImages { get; set; } = new();//7
-        public static List<UserSettings> UserSettings { get; set; } = new();//8
-        public static List<Warnings> Warnings { get; set; } = new();//9
-        public static List<ServerSettings> ServerSettings { get; set; } = new();//10
-        public static List<RankRoles> RankRoles { get; set; } = new();//11
-        public static List<CommandsUsedCount> CommandsUsedCount { get; set; } = new();//12
-        public static List<BotOutputList> BotOutputList { get; set; } = new();//13
-        public static List<WeatherSchedule> WeatherSchedule { get; set; } = new();//14
-        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//15
-        public static List<ModMail> ModMail { get; set; } = new();//16
-        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//17
-        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//18
-        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//19
-        public static List<UbiInfo> UbiInfo { get; set; } = new();//20
+        public static List<Leaderboard> Leaderboard { get; set; } = new();//4
+        public static List<ServerRanks> ServerRanks { get; set; } = new();//5
+        public static List<Warnings> Warnings { get; set; } = new();//6
+        public static List<ServerSettings> ServerSettings { get; set; } = new();//7
+        public static List<RankRoles> RankRoles { get; set; } = new();//8
+        public static List<BotOutputList> BotOutputList { get; set; } = new();//9
+        public static List<AMBannedWords> AMBannedWords { get; set; } = new();//10
+        public static List<ModMail> ModMail { get; set; } = new();//11
+        public static List<RoleTagSettings> RoleTagSettings { get; set; } = new();//12
+        public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//13
+        public static List<ButtonRoles> ButtonRoles { get; set; } = new();//14
+        public static List<UbiInfo> UbiInfo { get; set; } = new();//15
 
         public static void LoadAllLists()
         {
             CustomMethod.DBProgress(LoadedTableCount, TimeSpan.Zero);
             Stopwatch sw = Stopwatch.StartNew();
             LoadServerSettings(true, sw);
-            LoadWeatherSchedule(true, sw);
             new Thread(() =>
             {
                 Parallel.Invoke(
@@ -41,20 +35,16 @@ namespace LiveBot.DB
                     () => LoadVehicleList(true, sw),
                     () => LoadDisciplineList(true, sw),
                     () => LoadStreamNotifications(true, sw),
-                    () => LoadBackgroundImage(true, sw),
                     () => LoadLeaderboard(true, sw),
                     () => LoadServerRanks(true, sw),
-                    () => LoadUserImages(true, sw),
-                    () => LoadUserSettings(true, sw),
                     () => LoadWarnings(true, sw),
                     () => LoadRankRoles(true, sw),
-                    () => LoadCUC(true, sw),
                     () => LoadBannedWords(true, sw),
                     () => LoadBotOutputList(true, sw),
                     () => LoadModMail(true, sw),
                     () => LoadRoleTagSettings(true, sw),
                     () => LoadButtonRoles(true, sw),
-                    () => LoadUbiInfo(true,sw)
+                    () => LoadUbiInfo(true, sw)
                     );
                 sw.Stop();
             }).Start();
@@ -82,8 +72,8 @@ namespace LiveBot.DB
             {
                 Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"UbiInfo List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
             }
-
         }
+
         public static void LoadVehicleList(bool progress = false, Stopwatch timer = null)
         {
             bool check = false;
@@ -162,32 +152,6 @@ namespace LiveBot.DB
             }
         }
 
-        public static void LoadBackgroundImage(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new BackgroundImageContext();
-            BackgroundImage = (from c in ctx.BackgroundImage
-                               select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "Background Images");
-            }
-            else
-            {
-                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"Background Images List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
         public static void LoadLeaderboard(bool progress = false, Stopwatch timer = null)
         {
             bool check = false;
@@ -237,58 +201,6 @@ namespace LiveBot.DB
             else
             {
                 Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"Server Ranks List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
-        public static void LoadUserSettings(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new UserSettingsContext();
-            UserSettings = (from c in ctx.UserSettings
-                            select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "User Settings");
-            }
-            else
-            {
-                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"User Settings List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
-        public static void LoadUserImages(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new UserImagesContext();
-            UserImages = (from c in ctx.UserImages
-                          select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "User Images");
-            }
-            else
-            {
-                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"User Images List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
             }
         }
 
@@ -396,28 +308,6 @@ namespace LiveBot.DB
             }
         }
 
-        public static void LoadCUC(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new CommandsUsedCountContext();
-            CommandsUsedCount = (from c in ctx.CommandsUsedCount
-                                 select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "Commands Used Count");
-            }
-        }
-
         public static void LoadBannedWords(bool progress = false, Stopwatch timer = null)
         {
             bool check = false;
@@ -467,32 +357,6 @@ namespace LiveBot.DB
             else
             {
                 Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"BotOutputList List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
-            }
-        }
-
-        public static void LoadWeatherSchedule(bool progress = false, Stopwatch timer = null)
-        {
-            bool check = false;
-            if (timer == null)
-            {
-                timer = Stopwatch.StartNew();
-                check = true;
-            }
-            using var ctx = new WeatherScheduleContext();
-            WeatherSchedule = (from c in ctx.WeatherSchedule
-                               select c).ToList();
-            if (check)
-            {
-                timer.Stop();
-            }
-            if (progress)
-            {
-                LoadedTableCount++;
-                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "WeatherSchedule");
-            }
-            else
-            {
-                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"WeatherSchedule List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
             }
         }
 
@@ -598,20 +462,6 @@ namespace LiveBot.DB
             ctx.SaveChanges();
         }
 
-        public static void UpdateUserSettings(params UserSettings[] o)
-        {
-            using var ctx = new UserSettingsContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
-        public static void UpdateUserImages(params UserImages[] o)
-        {
-            using var ctx = new UserImagesContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
         public static void UpdateWarnings(params Warnings[] o)
         {
             using var ctx = new WarningsContext();
@@ -640,13 +490,6 @@ namespace LiveBot.DB
             ctx.SaveChanges();
         }
 
-        public static void UpdateCUC(params CommandsUsedCount[] o)
-        {
-            using var ctx = new CommandsUsedCountContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
         public static void UpdateBannedWords(params AMBannedWords[] o)
         {
             using var ctx = new AMBannedWordsContext();
@@ -661,13 +504,6 @@ namespace LiveBot.DB
             ctx.SaveChanges();
         }
 
-        public static void UpdateWeatherSchedule(params WeatherSchedule[] o)
-        {
-            using var ctx = new WeatherScheduleContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
         public static void UpdateModMail(params ModMail[] o)
         {
             using var ctx = new ModMailContext();
@@ -678,13 +514,6 @@ namespace LiveBot.DB
         public static void UpdateRoleTagSettings(params RoleTagSettings[] o)
         {
             using var ctx = new RoleTagSettingsContext();
-            ctx.UpdateRange(o);
-            ctx.SaveChanges();
-        }
-
-        public static void UpdateBackgroundImages(params BackgroundImage[] o)
-        {
-            using var ctx = new BackgroundImageContext();
             ctx.UpdateRange(o);
             ctx.SaveChanges();
         }
@@ -706,21 +535,6 @@ namespace LiveBot.DB
             ctx.UbiInfo.Add(o);
             ctx.SaveChanges(true);
             LoadUbiInfo();
-        }
-        public static void InsertUserImages(UserImages o)
-        {
-            using var ctx = new UserImagesContext();
-            ctx.UserImages.Add(o);
-            ctx.SaveChanges();
-            LoadUserImages();
-        }
-
-        public static void InsertUserSettings(UserSettings o)
-        {
-            using var ctx = new UserSettingsContext();
-            ctx.UserSettings.Add(o);
-            ctx.SaveChanges();
-            LoadUserSettings();
         }
 
         public static void InsertLeaderboard(Leaderboard o)
@@ -763,14 +577,6 @@ namespace LiveBot.DB
             LoadRankRoles();
         }
 
-        public static void InsertCUC(CommandsUsedCount o)
-        {
-            using var ctx = new CommandsUsedCountContext();
-            ctx.CommandsUsedCount.Add(o);
-            ctx.SaveChanges();
-            LoadRankRoles();
-        }
-
         public static void InsertBannedWords(AMBannedWords o)
         {
             using var ctx = new AMBannedWordsContext();
@@ -785,22 +591,6 @@ namespace LiveBot.DB
             ctx.BotOutputList.Add(o);
             ctx.SaveChanges();
             LoadRankRoles();
-        }
-
-        public static void InsertWeatherSchedule(WeatherSchedule o)
-        {
-            using var ctx = new WeatherScheduleContext();
-            ctx.WeatherSchedule.Add(o);
-            ctx.SaveChanges();
-            LoadRankRoles();
-        }
-
-        public static void InsertBackgroundImage(BackgroundImage o)
-        {
-            using var ctx = new BackgroundImageContext();
-            ctx.BackgroundImage.Add(o);
-            ctx.SaveChanges();
-            LoadBackgroundImage();
         }
 
         public static void InsertModMail(ModMail o)
@@ -829,7 +619,7 @@ namespace LiveBot.DB
         }
 
         #endregion Insert Functions
-        
+
         #region Delete Functions
 
         public static void DeleteUbiInfo(params UbiInfo[] o)

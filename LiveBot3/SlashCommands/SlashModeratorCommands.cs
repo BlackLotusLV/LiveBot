@@ -3,7 +3,7 @@ using DSharpPlus.SlashCommands.Attributes;
 
 namespace LiveBot.SlashCommands
 {
-    [SlashCommandGroup("Mod", "Moderator commands",false)]
+    [SlashCommandGroup("Mod", "Moderator commands", false)]
     [SlashRequirePermissions(Permissions.KickMembers)]
     [SlashRequireGuild]
     internal class SlashModeratorCommands : ApplicationCommandModule
@@ -92,8 +92,8 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
         }
 
-        [SlashCommand("AddNote","Adds a note in the database without warning the user")]
-        public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note","Contents of the note.")] string note)
+        [SlashCommand("AddNote", "Adds a note in the database without warning the user")]
+        public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note", "Contents of the note.")] string note)
         {
             await ctx.DeferAsync(true);
             DB.Warnings newEntry = new()
@@ -114,8 +114,8 @@ namespace LiveBot.SlashCommands
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
-
         }
+
         [SlashCommand("Infractions", "Shows the infractions of the user")]
         public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
         {
@@ -123,7 +123,8 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
         }
-        [SlashCommand("FAQ","Creates a new FAQ message")]
+
+        [SlashCommand("FAQ", "Creates a new FAQ message")]
         public async Task FAQ(InteractionContext ctx)
         {
             string customID = $"FAQ-{ctx.User.Id}";
@@ -150,12 +151,12 @@ namespace LiveBot.SlashCommands
             string ogMessage = message.Content.Replace("*", string.Empty);
             string question = ogMessage.Substring(ogMessage.IndexOf(":") + 1, ogMessage.Length - (ogMessage[ogMessage.IndexOf("\n")..].Length + 2)).TrimStart();
             string answer = ogMessage[(ogMessage.IndexOf("\n") + 4)..].TrimStart();
-            
+
             string customID = $"FAQ-Editor-{ctx.User.Id}";
             var modal = new DiscordInteractionResponseBuilder().WithTitle("FAQ Editor").WithCustomId(customID)
                 .AddComponents(new TextInputComponent("Question", "Question", null, question, true, TextInputStyle.Paragraph))
                 .AddComponents(new TextInputComponent("Answer", "Answer", null, answer, true, TextInputStyle.Paragraph));
-            
+
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
             var interactivity = ctx.Client.GetInteractivity();
@@ -167,8 +168,8 @@ namespace LiveBot.SlashCommands
             }
         }
 
-        [SlashCommand("info","Shows general info about the user.")]
-        public async Task Info(InteractionContext ctx, [Option("User","User who to get the info about.")] DiscordUser user)
+        [SlashCommand("info", "Shows general info about the user.")]
+        public async Task Info(InteractionContext ctx, [Option("User", "User who to get the info about.")] DiscordUser user)
         {
             await ctx.DeferAsync();
             DiscordMember member;
@@ -197,10 +198,10 @@ namespace LiveBot.SlashCommands
                 .AddField("ID", user.Id.ToString(), true)
                 .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
-            if (member.IsPending!=null)
+            if (member.IsPending != null)
             {
                 bool ispending = member.IsPending ?? false;
-                embedBuilder.AddField("Accepted rules?", ispending?"No":"Yes");
+                embedBuilder.AddField("Accepted rules?", ispending ? "No" : "Yes");
             }
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));

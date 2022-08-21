@@ -490,7 +490,6 @@ namespace LiveBot.Commands
                 "F " => new DiscordColor(0x5c1500),
                 "F-" => new DiscordColor(0x37005c),
                 _ => new DiscordColor(0xffffff)
-
             };
 
             DiscordEmbedBuilder embed = new()
@@ -675,117 +674,6 @@ namespace LiveBot.Commands
                 }
             } while (!end);
             await TopMessage.DeleteAllReactionsAsync();
-        }
-
-        [Command("background")]
-        [Aliases("bg")]
-        [Description("Shows a list of backgrounds")]
-        public async Task Background(CommandContext ctx, int? page = null)
-        {
-            if (page == null || page <= 0)
-            {
-                page = 1;
-            }
-            List<DiscordButtonComponent> buttons = new() { new DiscordButtonComponent(ButtonStyle.Primary, "left", "Previous Page"), new DiscordButtonComponent(ButtonStyle.Primary, "right", "Next Page") };
-            DiscordMessage TopMessage = await new DiscordMessageBuilder()
-                .WithContent(CustomMethod.GetBackgroundList(ctx, (int)page))
-                .AddComponents(buttons)
-                .WithReply(ctx.Message.Id, true)
-                .SendAsync(ctx.Channel);
-
-            bool end = false;
-            do
-            {
-                var result = TopMessage.WaitForButtonAsync(ctx.User, TimeSpan.FromSeconds(20));
-
-                if (result.Result.TimedOut)
-                {
-                    end = result.Result.TimedOut;
-                }
-                else if (result.Result.Result.Id == "left")
-                {
-                    if (page > 1)
-                    {
-                        page--;
-                        await TopMessage.ModifyAsync(CustomMethod.GetBackgroundList(ctx, (int)page));
-                    }
-                    await result.Result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
-                }
-                else if (result.Result.Result.Id == "right")
-                {
-                    page++;
-                    try
-                    {
-                        await TopMessage.ModifyAsync(CustomMethod.GetBackgroundList(ctx, (int)page));
-                    }
-                    catch (Exception)
-                    {
-                        page--;
-                    }
-                    await result.Result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
-                }
-            } while (!end);
-            await TopMessage.DeleteAllReactionsAsync();
-        }
-
-        [Command("buy")]
-        [Description("Command to buy profile customisation.")]
-        public async Task Buy(CommandContext ctx,
-            [Description("What you want to buy")] string what,
-            [Description("ID of what you want to buy")] int id)
-        {
-            string output = string.Empty;
-            if (what == "background" || what == "bg")
-            {
-                List<DB.UserImages> UserImg = DB.DBLists.UserImages;
-                var backgroundrow = (from ui in UserImg
-                                     where ui.User_ID == ctx.User.Id
-                                     where ui.BG_ID == id
-                                     select ui).ToList();
-                List<DB.BackgroundImage> BG = DB.DBLists.BackgroundImage;
-                var background = (from bg in BG
-                                  where bg.ID_BG == id
-                                  select bg).ToList();
-                List<DB.Leaderboard> Leaderboard = DB.DBLists.Leaderboard;
-                var user = (from lb in Leaderboard
-                            where lb.ID_User == ctx.User.Id
-                            select lb).FirstOrDefault();
-
-                if (background.Count == 1)
-                {
-                    if (backgroundrow.Count == 0)
-                    {
-                        if ((long)background[0].Price <= user.Bucks)
-                        {
-                            user.Bucks -= (long)background[0].Price;
-                            DB.UserImages newEntry = new()
-                            {
-                                User_ID = ctx.User.Id,
-                                BG_ID = id
-                            };
-                            DB.DBLists.InsertUserImages(newEntry);
-                            DB.DBLists.UpdateLeaderboard(user);
-                            output = $"You have bought the \"{background[0].Name}\" background.";
-                        }
-                        else
-                        {
-                            output = $"You don't have enough bucks to buy this background.";
-                        }
-                    }
-                    else if (backgroundrow.Count == 1)
-                    {
-                        output = $"You already have this background, use `/background` command to ";
-                    }
-                }
-            }
-            else
-            {
-                output = "Wrong parameters";
-            }
-            await new DiscordMessageBuilder()
-                .WithContent(output)
-                 .WithReply(ctx.Message.Id, true)
-                 .SendAsync(ctx.Channel);
         }
 
         [Command("daily")]

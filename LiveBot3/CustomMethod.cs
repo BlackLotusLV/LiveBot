@@ -1,7 +1,5 @@
 ﻿using DSharpPlus.CommandsNext;
-using LiveBot.Json;
 using Newtonsoft.Json;
-using System.Net.Http;
 
 namespace LiveBot
 {
@@ -19,6 +17,7 @@ namespace LiveBot
             var cfgjson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DataBase;
             return $"Host={cfgjson.Host};Username={cfgjson.Username};Password={cfgjson.Password};Database={cfgjson.Database}; Port={cfgjson.Port}";
         }
+
         /// <summary>
         /// Converts epoch time to datetime
         /// </summary>
@@ -147,42 +146,6 @@ namespace LiveBot
             return sb.ToString();
         }
 
-        public static string GetBackgroundList(CommandContext ctx, int page)
-        {
-            List<DB.UserImages> userImages = DB.DBLists.UserImages;
-            List<DB.BackgroundImage> Backgrounds = DB.DBLists.BackgroundImage.OrderBy(o => o.ID_BG).ToList();
-            var List = (from bi in Backgrounds
-                        join ui in userImages on bi.ID_BG equals ui.BG_ID
-                        where ui.User_ID == ctx.User.Id
-                        select bi).ToList();
-
-            StringBuilder sb = new();
-            sb.Append("Visual representation of the backgrounds can be viewed here: <http://bit.ly/LiveBG>\n```csharp\n[ID]\tBackground Name\n");
-            for (int i = (page * 10) - 10; i < page * 10; i++)
-            {
-                bool check = false;
-                foreach (var userimage in List)
-                {
-                    if (Backgrounds[i].ID_BG == userimage.ID_BG)
-                    {
-                        sb.Append($"[{Backgrounds[i].ID_BG}]\t# {Backgrounds[i].Name}\n\t\t\t [OWNED]\n");
-                        check = true;
-                    }
-                }
-                if (!check)
-                {
-                    sb.Append($"[{Backgrounds[i].ID_BG}]\t# {Backgrounds[i].Name}\n\t\t\t Price:{Backgrounds[i].Price} Bucks\n");
-                }
-                if (i == Backgrounds.Count - 1)
-                {
-                    i = page * 10;
-                }
-            }
-            sb.Append("```");
-
-            return sb.ToString();
-        }
-
         public static string GetMissionList(List<Json.TCHubJson.Mission> MissionList, int page)
         {
             StringBuilder Missions = new();
@@ -194,6 +157,7 @@ namespace LiveBot
             Missions.Append("```");
             return Missions.ToString();
         }
+
         /// <summary>
         /// Sends a message in the moderator log channel
         /// </summary>
@@ -236,10 +200,12 @@ namespace LiveBot
                 case ModLogType.Unban:
                     FooterText = "User Unbanned";
                     break;
+
                 case ModLogType.TimedOut:
                     color = new DiscordColor(0xFFBA01);
                     FooterText = "User Timed Out";
                     break;
+
                 case ModLogType.TimeOutRemoved:
                     FooterText = "User Timeout Removed";
                     break;
@@ -269,6 +235,7 @@ namespace LiveBot
 
             await ModLogChannel.SendMessageAsync(discordMessageBuilder);
         }
+
         /// <summary>
         /// Checks if the user has the required permissions to use the command
         /// </summary>
@@ -291,9 +258,7 @@ namespace LiveBot
         {
             DB.DBLists.LoadBotOutputList();
 
-            if (language == null)
-            {
-                language = (ctx.Channel.Id) switch
+            language ??= (ctx.Channel.Id) switch
                 {
                     (150283740172517376) => "gb",
                     (249586001167515650) => "de",
@@ -306,11 +271,7 @@ namespace LiveBot
                     (741656080051863662) => "jp",
                     _ => "gb"
                 };
-            }
-            if (member is null)
-            {
-                member = ctx.Member;
-            }
+            member ??= ctx.Member;
 
             var OutputEntry = DB.DBLists.BotOutputList.FirstOrDefault(w => w.Command.Equals(command) && w.Language.Equals(language));
             if (OutputEntry is null)

@@ -95,12 +95,12 @@ namespace LiveBot.SlashCommands
                     Color OutlineColour = Color.DarkSlateGray;
 
                     Point SummitLocation = new(0 + (300 * i), 0);
-                    
+
                     Parallel.For(0, 4, (j, state) =>
                     {
                         TierImg.Mutate(ctx => ctx
                             .DrawText(
-                                new TextOptions(new Font (Program.Fonts.Get("HurmeGeometricSans3W03-Blk"),17))
+                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 17))
                                 {
                                     Origin = new PointF(295, 340 + (j * 70)),
                                     HorizontalAlignment = HorizontalAlignment.Right,
@@ -117,7 +117,7 @@ namespace LiveBot.SlashCommands
                     );
                     FooterImg.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15)) { Origin = new PointF(10,10)}, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
+                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
                     );
                     BaseImg.Mutate(ctx => ctx
                         .DrawImage(SummitImg, SummitLocation, 1)
@@ -150,24 +150,28 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
         }
-        sealed class PlatformOptions : IAutocompleteProvider
+
+        private sealed class PlatformOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.UbiInfo.Where(w=>w.Discord_Id == ctx.Member.Id))
+                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
                 {
                     switch (item.Platform)
                     {
                         case "pc":
                             result.Add(new DiscordAutoCompleteChoice("PC", "pc"));
                             break;
+
                         case "x1":
                             result.Add(new DiscordAutoCompleteChoice("Xbox", "x1"));
                             break;
+
                         case "ps4":
                             result.Add(new DiscordAutoCompleteChoice("PlayStation", "ps4"));
                             break;
+
                         case "stadia":
                             result.Add(new DiscordAutoCompleteChoice("Stadia", "stadia"));
                             break;
@@ -190,10 +194,9 @@ namespace LiveBot.SlashCommands
 
             string search = string.Empty;
 
-
             List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.User.Id).ToList();
             DB.UbiInfo UbiInfo = new();
-            if (UbiInfoList.Count==0)
+            if (UbiInfoList.Count == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "Could not find any profile data, please link your ubisoft account with Live bot." });
                 return;
@@ -365,7 +368,7 @@ namespace LiveBot.SlashCommands
                 if (Activity.Entries.Length != 0)
                 {
                     Rank = JsonConvert.DeserializeObject<TCHubJson.Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{search}/profile/{Activity.Entries[0].Profile_ID}", CancellationToken.None));
-                    ubiInfo=new DB.UbiInfo{ Platform = search, Profile_Id = Activity.Entries[0].Profile_ID };
+                    ubiInfo = new DB.UbiInfo { Platform = search, Profile_Id = Activity.Entries[0].Profile_ID };
                 }
                 Image image = await HubMethods.BuildEventImage(
                         Event,
@@ -380,7 +383,7 @@ namespace LiveBot.SlashCommands
                     new Point(WidthHeight[i, 0], WidthHeight[i, 1]),
                     1)
                 );
-                TotalPoints += (Activity.Entries.Length!=0? Activity.Entries[0].Points:0);
+                TotalPoints += (Activity.Entries.Length != 0 ? Activity.Entries[0].Points : 0);
             });
 
             if (alleventscompleted)
@@ -521,7 +524,7 @@ namespace LiveBot.SlashCommands
                     TextOptions TextOptions = new(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 25))
                     {
                         WrappingLength = RewardWidth,
-                        Origin= new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15)
+                        Origin = new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15)
                     };
                     RewardsImage.Mutate(ctx => ctx
                     .DrawImage(RewardImage, new Point((4 - Rewards[i].Level) * RewardWidth, 0), 1)
@@ -550,8 +553,8 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
-        [SlashCommand("link-hub","Links your hub information with Live bot.")]
-        public async Task LinkHub(InteractionContext ctx, [Option("link","Your Ubisoft avatar link.")] string link, [Option("platform", "The platform you want to link")] Platforms platform)
+        [SlashCommand("link-hub", "Links your hub information with Live bot.")]
+        public async Task LinkHub(InteractionContext ctx, [Option("link", "Your Ubisoft avatar link.")] string link, [Option("platform", "The platform you want to link")] Platforms platform)
         {
             await ctx.DeferAsync(true);
             link = Regex.Replace(link, "https://ubisoft-avatars.akamaized.net/|/default(.*)", "");
@@ -571,8 +574,8 @@ namespace LiveBot.SlashCommands
                 Platforms.stadia => "stadia"
             };
 #pragma warning restore CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
-            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w =>w.Platform == search && w.Profile_Id == link);
-            if (info!=null)
+            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Platform == search && w.Profile_Id == link);
+            if (info != null)
             {
                 if (info.Discord_Id != ctx.User.Id)
                 {
@@ -594,8 +597,8 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = $"Your Discord account has been linked with {link} account ID on {search} platform." });
         }
 
-        [SlashCommand("unlink-hub","Unlinks a specific hub account from your discord")]
-        public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))][Option("Account","The account to unlink")] long ID)
+        [SlashCommand("unlink-hub", "Unlinks a specific hub account from your discord")]
+        public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))][Option("Account", "The account to unlink")] long ID)
         {
             await ctx.DeferAsync(true);
             DB.UbiInfo entry = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Id == ID);
@@ -608,7 +611,7 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.Profile_Id}** - **{entry.Platform}** from your Discord account"));
         }
 
-        sealed class LinkedAccountOptions : IAutocompleteProvider
+        private sealed class LinkedAccountOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
