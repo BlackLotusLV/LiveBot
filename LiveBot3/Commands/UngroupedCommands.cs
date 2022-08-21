@@ -490,7 +490,6 @@ namespace LiveBot.Commands
                 "F " => new DiscordColor(0x5c1500),
                 "F-" => new DiscordColor(0x37005c),
                 _ => new DiscordColor(0xffffff)
-
             };
 
             DiscordEmbedBuilder embed = new()

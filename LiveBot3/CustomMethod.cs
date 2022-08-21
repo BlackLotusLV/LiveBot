@@ -1,7 +1,5 @@
 ﻿using DSharpPlus.CommandsNext;
-using LiveBot.Json;
 using Newtonsoft.Json;
-using System.Net.Http;
 
 namespace LiveBot
 {
@@ -19,6 +17,7 @@ namespace LiveBot
             var cfgjson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DataBase;
             return $"Host={cfgjson.Host};Username={cfgjson.Username};Password={cfgjson.Password};Database={cfgjson.Database}; Port={cfgjson.Port}";
         }
+
         /// <summary>
         /// Converts epoch time to datetime
         /// </summary>
@@ -158,6 +157,7 @@ namespace LiveBot
             Missions.Append("```");
             return Missions.ToString();
         }
+
         /// <summary>
         /// Sends a message in the moderator log channel
         /// </summary>
@@ -200,10 +200,12 @@ namespace LiveBot
                 case ModLogType.Unban:
                     FooterText = "User Unbanned";
                     break;
+
                 case ModLogType.TimedOut:
                     color = new DiscordColor(0xFFBA01);
                     FooterText = "User Timed Out";
                     break;
+
                 case ModLogType.TimeOutRemoved:
                     FooterText = "User Timeout Removed";
                     break;
@@ -233,6 +235,7 @@ namespace LiveBot
 
             await ModLogChannel.SendMessageAsync(discordMessageBuilder);
         }
+
         /// <summary>
         /// Checks if the user has the required permissions to use the command
         /// </summary>

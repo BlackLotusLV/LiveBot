@@ -40,6 +40,7 @@ namespace LiveBot
 
         // Timers
         private Timer StreamDelayTimer { get; set; } = new(e => TimerMethod.StreamListCheck(LiveStream.LiveStreamerList, LiveStream.StreamCheckDelay));
+
         private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
         private Timer MessageCacheClearTimer { get; set; } = new(e => AutoMod.ClearMSGCache());
         private Timer ModMailCloserTimer { get; set; } = new(async e => await ModMail.ModMailCloser());
@@ -68,7 +69,6 @@ namespace LiveBot
             TCHubJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCHub;
             Thread HubThread = new(async () => await HubMethods.UpdateHubInfo());
             HubThread.Start();
-            
 
             LogLevel logLevel = LogLevel.Debug;
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
@@ -108,7 +108,7 @@ namespace LiveBot
 
             this.Slash = Client.UseSlashCommands();
             this.Commands = Client.UseCommandsNext(ccfg);
-            
+
             this.Commands.CommandExecuted += this.Commands_CommandExecuted;
             this.Commands.CommandErrored += this.Commands_CommandErrored;
 
@@ -181,7 +181,7 @@ namespace LiveBot
                 this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
-            }                
+            }
             DiscordActivity BotActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);
             await Task.Delay(-1);

@@ -10,7 +10,7 @@ namespace LiveBot.Services
         {
             while (_leaderboard.TryDequeue(out LeaderboardItem item))
             {
-                AddToServerLeaderboard(item.User,item.Guild);
+                AddToServerLeaderboard(item.User, item.Guild);
             }
             Thread.Sleep(100);
         });
@@ -25,6 +25,7 @@ namespace LiveBot.Services
         {
             _leaderboard.Enqueue(new LeaderboardItem(user, guild));
         }
+
         public static void AddUserToLeaderboard(DiscordUser user)
         {
             if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) != null) return;
@@ -35,9 +36,9 @@ namespace LiveBot.Services
             };
             DB.DBLists.InsertLeaderboard(newEntry);
         }
+
         public static void AddToServerLeaderboard(DiscordUser user, DiscordGuild guild)
         {
-
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == user.Id && lb.Server_ID == guild.Id);
             if (local is null)
             {
@@ -58,10 +59,12 @@ namespace LiveBot.Services
                 }
             }
         }
+
         internal class LeaderboardItem
         {
             public DiscordGuild Guild { get; set; }
             public DiscordUser User { get; set; }
+
             public LeaderboardItem(DiscordUser user, DiscordGuild guild)
             {
                 this.Guild = guild;

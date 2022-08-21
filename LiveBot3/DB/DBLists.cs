@@ -44,7 +44,7 @@ namespace LiveBot.DB
                     () => LoadModMail(true, sw),
                     () => LoadRoleTagSettings(true, sw),
                     () => LoadButtonRoles(true, sw),
-                    () => LoadUbiInfo(true,sw)
+                    () => LoadUbiInfo(true, sw)
                     );
                 sw.Stop();
             }).Start();
@@ -72,8 +72,8 @@ namespace LiveBot.DB
             {
                 Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"UbiInfo List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
             }
-
         }
+
         public static void LoadVehicleList(bool progress = false, Stopwatch timer = null)
         {
             bool check = false;
@@ -619,7 +619,7 @@ namespace LiveBot.DB
         }
 
         #endregion Insert Functions
-        
+
         #region Delete Functions
 
         public static void DeleteUbiInfo(params UbiInfo[] o)
