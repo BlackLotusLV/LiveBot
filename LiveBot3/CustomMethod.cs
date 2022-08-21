@@ -258,9 +258,7 @@ namespace LiveBot
         {
             DB.DBLists.LoadBotOutputList();
 
-            if (language == null)
-            {
-                language = (ctx.Channel.Id) switch
+            language ??= (ctx.Channel.Id) switch
                 {
                     (150283740172517376) => "gb",
                     (249586001167515650) => "de",
@@ -273,11 +271,7 @@ namespace LiveBot
                     (741656080051863662) => "jp",
                     _ => "gb"
                 };
-            }
-            if (member is null)
-            {
-                member = ctx.Member;
-            }
+            member ??= ctx.Member;
 
             var OutputEntry = DB.DBLists.BotOutputList.FirstOrDefault(w => w.Command.Equals(command) && w.Language.Equals(language));
             if (OutputEntry is null)
