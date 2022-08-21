@@ -34,18 +34,6 @@ namespace LiveBot.Services
                 ID_User = user.Id
             };
             DB.DBLists.InsertLeaderboard(newEntry);
-            DB.UserImages newUImage = new()
-            {
-                User_ID = user.Id
-            };
-            DB.DBLists.InsertUserImages(newUImage);
-            DB.UserSettings newUSettings = new()
-            {
-                User_ID = user.Id,
-                User_Info = "There is a difference between knowing the path and walking the path.",
-                Image_ID = newUImage.ID_User_Images
-            };
-            DB.DBLists.InsertUserSettings(newUSettings);
         }
         public static void AddToServerLeaderboard(DiscordUser user, DiscordGuild guild)
         {

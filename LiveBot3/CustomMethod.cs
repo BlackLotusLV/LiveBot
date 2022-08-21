@@ -147,42 +147,6 @@ namespace LiveBot
             return sb.ToString();
         }
 
-        public static string GetBackgroundList(CommandContext ctx, int page)
-        {
-            List<DB.UserImages> userImages = DB.DBLists.UserImages;
-            List<DB.BackgroundImage> Backgrounds = DB.DBLists.BackgroundImage.OrderBy(o => o.ID_BG).ToList();
-            var List = (from bi in Backgrounds
-                        join ui in userImages on bi.ID_BG equals ui.BG_ID
-                        where ui.User_ID == ctx.User.Id
-                        select bi).ToList();
-
-            StringBuilder sb = new();
-            sb.Append("Visual representation of the backgrounds can be viewed here: <http://bit.ly/LiveBG>\n```csharp\n[ID]\tBackground Name\n");
-            for (int i = (page * 10) - 10; i < page * 10; i++)
-            {
-                bool check = false;
-                foreach (var userimage in List)
-                {
-                    if (Backgrounds[i].ID_BG == userimage.ID_BG)
-                    {
-                        sb.Append($"[{Backgrounds[i].ID_BG}]\t# {Backgrounds[i].Name}\n\t\t\t [OWNED]\n");
-                        check = true;
-                    }
-                }
-                if (!check)
-                {
-                    sb.Append($"[{Backgrounds[i].ID_BG}]\t# {Backgrounds[i].Name}\n\t\t\t Price:{Backgrounds[i].Price} Bucks\n");
-                }
-                if (i == Backgrounds.Count - 1)
-                {
-                    i = page * 10;
-                }
-            }
-            sb.Append("```");
-
-            return sb.ToString();
-        }
-
         public static string GetMissionList(List<Json.TCHubJson.Mission> MissionList, int page)
         {
             StringBuilder Missions = new();
