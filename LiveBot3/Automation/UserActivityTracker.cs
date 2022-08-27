@@ -16,6 +16,10 @@ namespace LiveBot.Automation
             if (e.Guild == null || e.Author.IsBot) return Task.CompletedTask;
             Cooldowns cooldowns = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (cooldowns.Time.AddMinutes(2)<= DateTime.UtcNow) return Task.CompletedTask;
+            if (DBLists.Leaderboard.FirstOrDefault(w=>w.ID_User==e.Author.Id)==null)
+            {
+                Services.LeaderboardService.QueueLeaderboardItem(e.Author, e.Guild);
+            }
             UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id && w.Date == DateTime.Today);
             if (userActivity == null)
             {
