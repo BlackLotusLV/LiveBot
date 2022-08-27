@@ -73,14 +73,6 @@ namespace LiveBot.Services
                 else
                 {
                     WarnedUserStats.Warning_Level++;
-                    if (WarnedUserStats.Followers <= 1000 * WarnedUserStats.Warning_Level)
-                    {
-                        WarnedUserStats.Followers = 0;
-                    }
-                    else
-                    {
-                        WarnedUserStats.Followers -= (1000 * WarnedUserStats.Warning_Level);
-                    }
                     DB.DBLists.UpdateServerRanks(WarnedUserStats);
                 }
 

@@ -4,7 +4,7 @@ namespace LiveBot.DB
 {
     internal static class DBLists
     {
-        public static readonly int TableCount = 15;
+        public static readonly int TableCount = 16;
         public static int LoadedTableCount { get; set; } = 0;
 
         public static List<VehicleList> VehicleList { get; set; } = new(); //1
@@ -22,6 +22,7 @@ namespace LiveBot.DB
         public static List<ServerWelcomeSettings> ServerWelcomeSettings { get; set; } = new();//13
         public static List<ButtonRoles> ButtonRoles { get; set; } = new();//14
         public static List<UbiInfo> UbiInfo { get; set; } = new();//15
+        public static List<UserActivity> UserActivity { get; set; } = new();//16
 
         public static void LoadAllLists()
         {
@@ -44,13 +45,36 @@ namespace LiveBot.DB
                     () => LoadModMail(true, sw),
                     () => LoadRoleTagSettings(true, sw),
                     () => LoadButtonRoles(true, sw),
-                    () => LoadUbiInfo(true, sw)
+                    () => LoadUbiInfo(true, sw),
+                    () => LoadUserActivity(true, sw)
                     );
                 sw.Stop();
             }).Start();
         }
 
         #region Load Functions
+
+        public static void LoadUserActivity(bool progress = false, Stopwatch timer = null)
+        {
+            bool check = false;
+            if (timer == null)
+            {
+                timer = Stopwatch.StartNew();
+                check = true;
+            }
+            using var ctx = new UserActivityContext();
+            UserActivity = ctx.UserActivity.ToList();
+            if (check) timer.Stop();
+            if (progress)
+            {
+                LoadedTableCount++;
+                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "User Activity");
+            }
+            else
+            {
+                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"User Activity List Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds);
+            }
+        }
 
         public static void LoadUbiInfo(bool progress = false, Stopwatch timer = null)
         {
@@ -441,6 +465,12 @@ namespace LiveBot.DB
 
         #region Update Functions
 
+        public static void UpdateUserActivity(params UserActivity[] o)
+        {
+            using var ctx = new UserActivityContext();
+            ctx.UpdateRange(o);
+            ctx.SaveChanges();
+        }
         public static void UpdateUbiInfo(params UbiInfo[] o)
         {
             using var ctx = new UbiInfoContext();
@@ -529,6 +559,13 @@ namespace LiveBot.DB
 
         #region Insert Functions
 
+        public static void InsertUserActivity(UserActivity o)
+        {
+            using var ctx = new UserActivityContext();
+            ctx.UserActivity.Add(o);
+            ctx.SaveChanges(true);
+            LoadUserActivity();
+        }
         public static void InsertUbiInfo(UbiInfo o)
         {
             using var ctx = new UbiInfoContext();

@@ -25,10 +25,6 @@ namespace LiveBot.DB
         private ulong _Server_ID;
 
         [Required]
-        [Column("followers")]
-        public long Followers { get; set; } = 0;
-
-        [Required]
         [Column("warning_level")]
         public int Warning_Level { get; set; } = 0;
 

@@ -17,7 +17,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220821_A";
+        public static readonly string BotVersion = $"20220827_E";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -137,9 +137,7 @@ namespace LiveBot
                 Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
                 Client.PresenceUpdated += LiveStream.Stream_Notification;
 
-                Client.MessageCreated += Leveling.Level_Gaining_System;
-                Client.GuildMemberAdded += Leveling.Add_To_Leaderboards;
-
+                Client.GuildMemberAdded += AutoMod.Add_To_Leaderboards;
                 Client.MessageCreated += AutoMod.Media_Only_Filter;
                 Client.MessageCreated += AutoMod.Banned_Words;
                 Client.MessageCreated += AutoMod.Spam_Protection;
@@ -154,6 +152,8 @@ namespace LiveBot
                 Client.GuildBanRemoved += AutoMod.User_Unbanned_Log;
                 Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
                 Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
+
+                Client.MessageCreated += UserActivityTracker.Add_Points;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
 
