@@ -29,5 +29,12 @@ namespace LiveBot.DB
         [Required]
         [Column("has_screening")]
         public bool HasScreening { get; set; }
+
+        [Required]
+        [Column("role")]
+        public ulong Role_ID
+        { get => _Role_ID; set { _Role_ID = Convert.ToUInt64(value); } }
+
+        private ulong _Role_ID;
     }
 }
