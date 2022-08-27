@@ -3,6 +3,7 @@ using DSharpPlus.SlashCommands.Attributes;
 using DSharpPlus.Interactivity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
+using Npgsql.Replication.PgOutput.Messages;
 
 namespace LiveBot.SlashCommands
 {
@@ -154,20 +155,71 @@ namespace LiveBot.SlashCommands
         public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page)
         {
             await ctx.DeferAsync();
+
+            List<DiscordButtonComponent> buttons = new() 
+            { 
+                new DiscordButtonComponent(ButtonStyle.Primary, "left", "Previous Page"),
+                new DiscordButtonComponent(ButtonStyle.Danger,"end","",false,new DiscordComponentEmoji("⏹")),
+                new DiscordButtonComponent(ButtonStyle.Primary, "right", "Next Page") 
+            };
+
+            DiscordMessage message = await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(await GenerateLeaderboardAsync(ctx,(int)page)).AddComponents(buttons));
+
+            bool end = false;
+            do
+            {
+                var result = await message.WaitForButtonAsync(ctx.User, TimeSpan.FromSeconds(30));
+                if (result.TimedOut)
+                {
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(message.Content));
+                    return;
+                }
+                switch (result.Result.Id)
+                {
+                    case "left":
+                        if (page > 1)
+                        {
+                            page--;
+                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                        }
+                        break;
+
+                    case "right":
+                        page++;
+                        try
+                        {
+                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                        }
+                        catch (Exception)
+                        {
+                            page--;
+                        }
+                        break;
+                    case "end":
+                        end = true;
+                        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(message.Content));
+                        break;
+                }
+                await result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
+            } while (!end);
+        }
+
+        private static async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
+        {
             var ActivityList = DB.DBLists.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
                 .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
                 .OrderByDescending(w => w.Points.Sum())
                 .ToList();
-            StringBuilder stringBuilder = new StringBuilder();
+            StringBuilder stringBuilder = new();
             stringBuilder.AppendLine("```csharp\n📋 Rank | Username");
-            for (int i = ((int)page * 10) - 10; i < (int)page * 10; i++)
+            for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
                 stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
                 if (i == ActivityList.Count - 1)
                 {
-                    i = (int)page * 10;
+                    i = page * 10;
                 }
             }
             int rank = 0;
@@ -175,14 +227,13 @@ namespace LiveBot.SlashCommands
             foreach (var item in ActivityList)
             {
                 rank++;
-                if (item.UserID==ctx.User.Id)
+                if (item.UserID == ctx.User.Id)
                 {
                     personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}";
                 }
             }
             stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(stringBuilder.ToString()));
+            return stringBuilder.ToString();
         }
 
     }
