@@ -7,33 +7,6 @@ namespace LiveBot.Commands
 {
     public class UngroupedCommands : BaseCommandModule
     {
-        [Command("bot")]//list of Live bot changes
-        [Description("Info about the bot. Latest changes, how to support, how long it has been up.")]
-        public async Task Bot(CommandContext ctx)
-        {
-            DateTime current = DateTime.UtcNow;
-            TimeSpan time = current - Program.start;
-            string changelog = "[REMOVED] Daily command removed due to system being removed\n" +
-                "";
-            DiscordUser user = ctx.Client.CurrentUser;
-            var embed = new DiscordEmbedBuilder
-            {
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    IconUrl = user.AvatarUrl,
-                    Name = user.Username
-                }
-            };
-            embed.AddField("Version:", Program.BotVersion, true);
-            embed.AddField("Uptime:", $"{time.Days} Days {time.Hours}:{time.Minutes}.{time.Seconds}", true);
-
-            embed.AddField("Programmed in:", "C#", true);
-            embed.AddField("Programmed by:", "<@86725763428028416>", true);
-            embed.AddField("LiveBot info", "General purpose bot with a level system, stream notifications, greeting people and various other functions related to The Crew franchise");
-            embed.AddField("Change log:", changelog);
-            await ctx.RespondAsync(embed: embed);
-        }
-
         [Command("getemote")]
         [Description("Returns the ID of an emote")]
         public async Task GetEmote(CommandContext ctx, params DiscordEmoji[] emotes)

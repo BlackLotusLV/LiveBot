@@ -1,6 +1,8 @@
 ﻿using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using DSharpPlus.Interactivity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 
 namespace LiveBot.SlashCommands
 {
@@ -11,7 +13,10 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] `>rt [emoji]` now converted to a slash command.";
+            string changelog = "[REMOVED] Removed old leveling system.\n" +
+                "[NEW] Added a time based activity tracking. Meaning you have to stay active to be at the top of the server ranks\n" +
+                "[NEW] Various internal code changes and fixes\n" +
+                "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -143,5 +148,42 @@ namespace LiveBot.SlashCommands
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
         }
+
+        [SlashRequireGuild]
+        [SlashCommand("Leaderboard", "Current server leaderboard.")]
+        public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page)
+        {
+            await ctx.DeferAsync();
+            var ActivityList = DB.DBLists.UserActivity
+                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
+                .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
+                .OrderByDescending(w => w.Points.Sum())
+                .ToList();
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("```csharp\n📋 Rank | Username");
+            for (int i = ((int)page * 10) - 10; i < (int)page * 10; i++)
+            {
+                DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
+                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
+                if (i == ActivityList.Count - 1)
+                {
+                    i = (int)page * 10;
+                }
+            }
+            int rank = 0;
+            string personalscore = string.Empty;
+            foreach (var item in ActivityList)
+            {
+                rank++;
+                if (item.UserID==ctx.User.Id)
+                {
+                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}";
+                }
+            }
+            stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(stringBuilder.ToString()));
+        }
+
     }
 }

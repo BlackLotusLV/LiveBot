@@ -22,6 +22,7 @@ namespace LiveBot.Automation
             if (DBLists.Leaderboard.FirstOrDefault(w=>w.ID_User==e.Author.Id)==null)
             {
                 Services.LeaderboardService.QueueLeaderboardItem(e.Author, e.Guild);
+                return Task.CompletedTask;
             }
             UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id && w.Date == DateTime.UtcNow.Date);
             if (userActivity == null)
