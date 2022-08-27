@@ -14,9 +14,7 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[REMOVED] Removed old leveling system.\n" +
-                "[NEW] Added a time based activity tracking. Meaning you have to stay active to be at the top of the server ranks\n" +
-                "[NEW] Various internal code changes and fixes\n" +
+            string changelog = "[NEW] Added proper buttons to leaderboard command. Also defaults to page 1\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -152,15 +150,15 @@ namespace LiveBot.SlashCommands
 
         [SlashRequireGuild]
         [SlashCommand("Leaderboard", "Current server leaderboard.")]
-        public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page)
+        public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page = 1)
         {
             await ctx.DeferAsync();
 
-            List<DiscordButtonComponent> buttons = new() 
-            { 
-                new DiscordButtonComponent(ButtonStyle.Primary, "left", "Previous Page"),
+            List<DiscordButtonComponent> buttons = new()
+            {
+                new DiscordButtonComponent(ButtonStyle.Primary, "left", "",false,new DiscordComponentEmoji("◀️")),
                 new DiscordButtonComponent(ButtonStyle.Danger,"end","",false,new DiscordComponentEmoji("⏹")),
-                new DiscordButtonComponent(ButtonStyle.Primary, "right", "Next Page") 
+                new DiscordButtonComponent(ButtonStyle.Primary, "right", "",false,new DiscordComponentEmoji("▶️"))
             };
 
             DiscordMessage message = await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(await GenerateLeaderboardAsync(ctx,(int)page)).AddComponents(buttons));
