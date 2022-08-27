@@ -15,6 +15,7 @@ namespace LiveBot.SlashCommands
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
             string changelog = "[NEW] Added proper buttons to leaderboard command. Also defaults to page 1\n" +
+                "[NEW] Old role tag command will now ask you to use the slash command instead.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
