@@ -27,7 +27,7 @@ namespace LiveBot.Automation
             UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id && w.Date == DateTime.UtcNow.Date);
             if (userActivity == null)
             {
-                DBLists.InsertUserActivity(new(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));
+                DBLists.InsertUserActivity(new(e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
                 return Task.CompletedTask;
             }
             userActivity.Points += new Random().Next(25, 50);

@@ -599,47 +599,10 @@ namespace LiveBot.Commands
         [Description("Tags a role ")]
         public async Task RoleTag(CommandContext ctx, DiscordEmoji Emoji)
         {
-            List<DB.RoleTagSettings> Roles = DB.DBLists.RoleTagSettings.Where(w => w.Server_ID == ctx.Guild.Id && w.Emoji_ID == Emoji.Id).ToList();
-            if (Roles != null)
-            {
-                DB.RoleTagSettings RT = Roles.FirstOrDefault(w => w.Channel_ID == ctx.Channel.Id);
-                if (RT != null)
-                {
-                    DiscordRole role = ctx.Guild.GetRole(RT.Role_ID);
-                    if (RT.Last_Used < DateTime.UtcNow - TimeSpan.FromMinutes(RT.Cooldown))
-                    {
-                        await new DiscordMessageBuilder()
-                            .WithContent($"{role.Mention} - {ctx.Member.Mention}: {RT.Message}")
-                            .WithReply(ctx.Message.Id, false)
-                            .WithAllowedMention(new RoleMention(role))
-                            .SendAsync(ctx.Channel);
-                        RT.Last_Used = DateTime.UtcNow;
-                        DB.DBLists.UpdateRoleTagSettings(RT);
-                    }
-                    else
-                    {
-                        TimeSpan remainingTime = TimeSpan.FromMinutes(RT.Cooldown) - (DateTime.UtcNow - RT.Last_Used);
-                        await new DiscordMessageBuilder()
-                            .WithContent($"This role can't be mentioned right now, cooldown has not passed yet. ({remainingTime.Hours} Hours {remainingTime.Minutes} Minutes {remainingTime.Seconds} Seconds left)")
-                            .WithReply(ctx.Message.Id, true)
-                            .SendAsync(ctx.Channel);
-                    }
-                }
-                else
-                {
-                    await new DiscordMessageBuilder()
-                        .WithContent($"This channel does not allow this role to be pinged")
-                        .WithReply(ctx.Message.Id, true)
-                        .SendAsync(ctx.Channel);
-                }
-            }
-            else
-            {
-                await new DiscordMessageBuilder()
-                    .WithContent($"This emoji does not represent a role in this server.")
+            await new DiscordMessageBuilder()
+                    .WithContent($"Please use the new slash command, thank you :smiley: `/roletag`")
                     .WithReply(ctx.Message.Id, true)
                     .SendAsync(ctx.Channel);
-            }
         }
     }
 }
