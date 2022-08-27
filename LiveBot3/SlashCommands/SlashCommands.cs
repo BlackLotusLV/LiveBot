@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
+using DSharpPlus.Interactivity;
 
 namespace LiveBot.SlashCommands
 {
