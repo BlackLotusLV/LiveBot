@@ -138,7 +138,6 @@ namespace LiveBot
                 Client.PresenceUpdated += LiveStream.Stream_Notification;
 
                 Client.GuildMemberAdded += AutoMod.Add_To_Leaderboards;
-
                 Client.MessageCreated += AutoMod.Media_Only_Filter;
                 Client.MessageCreated += AutoMod.Banned_Words;
                 Client.MessageCreated += AutoMod.Spam_Protection;
@@ -153,6 +152,8 @@ namespace LiveBot
                 Client.GuildBanRemoved += AutoMod.User_Unbanned_Log;
                 Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
                 Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
+
+                Client.MessageCreated += UserActivityTracker.Add_Points;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
 

@@ -465,6 +465,12 @@ namespace LiveBot.DB
 
         #region Update Functions
 
+        public static void UpdateUserActivity(params UserActivity[] o)
+        {
+            using var ctx = new UserActivityContext();
+            ctx.UpdateRange(o);
+            ctx.SaveChanges();
+        }
         public static void UpdateUbiInfo(params UbiInfo[] o)
         {
             using var ctx = new UbiInfoContext();

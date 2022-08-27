@@ -28,5 +28,13 @@ namespace LiveBot.DB
         [Required]
         [Column("date")]
         public DateTime Date { get; set; }
+
+        public UserActivity(ulong user_ID, ulong guild_ID, int points, DateTime date)
+        {
+            User_ID = user_ID;
+            Guild_ID = guild_ID;
+            Points = points;
+            Date = date;
+        }
     }
 }
