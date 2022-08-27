@@ -11,6 +11,16 @@ namespace LiveBot.Automation
         private static List<DiscordMessage> MessageList = new();
 #pragma warning restore IDE0044 // Add readonly modifier
 
+        public static Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
+        {
+            DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == e.Member.Id && lb.Server_ID == e.Guild.Id);
+            if (local is null)
+            {
+                Services.LeaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
+            }
+            return Task.CompletedTask;
+        }
+
         public static async Task Banned_Words(DiscordClient Client, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
@@ -242,7 +252,6 @@ namespace LiveBot.Automation
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Kick_Count++;
-                UserSettings.Followers /= 2;
                 DB.DBLists.UpdateServerRanks(UserSettings);
                 DB.DBLists.InsertWarnings(new DB.Warnings { Reason = logs[0].Reason, Active = false, Time_Created = DateTime.UtcNow, Admin_ID = logs[0].UserResponsible.Id, User_ID = e.Member.Id, Server_ID = e.Guild.Id, Type = "kick" });
             }
@@ -289,7 +298,6 @@ namespace LiveBot.Automation
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Ban_Count += 1;
-                UserSettings.Followers = 0;
                 DB.DBLists.UpdateServerRanks(UserSettings);
             });
             return Task.CompletedTask;

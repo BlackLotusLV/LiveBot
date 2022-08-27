@@ -52,8 +52,7 @@ namespace LiveBot.Services
                     DB.ServerRanks newEntry = new()
                     {
                         User_ID = user.Id,
-                        Server_ID = guild.Id,
-                        Followers = 0
+                        Server_ID = guild.Id
                     };
                     DB.DBLists.InsertServerRanks(newEntry);
                 }

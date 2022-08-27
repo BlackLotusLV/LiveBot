@@ -137,8 +137,7 @@ namespace LiveBot
                 Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
                 Client.PresenceUpdated += LiveStream.Stream_Notification;
 
-                Client.MessageCreated += Leveling.Level_Gaining_System;
-                Client.GuildMemberAdded += Leveling.Add_To_Leaderboards;
+                Client.GuildMemberAdded += AutoMod.Add_To_Leaderboards;
 
                 Client.MessageCreated += AutoMod.Media_Only_Filter;
                 Client.MessageCreated += AutoMod.Banned_Words;
