@@ -181,6 +181,7 @@ namespace LiveBot
                 this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
 
                 Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
+                Client.MessageCreated += UserActivityTracker.Add_Points;
             }
             DiscordActivity BotActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
             await Client.ConnectAsync(BotActivity);

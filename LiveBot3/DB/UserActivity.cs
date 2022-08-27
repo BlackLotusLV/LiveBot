@@ -27,7 +27,8 @@ namespace LiveBot.DB
 
         [Required]
         [Column("date")]
-        public DateTime Date { get; set; }
+        public DateTime Date { get =>_Date; set { _Date = DateTime.SpecifyKind(value, DateTimeKind.Utc); } }
+        private DateTime _Date;
 
         public UserActivity(ulong user_ID, ulong guild_ID, int points, DateTime date)
         {
