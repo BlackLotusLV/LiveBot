@@ -4,6 +4,7 @@ using DSharpPlus.Interactivity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Npgsql.Replication.PgOutput.Messages;
+using System.Globalization;
 
 namespace LiveBot.SlashCommands
 {
@@ -14,9 +15,8 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Added proper buttons to leaderboard command. Also defaults to page 1\n" +
-                "[NEW] Old role tag command will now ask you to use the slash command instead.\n" +
-                "";
+            string changelog = "[NEW] Leaderboard shows how many cookies you have taken and given.\n" +
+                "[NEW] Cookie command moved to slash commands\n";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -215,7 +215,8 @@ namespace LiveBot.SlashCommands
             for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
-                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
+                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id);
+                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}\t\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
                 if (i == ActivityList.Count - 1)
                 {
                     i = page * 10;
@@ -228,12 +229,45 @@ namespace LiveBot.SlashCommands
                 rank++;
                 if (item.UserID == ctx.User.Id)
                 {
-                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}";
+                    DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}";
                 }
             }
             stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
             return stringBuilder.ToString();
         }
 
+        [SlashRequireGuild]
+        [SlashCommand("cookie", "Gives a user a cookie.")]
+        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordUser member)
+        {
+            await ctx.DeferAsync(true);
+            if (ctx.Member == member)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
+                return;
+            }
+            var giver = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
+            var reciever = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
+
+            if (giver.Cookie_Date.Date == DateTime.UtcNow.Date)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
+                return;
+            }
+
+            giver.Cookie_Date = DateTime.UtcNow.Date;
+            giver.Cookies_Given++;
+            reciever.Cookies_Taken++;
+            DB.DBLists.UpdateLeaderboard(giver);
+            DB.DBLists.UpdateLeaderboard(reciever);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
+
+            await new DiscordMessageBuilder()
+                .WithContent($"{member.Mention}, {ctx.Member.Username} has given you a :cookie:")
+                .WithAllowedMention(new UserMention())
+                .SendAsync(ctx.Channel);
+        }
     }
 }

@@ -481,7 +481,7 @@ namespace LiveBot.DB
         public static void UpdateLeaderboard(params Leaderboard[] o)
         {
             using var ctx = new LeaderboardContext();
-            ctx.UpdateRange(o);
+            ctx.UpdateRange(o.Select(w => { w.Cookie_Date = DateTime.SpecifyKind(w.Cookie_Date, DateTimeKind.Utc); return w; }).ToList());
             ctx.SaveChanges();
         }
 
