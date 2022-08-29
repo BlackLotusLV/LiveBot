@@ -14,8 +14,7 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Added proper buttons to leaderboard command. Also defaults to page 1\n" +
-                "[NEW] Old role tag command will now ask you to use the slash command instead.\n" +
+            string changelog = "[NEW] Leaderboard shows how many cookies you have taken and given.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -215,7 +214,8 @@ namespace LiveBot.SlashCommands
             for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
-                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
+                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id);
+                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}\t\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
                 if (i == ActivityList.Count - 1)
                 {
                     i = page * 10;
