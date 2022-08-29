@@ -21,7 +21,8 @@ namespace LiveBot.DB
         [Column("cookie_taken")]
         public int Cookies_Taken { get; set; } = 0;
 
-        [Column("cookie_used")]
-        public string Cookies_Used { get; set; }
+        [Column("cookie_date")]
+        public DateTime Cookie_Date { get => _Cookie_Date; set { _Cookie_Date = DateTime.SpecifyKind(value, DateTimeKind.Utc); } }
+        private DateTime _Cookie_Date;
     }
 }

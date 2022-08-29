@@ -4,6 +4,7 @@ using DSharpPlus.Interactivity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Npgsql.Replication.PgOutput.Messages;
+using System.Globalization;
 
 namespace LiveBot.SlashCommands
 {
@@ -235,5 +236,37 @@ namespace LiveBot.SlashCommands
             return stringBuilder.ToString();
         }
 
+        [SlashRequireGuild]
+        [SlashCommand("cookie", "Gives a user a cookie.")]
+        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordMember member)
+        {
+            await ctx.DeferAsync(true);
+            if (ctx.Member == member)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
+                return;
+            }
+            var giver = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
+            var reciever = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
+
+            if (giver.Cookie_Date.Date == DateTime.UtcNow.Date)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in{24-DateTime.UtcNow.Hour}:{(59-DateTime.UtcNow.Minute)-1}:{(59-DateTime.UtcNow.Second)}.{999- DateTime.UtcNow.Millisecond}"));
+                return;
+            }
+
+            giver.Cookie_Date = DateTime.UtcNow;
+            giver.Cookies_Given++;
+            reciever.Cookies_Taken++;
+            DB.DBLists.UpdateLeaderboard(giver);
+            DB.DBLists.UpdateLeaderboard(reciever);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
+
+            await new DiscordMessageBuilder()
+                .WithContent($"{member.Mention}, {ctx.Member.Username} has given you a :cookie:")
+                .WithAllowedMention(new UserMention())
+                .SendAsync(ctx.Channel);
+        }
     }
 }

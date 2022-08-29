@@ -491,69 +491,6 @@ namespace LiveBot.Commands
             }
         }
 
-        [Command("cookie")]
-        [Priority(10)]
-        [Description("Gives a cookie to someone.")]
-        [RequireGuild]
-        public async Task Cookie(CommandContext ctx, DiscordMember member)
-        {
-            string output = string.Empty;
-            if (ctx.Member == member)
-            {
-                output = $"{ctx.Member.Mention}, you can't give a cookie to yourself";
-            }
-            else
-            {
-                var giver = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
-                var reciever = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
-                DateTime? dailyused = null;
-                if (giver.Cookies_Used != null)
-                {
-                    dailyused = DateTime.ParseExact(giver.Cookies_Used, "ddMMyyyy", CultureInfo.InvariantCulture);
-                }
-                if (dailyused == null || dailyused < DateTime.UtcNow.Date)
-                {
-                    giver.Cookies_Used = DateTime.UtcNow.ToString("ddMMyyyy");
-                    giver.Cookies_Given += 1;
-                    reciever.Cookies_Taken += 1;
-                    output = $"{member.Mention}, {ctx.Member.Username} has given you a :cookie:";
-                    DB.DBLists.UpdateLeaderboard(giver);
-                    DB.DBLists.UpdateLeaderboard(reciever);
-                }
-                else
-                {
-                    DateTime now = DateTime.UtcNow;
-
-                    output = $"Time until you can use cookie command again - {(24 - now.Hour) - 1}:{(60 - now.Minute) - 1}:{(60 - now.Second) - 1}.";
-                }
-            }
-            await new DiscordMessageBuilder()
-                .WithContent(output)
-                .WithReply(ctx.Message.Id, false)
-                .WithAllowedMention(new UserMention())
-                .SendAsync(ctx.Channel);
-        }
-
-        [Command("cookie")]
-        [Priority(9)]
-        [Description("See your cookie stats")]
-        public async Task Cookie(CommandContext ctx)
-        {
-            var user = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
-            bool cookiecheck = false;
-            DateTime? dailyused = null;
-            if (user.Cookies_Used != null)
-            {
-                dailyused = DateTime.ParseExact(user.Cookies_Used, "ddMMyyyy", CultureInfo.InvariantCulture);
-            }
-            if (dailyused == null || dailyused < DateTime.UtcNow.Date)
-            {
-                cookiecheck = true;
-            }
-            await ctx.RespondAsync($"{ctx.Member.Mention} you have given out {user.Cookies_Given}, and received {user.Cookies_Taken} :cookie:\n" +
-                $"Can give cookie? {(cookiecheck ? "Yes" : "No")}.");
-        }
-
         [Command("status")]
         [Description("The Crew 2 Server status.")]
         [Cooldown(1, 120, CooldownBucketType.User)]
@@ -592,17 +529,6 @@ namespace LiveBot.Commands
                     .WithAllowedMention(new UserMention())
                     .SendAsync(ctx.Channel);
             }
-        }
-
-        [Command("roletag")]
-        [Aliases("rt")]
-        [Description("Tags a role ")]
-        public async Task RoleTag(CommandContext ctx, DiscordEmoji Emoji)
-        {
-            await new DiscordMessageBuilder()
-                    .WithContent($"Please use the new slash command, thank you :smiley: `/roletag`")
-                    .WithReply(ctx.Message.Id, true)
-                    .SendAsync(ctx.Channel);
         }
     }
 }
