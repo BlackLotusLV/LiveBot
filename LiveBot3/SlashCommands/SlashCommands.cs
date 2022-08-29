@@ -16,7 +16,7 @@ namespace LiveBot.SlashCommands
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
             string changelog = "[NEW] Leaderboard shows how many cookies you have taken and given.\n" +
-                "";
+                "[NEW] Cookie command moved to slash commands\n";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -229,7 +229,8 @@ namespace LiveBot.SlashCommands
                 rank++;
                 if (item.UserID == ctx.User.Id)
                 {
-                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}";
+                    DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}";
                 }
             }
             stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
@@ -238,7 +239,7 @@ namespace LiveBot.SlashCommands
 
         [SlashRequireGuild]
         [SlashCommand("cookie", "Gives a user a cookie.")]
-        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordMember member)
+        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordUser member)
         {
             await ctx.DeferAsync(true);
             if (ctx.Member == member)
@@ -251,11 +252,11 @@ namespace LiveBot.SlashCommands
 
             if (giver.Cookie_Date.Date == DateTime.UtcNow.Date)
             {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in{24-DateTime.UtcNow.Hour}:{(59-DateTime.UtcNow.Minute)-1}:{(59-DateTime.UtcNow.Second)}.{999- DateTime.UtcNow.Millisecond}"));
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
                 return;
             }
 
-            giver.Cookie_Date = DateTime.UtcNow;
+            giver.Cookie_Date = DateTime.UtcNow.Date;
             giver.Cookies_Given++;
             reciever.Cookies_Taken++;
             DB.DBLists.UpdateLeaderboard(giver);
