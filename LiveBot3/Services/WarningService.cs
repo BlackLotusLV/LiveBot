@@ -37,7 +37,8 @@ namespace LiveBot.Services
 
             if (WarnedUserStats == null)
             {
-                Services.LeaderboardService.AddToServerLeaderboard(user, server);
+                LeaderboardService.AddToServerLeaderboard(user, server);
+                WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => server.Id == f.Server_ID && user.Id == f.User_ID);
             }
 
             DiscordMember member = null;
@@ -57,7 +58,7 @@ namespace LiveBot.Services
             if (ServerSettings.WKB_Log != 0)
             {
                 DiscordChannel modlog = server.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
-                if (WarnedUserStats is null) // creates new entry in DB (Followers set to default value)
+                if (WarnedUserStats is null)
                 {
                     DB.ServerRanks newEntry = new()
                     {
@@ -69,6 +70,7 @@ namespace LiveBot.Services
                     };
                     DB.DBLists.InsertServerRanks(newEntry);
                     WarnedUserStats = newEntry;
+
                 }
                 else
                 {
