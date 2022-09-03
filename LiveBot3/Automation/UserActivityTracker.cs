@@ -32,7 +32,6 @@ namespace LiveBot.Automation
             }
             userActivity.Points += new Random().Next(25, 50);
             DBLists.UpdateUserActivity(userActivity);
-            DBLists.LoadUserActivity();
 
             CoolDowns.Remove(cooldowns);
             CoolDowns.Add(new Cooldowns(e.Author, e.Guild, DateTime.UtcNow));
