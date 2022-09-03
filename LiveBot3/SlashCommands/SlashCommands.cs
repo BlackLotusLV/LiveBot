@@ -3,6 +3,8 @@ using DSharpPlus.SlashCommands.Attributes;
 using DSharpPlus.Interactivity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
+using Npgsql.Replication.PgOutput.Messages;
+using System.Globalization;
 
 namespace LiveBot.SlashCommands
 {
@@ -13,9 +15,7 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[REMOVED] Removed old leveling system.\n" +
-                "[NEW] Added a time based activity tracking. Meaning you have to stay active to be at the top of the server ranks\n" +
-                "[NEW] Various internal code changes and fixes\n" +
+            string changelog = "[NEW] Added a `/rank` command that will show you your rank without needing to show the leaderboard.\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -78,7 +78,7 @@ namespace LiveBot.SlashCommands
                 HasChatted = false
             };
 
-            long EntryID = DB.DBLists.InsertModMailGetID(newEntry);
+            long EntryID = DB.DBLists.InsertModMail(newEntry);
             DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{EntryID} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
@@ -150,8 +150,8 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashRequireGuild]
-        [SlashCommand("Leaderboard", "Current server leaderboard.")]
-        public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page)
+        [SlashCommand("Rank","Shows your server rank without the leaderboard.")]
+        public async Task Rank(InteractionContext ctx)
         {
             await ctx.DeferAsync();
             var ActivityList = DB.DBLists.UserActivity
@@ -159,15 +159,89 @@ namespace LiveBot.SlashCommands
                 .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
                 .OrderByDescending(w => w.Points.Sum())
                 .ToList();
-            StringBuilder stringBuilder = new StringBuilder();
+            var userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            int rank = 0;
+            foreach (var item in ActivityList)
+            {
+                rank++;
+                if (item.UserID==ctx.User.Id)
+                {
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked #{rank} in {ctx.Guild.Name}. Your cookie stats are:{userInfo.Cookies_Taken} Received /  {userInfo.Cookies_Given} Given"));
+                }
+            }
+        }
+
+        [SlashRequireGuild]
+        [SlashCommand("Leaderboard", "Current server leaderboard.")]
+        public async Task Leaderboard(InteractionContext ctx, [Option("Page","A page holds 10 entries.")][Minimum(1)] long page = 1)
+        {
+            await ctx.DeferAsync();
+
+            List<DiscordButtonComponent> buttons = new()
+            {
+                new DiscordButtonComponent(ButtonStyle.Primary, "left", "",false,new DiscordComponentEmoji("◀️")),
+                new DiscordButtonComponent(ButtonStyle.Danger,"end","",false,new DiscordComponentEmoji("⏹")),
+                new DiscordButtonComponent(ButtonStyle.Primary, "right", "",false,new DiscordComponentEmoji("▶️"))
+            };
+
+            DiscordMessage message = await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(await GenerateLeaderboardAsync(ctx,(int)page)).AddComponents(buttons));
+
+            bool end = false;
+            do
+            {
+                var result = await message.WaitForButtonAsync(ctx.User, TimeSpan.FromSeconds(30));
+                if (result.TimedOut)
+                {
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(message.Content));
+                    return;
+                }
+                switch (result.Result.Id)
+                {
+                    case "left":
+                        if (page > 1)
+                        {
+                            page--;
+                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                        }
+                        break;
+
+                    case "right":
+                        page++;
+                        try
+                        {
+                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                        }
+                        catch (Exception)
+                        {
+                            page--;
+                        }
+                        break;
+                    case "end":
+                        end = true;
+                        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(message.Content));
+                        break;
+                }
+                await result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
+            } while (!end);
+        }
+
+        private static async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
+        {
+            var ActivityList = DB.DBLists.UserActivity
+                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
+                .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
+                .OrderByDescending(w => w.Points.Sum())
+                .ToList();
+            StringBuilder stringBuilder = new();
             stringBuilder.AppendLine("```csharp\n📋 Rank | Username");
-            for (int i = ((int)page * 10) - 10; i < (int)page * 10; i++)
+            for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
-                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
+                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id);
+                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}\t\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
                 if (i == ActivityList.Count - 1)
                 {
-                    i = (int)page * 10;
+                    i = page * 10;
                 }
             }
             int rank = 0;
@@ -175,15 +249,47 @@ namespace LiveBot.SlashCommands
             foreach (var item in ActivityList)
             {
                 rank++;
-                if (item.UserID==ctx.User.Id)
+                if (item.UserID == ctx.User.Id)
                 {
-                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}";
+                    DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}";
                 }
             }
             stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(stringBuilder.ToString()));
+            return stringBuilder.ToString();
         }
 
+        [SlashRequireGuild]
+        [SlashCommand("cookie", "Gives a user a cookie.")]
+        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordUser member)
+        {
+            await ctx.DeferAsync(true);
+            if (ctx.Member == member)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
+                return;
+            }
+            var giver = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
+            var reciever = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
+
+            if (giver.Cookie_Date.Date == DateTime.UtcNow.Date)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
+                return;
+            }
+
+            giver.Cookie_Date = DateTime.UtcNow.Date;
+            giver.Cookies_Given++;
+            reciever.Cookies_Taken++;
+            DB.DBLists.UpdateLeaderboard(giver);
+            DB.DBLists.UpdateLeaderboard(reciever);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
+
+            await new DiscordMessageBuilder()
+                .WithContent($"{member.Mention}, {ctx.Member.Username} has given you a :cookie:")
+                .WithAllowedMention(new UserMention())
+                .SendAsync(ctx.Channel);
+        }
     }
 }

@@ -215,6 +215,7 @@ namespace LiveBot
             if (UserStats == null)
             {
                 Services.LeaderboardService.AddToServerLeaderboard(User, Guild);
+                Task.Delay(1000);
                 UserStats = ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
             }
             kcount = UserStats.Kick_Count;

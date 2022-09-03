@@ -30,6 +30,10 @@ namespace LiveBot.DB
         public DateTime Date { get =>_Date; set { _Date = DateTime.SpecifyKind(value, DateTimeKind.Utc); } }
         private DateTime _Date;
 
+        [Required]
+        [Column("server_ranks_id")]
+        public int Server_Ranks_ID { get; set; }
+
         public UserActivity(ulong user_ID, ulong guild_ID, int points, DateTime date)
         {
             User_ID = user_ID;

@@ -130,7 +130,7 @@
                 HasChatted = false
             };
 
-            long EntryID = DB.DBLists.InsertModMailGetID(newEntry);
+            long EntryID = DB.DBLists.InsertModMail(newEntry);
             DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().AddComponents(CloseButton).WithContent($"**----------------------------------------------------**\n" +

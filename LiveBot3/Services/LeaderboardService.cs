@@ -40,23 +40,14 @@ namespace LiveBot.Services
         public static void AddToServerLeaderboard(DiscordUser user, DiscordGuild guild)
         {
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == user.Id && lb.Server_ID == guild.Id);
-            if (local is null)
+            if (local != null) return;
+
+            DB.ServerRanks newEntry = new()
             {
-                if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) == null)
-                {
-                    AddUserToLeaderboard(user);
-                }
-                local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(w => w.User_ID == user.Id && w.Server_ID == guild.Id);
-                if (local is null)
-                {
-                    DB.ServerRanks newEntry = new()
-                    {
-                        User_ID = user.Id,
-                        Server_ID = guild.Id
-                    };
-                    DB.DBLists.InsertServerRanks(newEntry);
-                }
-            }
+                User_ID = user.Id,
+                Server_ID = guild.Id
+            };
+            DB.DBLists.InsertServerRanks(newEntry);
         }
 
         internal class LeaderboardItem
