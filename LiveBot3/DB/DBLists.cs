@@ -561,6 +561,14 @@ namespace LiveBot.DB
 
         public static void InsertUserActivity(UserActivity o)
         {
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID) == null)
+            {
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Guild_ID });
+            }
+            else
+            {
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID).ID_Server_Rank;
+            }
             using var ctx = new UserActivityContext();
             ctx.UserActivity.Add(o);
             ctx.SaveChanges(true);
@@ -568,6 +576,10 @@ namespace LiveBot.DB
         }
         public static void InsertUbiInfo(UbiInfo o)
         {
+            if (Leaderboard.FirstOrDefault(w=>w.ID_User==o.Discord_Id) == null)
+            {
+                InsertLeaderboard(new Leaderboard { ID_User = o.Discord_Id });
+            }
             using var ctx = new UbiInfoContext();
             ctx.UbiInfo.Add(o);
             ctx.SaveChanges(true);
@@ -582,16 +594,34 @@ namespace LiveBot.DB
             LoadLeaderboard();
         }
 
-        public static void InsertServerRanks(ServerRanks o)
+        public static int InsertServerRanks(ServerRanks o)
         {
+            if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
+            {
+                InsertLeaderboard(new Leaderboard { ID_User = o.User_ID });
+            }
+            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            {
+                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+            }
             using var ctx = new ServerRanksContext();
             ctx.ServerRanks.Add(o);
             ctx.SaveChanges();
             LoadServerRanks();
+
+            return o.ID_Server_Rank;
         }
 
         public static void InsertWarnings(Warnings o)
         {
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID) == null)
+            {
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
+            }
+            else
+            {
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
+            }
             using var ctx = new WarningsContext();
             ctx.Warnings.Add(o);
             ctx.SaveChanges();
@@ -608,6 +638,10 @@ namespace LiveBot.DB
 
         public static void InsertRankRoles(RankRoles o)
         {
+            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            {
+                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+            }
             using var ctx = new RankRolesContext();
             ctx.RankRoles.Add(o);
             ctx.SaveChanges();
@@ -616,6 +650,10 @@ namespace LiveBot.DB
 
         public static void InsertBannedWords(AMBannedWords o)
         {
+            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            {
+                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+            }
             using var ctx = new AMBannedWordsContext();
             ctx.AMBannedWords.Add(o);
             ctx.SaveChanges();
@@ -630,16 +668,16 @@ namespace LiveBot.DB
             LoadRankRoles();
         }
 
-        public static void InsertModMail(ModMail o)
+        public static long InsertModMail(ModMail o)
         {
-            using var ctx = new ModMailContext();
-            ctx.ModMail.Add(o);
-            ctx.SaveChanges();
-            LoadModMail();
-        }
-
-        public static long InsertModMailGetID(ModMail o)
-        {
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID) == null)
+            {
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
+            }
+            else
+            {
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
+            }
             using var ctx = new ModMailContext();
             ctx.ModMail.Add(o);
             ctx.SaveChanges();
@@ -649,6 +687,10 @@ namespace LiveBot.DB
 
         public static void InsertRoleTagSettings(RoleTagSettings o)
         {
+            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            {
+                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+            }
             using var ctx = new RoleTagSettingsContext();
             ctx.RoleTagSettings.Add(o);
             ctx.SaveChanges();

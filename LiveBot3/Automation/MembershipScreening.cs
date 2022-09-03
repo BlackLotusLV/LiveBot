@@ -8,10 +8,6 @@
             if (e.PendingBefore.Value && !e.PendingAfter.Value && e.RolesAfter.Count == 0)
             {
                 var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
-                var JoinRole = (from rr in DB.DBLists.RankRoles
-                                where rr.Server_ID == e.Guild.Id
-                                where rr.Server_Rank == 0
-                                select rr).FirstOrDefault();
 
                 if (WelcomeSettings.Channel_ID == 0 || !WelcomeSettings.HasScreening) return;
                 DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));
@@ -21,8 +17,8 @@
                 msg = msg.Replace("$Mention", $"{e.Member.Mention}");
                 await WelcomeChannel.SendMessageAsync(msg);
 
-                if (JoinRole == null) return;
-                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(JoinRole.Role_ID));
+                if (WelcomeSettings.Role_ID == 0) return;
+                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(WelcomeSettings.Role_ID));
                 await e.Member.GrantRoleAsync(role);
             }
         }

@@ -46,5 +46,9 @@ namespace LiveBot.DB
         [Required]
         [Column("type")]
         public string Type { get; set; }
+
+        [Required]
+        [Column("server_ranks_id")]
+        public int Server_Ranks_ID { get; set; }
     }
 }
