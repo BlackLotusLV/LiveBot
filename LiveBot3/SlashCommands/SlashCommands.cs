@@ -167,6 +167,7 @@ namespace LiveBot.SlashCommands
                 if (item.UserID==ctx.User.Id)
                 {
                     await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked #{rank} in {ctx.Guild.Name}. Your cookie stats are:{userInfo.Cookies_Taken} Received /  {userInfo.Cookies_Given} Given"));
+                    break;
                 }
             }
         }
