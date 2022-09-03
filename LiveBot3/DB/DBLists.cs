@@ -612,9 +612,9 @@ namespace LiveBot.DB
 
         public static void InsertWarnings(Warnings o)
         {
-            if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
+            if (ServerRanks.FirstOrDefault(w=>w.User_ID == o.User_ID && w.Server_ID==o.Server_ID) ==null)
             {
-                InsertLeaderboard(new Leaderboard { ID_User = o.User_ID });
+                InsertServerRanks(new DB.ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
             }
             if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
             {
