@@ -32,14 +32,7 @@ namespace LiveBot.Services
 
         public static async Task WarnUserAsync(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool automsg, InteractionContext ctx = null)
         {
-            DB.ServerRanks WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => server.Id == f.Server_ID && user.Id == f.User_ID);
             DB.ServerSettings ServerSettings = DB.DBLists.ServerSettings.FirstOrDefault(f => server.Id == f.ID_Server);
-
-            if (WarnedUserStats == null)
-            {
-                LeaderboardService.AddToServerLeaderboard(user, server);
-                WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => server.Id == f.Server_ID && user.Id == f.User_ID);
-            }
 
             DiscordMember member = null;
             try
@@ -58,25 +51,6 @@ namespace LiveBot.Services
             if (ServerSettings.WKB_Log != 0)
             {
                 DiscordChannel modlog = server.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
-                if (WarnedUserStats is null)
-                {
-                    DB.ServerRanks newEntry = new()
-                    {
-                        Server_ID = server.Id,
-                        Ban_Count = 0,
-                        Kick_Count = 0,
-                        Warning_Level = 1,
-                        User_ID = user.Id
-                    };
-                    DB.DBLists.InsertServerRanks(newEntry);
-                    WarnedUserStats = newEntry;
-
-                }
-                else
-                {
-                    WarnedUserStats.Warning_Level++;
-                    DB.DBLists.UpdateServerRanks(WarnedUserStats);
-                }
 
                 DB.Warnings newWarning = new()
                 {
@@ -91,6 +65,8 @@ namespace LiveBot.Services
                 DB.DBLists.InsertWarnings(newWarning);
 
                 int warning_count = DB.DBLists.Warnings.Count(w => w.User_ID == user.Id && w.Server_ID == server.Id && w.Type == "warning");
+                
+                DB.ServerRanks WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => server.Id == f.Server_ID && user.Id == f.User_ID);
 
                 SB.AppendLine($"You have been warned by <@{admin.Id}>.\n**Warning Reason:**\t{reason}\n**Warning Level:** {WarnedUserStats.Warning_Level}\n**Server:** {server.Name}");
 

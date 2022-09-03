@@ -203,25 +203,22 @@ namespace LiveBot
         {
             DB.DBLists.LoadServerRanks();
             DB.DBLists.LoadWarnings();
-            List<DB.ServerRanks> ServerRanks = DB.DBLists.ServerRanks;
-            List<DB.Warnings> warnings = DB.DBLists.Warnings;
             int kcount = 0,
                 bcount = 0,
                 wlevel = 0,
                 wcount = 0,
                 splitcount = 1;
             StringBuilder Reason = new();
-            var UserStats = ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
+            var UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
             if (UserStats == null)
             {
                 Services.LeaderboardService.AddToServerLeaderboard(User, Guild);
-                Task.Delay(1000);
-                UserStats = ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
+                UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
             }
             kcount = UserStats.Kick_Count;
             bcount = UserStats.Ban_Count;
             wlevel = UserStats.Warning_Level;
-            var WarningsList = warnings.Where(w => w.User_ID == User.Id && w.Server_ID == Guild.Id).OrderBy(w => w.Time_Created).ToList();
+            var WarningsList = DB.DBLists.Warnings.Where(w => w.User_ID == User.Id && w.Server_ID == Guild.Id).OrderBy(w => w.Time_Created).ToList();
             if (!AdminCommand)
             {
                 WarningsList.RemoveAll(w => w.Type == "note");

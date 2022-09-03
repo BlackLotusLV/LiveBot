@@ -614,13 +614,18 @@ namespace LiveBot.DB
 
         public static void InsertWarnings(Warnings o)
         {
-            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID) == null)
+            var userRanks = ServerRanks.FirstOrDefault(w => w.Server_ID == o.Server_ID && w.User_ID==o.User_ID);
+            if (userRanks == null)
             {
-                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
+                int level = 0;
+                if (o.Type == "warning") level = 1;
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID, Warning_Level = level });
             }
             else
             {
-                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
+                o.Server_Ranks_ID = userRanks.ID_Server_Rank;
+                userRanks.Warning_Level++;
+                if (o.Type == "warning") UpdateServerRanks(userRanks);
             }
             using var ctx = new WarningsContext();
             ctx.Warnings.Add(o);
