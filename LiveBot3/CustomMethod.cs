@@ -309,7 +309,7 @@ namespace LiveBot
                     sb.Append(' ');
                 }
             }
-            sb.Append(((float)LoadedTableCount / (float)DB.DBLists.TableCount).ToString(@$"] - [0.00%] [{time.Seconds}\.{time.Milliseconds}]"));
+            sb.Append(((float)LoadedTableCount / (float)DB.DBLists.TableCount).ToString(@$"] - [0.00%] [{time.Seconds}\.{time.Milliseconds:D3}]"));
             Program.Client.Logger.LogInformation(CustomLogEvents.POSTGRESQL, "{DataBase}", DataTableName is null ? "Starting to load Data Base" : $"{DataTableName} List Loaded");
             Program.Client.Logger.LogInformation(CustomLogEvents.POSTGRESQL, "{LoadBar}", sb.ToString());
             if (LoadedTableCount == DB.DBLists.TableCount)
