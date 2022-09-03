@@ -15,7 +15,8 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "Internal fixes and stuff.";
+            string changelog = "[NEW] Added a `/rank` command that will show you your rank without needing to show the leaderboard.\n" +
+                "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
@@ -145,6 +146,28 @@ namespace LiveBot.SlashCommands
                 }
 
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+
+        [SlashRequireGuild]
+        [SlashCommand("Rank","Shows your server rank without the leaderboard.")]
+        public async Task Rank(InteractionContext ctx)
+        {
+            await ctx.DeferAsync();
+            var ActivityList = DB.DBLists.UserActivity
+                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
+                .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
+                .OrderByDescending(w => w.Points.Sum())
+                .ToList();
+            var userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            int rank = 0;
+            foreach (var item in ActivityList)
+            {
+                rank++;
+                if (item.UserID==ctx.User.Id)
+                {
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked #{rank} in {ctx.Guild.Name}. Your cookie stats are:{userInfo.Cookies_Taken} Received /  {userInfo.Cookies_Given} Given"));
+                }
             }
         }
 
