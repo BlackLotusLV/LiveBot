@@ -97,7 +97,7 @@ namespace LiveBot.Automation
                 }
 
                 Description = $"{author.Mention}'s message was deleted in {e.Channel.Mention}";
-                if (converteddeletedmsg.Length <= 1800)
+                if (converteddeletedmsg.Length <= 1024)
                 {
                     DiscordEmbedBuilder embed = new()
                     {
@@ -124,7 +124,7 @@ namespace LiveBot.Automation
                     using var upFile = new FileStream(location, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                     var msgBuilder = new DiscordMessageBuilder
                     {
-                        Content = $"Deleted message and info too long, uploading fail instead."
+                        Content = $"Deleted message and info too long, uploading file instead."
                     };
                     msgBuilder.WithFile(upFile);
 

@@ -15,8 +15,7 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Leaderboard shows how many cookies you have taken and given.\n" +
-                "[NEW] Cookie command moved to slash commands\n";
+            string changelog = "Internal fixes and stuff.";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
             {
