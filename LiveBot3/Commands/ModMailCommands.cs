@@ -17,10 +17,7 @@ namespace LiveBot.Commands
         {
             if (ctx.Guild is null)
             {
-                if (serverName == null)
-                {
-                    serverName = "no server!";
-                }
+                serverName ??= "no server!";
                 var ModMailServers = DBLists.ServerSettings.Where(w => w.ModMailID != 0);
                 Dictionary<DiscordGuild, string> GuildNameDict = new();
                 StringBuilder GuildNameString = new();
@@ -72,7 +69,7 @@ namespace LiveBot.Commands
                             HasChatted = false
                         };
 
-                        long EntryID = DBLists.InsertModMailGetID(newEntry);
+                        long EntryID = DBLists.InsertModMail(newEntry);
                         await ctx.RespondAsync($"**----------------------------------------------------**\n" +
                             $"Modmail entry **open** with `{serverName.ToLower()}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {Automation.ModMail.TimeoutMinutes} minutes after last message is sent.*");
                         DiscordChannel MMChannel = Guild.GetChannel(ModMailServers.FirstOrDefault(w => w.ID_Server == Guild.Id).ModMailID);

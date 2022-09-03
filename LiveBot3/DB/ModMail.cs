@@ -39,5 +39,9 @@ namespace LiveBot.DB
         [Required]
         [Column("color_hex")]
         public string ColorHex { get; set; }
+
+        [Required]
+        [Column("server_ranks_id")]
+        public int Server_Ranks_ID { get; set; }
     }
 }

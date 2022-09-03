@@ -78,7 +78,7 @@ namespace LiveBot.SlashCommands
                 HasChatted = false
             };
 
-            long EntryID = DB.DBLists.InsertModMailGetID(newEntry);
+            long EntryID = DB.DBLists.InsertModMail(newEntry);
             DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{EntryID} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));

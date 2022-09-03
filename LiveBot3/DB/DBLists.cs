@@ -561,13 +561,13 @@ namespace LiveBot.DB
 
         public static void InsertUserActivity(UserActivity o)
         {
-            if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID) == null)
             {
-                InsertLeaderboard(new Leaderboard { ID_User = o.User_ID });
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Guild_ID });
             }
-            if (ServerSettings.FirstOrDefault(w=>w.ID_Server == o.Guild_ID)== null)
+            else
             {
-                InsertServerSettings(new ServerSettings { ID_Server = o.Guild_ID});
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID).ID_Server_Rank;
             }
             using var ctx = new UserActivityContext();
             ctx.UserActivity.Add(o);
@@ -594,7 +594,7 @@ namespace LiveBot.DB
             LoadLeaderboard();
         }
 
-        public static void InsertServerRanks(ServerRanks o)
+        public static int InsertServerRanks(ServerRanks o)
         {
             if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
             {
@@ -608,17 +608,19 @@ namespace LiveBot.DB
             ctx.ServerRanks.Add(o);
             ctx.SaveChanges();
             LoadServerRanks();
+
+            return o.ID_Server_Rank;
         }
 
         public static void InsertWarnings(Warnings o)
         {
-            if (ServerRanks.FirstOrDefault(w=>w.User_ID == o.User_ID && w.Server_ID==o.Server_ID) ==null)
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID) == null)
             {
-                InsertServerRanks(new DB.ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
             }
-            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            else
             {
-                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
             }
             using var ctx = new WarningsContext();
             ctx.Warnings.Add(o);
@@ -666,31 +668,15 @@ namespace LiveBot.DB
             LoadRankRoles();
         }
 
-        public static void InsertModMail(ModMail o)
+        public static long InsertModMail(ModMail o)
         {
-            if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
+            if (ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID) == null)
             {
-                InsertLeaderboard(new Leaderboard { ID_User = o.User_ID });
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID });
             }
-            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
+            else
             {
-                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
-            }
-            using var ctx = new ModMailContext();
-            ctx.ModMail.Add(o);
-            ctx.SaveChanges();
-            LoadModMail();
-        }
-
-        public static long InsertModMailGetID(ModMail o)
-        {
-            if (Leaderboard.FirstOrDefault(w => w.ID_User == o.User_ID) == null)
-            {
-                InsertLeaderboard(new Leaderboard { ID_User = o.User_ID });
-            }
-            if (ServerSettings.FirstOrDefault(w => w.ID_Server == o.Server_ID) == null)
-            {
-                InsertServerSettings(new ServerSettings { ID_Server = o.Server_ID });
+                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
             }
             using var ctx = new ModMailContext();
             ctx.ModMail.Add(o);
