@@ -14,7 +14,7 @@ namespace LiveBot.Automation
 
         public static async Task Add_Points(object Client, MessageCreateEventArgs e)
         {
-            if (e.Guild == null || e.Author.IsBot ||e.Guild.Id != 282478449539678210) return;
+            if (e.Guild == null || e.Author.IsBot) return;
 
             Cooldowns cooldowns = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (cooldowns != null && cooldowns.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
