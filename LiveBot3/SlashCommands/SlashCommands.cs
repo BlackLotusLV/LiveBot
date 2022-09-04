@@ -15,8 +15,8 @@ namespace LiveBot.SlashCommands
         {
             DateTime current = DateTime.UtcNow;
             TimeSpan time = current - Program.start;
-            string changelog = "[NEW] Added a `/rank` command that will show you your rank without needing to show the leaderboard.\n" +
-                "[FIX] If user not in database, infraction checking would fail\n" +
+            string changelog = "[NEW] Leaderboard based roles added to the new system\n" +
+                "[NEW] Rank command now shows the points and bolds the text for readability\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder
@@ -167,7 +167,7 @@ namespace LiveBot.SlashCommands
                 rank++;
                 if (item.UserID==ctx.User.Id)
                 {
-                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked #{rank} in {ctx.Guild.Name}. Your cookie stats are:{userInfo.Cookies_Taken} Received /  {userInfo.Cookies_Given} Given"));
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked **#{rank}** in {ctx.Guild.Name} server with **{item.Points.Sum()}** points. Your cookie stats are: {userInfo.Cookies_Taken} Received /  {userInfo.Cookies_Given} Given"));
                     break;
                 }
             }
