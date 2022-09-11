@@ -403,9 +403,25 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
-        [SlashCommand("Rewards", "Summit rewards for selected date")]
-        public async Task Rewards(InteractionContext ctx, [Option("Week", "Which week do you want to see the rewards for? Defaults to current")] Week Week = Week.ThisWeek)
+        private sealed class RewardsOptions : IAutocompleteProvider
         {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                for (int i = 0; i < 4; i++)
+                {
+                    if (Program.JSummit[i].Text_ID != "55475")
+                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIDLookup(Program.JSummit[i].Text_ID), i));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+        [SlashCommand("Rewards", "Summit rewards for selected date")]
+        public async Task Rewards(
+            InteractionContext ctx,
+            [Autocomplete(typeof(RewardsOptions))][Maximum(3)][Minimum(0)][Option("Summit", "Which summit to see the rewards for.")] long weeknumber = 0)
+        {
+            Week Week = (Week)weeknumber;
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
 
@@ -509,10 +525,7 @@ namespace LiveBot.SlashCommands
                             RewardTitle = "LiveBot needs to be updated to view this reward!";
                             break;
                     }
-                    if (RewardTitle is null)
-                    {
-                        RewardTitle = "LiveBot needs to be updated to view this reward!";
-                    }
+                    RewardTitle ??= "LiveBot needs to be updated to view this reward!";
 
                     RewardTitle = Regex.Replace(RewardTitle, "((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}", "").ToUpper();
 

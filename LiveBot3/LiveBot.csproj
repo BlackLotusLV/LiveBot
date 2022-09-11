@@ -196,7 +196,7 @@
     <None Update="Assets\Disciplines\ic_Cat_Powerboat.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Disciplines\ic_Cat_Rallycross.png">
+    <None Update="Assets\Disciplines\ic_Cat_Rally.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Disciplines\ic_Cat_Rallyraid.png">
