@@ -7,6 +7,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Net;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace LiveBot
 {
@@ -14,6 +15,8 @@ namespace LiveBot
     {
         private static DateTime TCHubLastUpdated;
         public static byte[,][] RewardsImageBitArr { get; set; } = new byte[4, 4][];
+
+        public static Dictionary<string, Dictionary<string, string>> TCHubLocales { get; private set; } = new();
 
         public static async Task UpdateHubInfo(bool forced = false)
         {
@@ -45,7 +48,11 @@ namespace LiveBot
                 if (endtime != TCHubLastUpdated || forced)
                 {
                     TCHubLastUpdated = endtime;
-                    Program.TCHubDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(await wc.GetStringAsync(Program.TCHubJson.Dictionary));
+
+                    foreach (var item in Program.TCHubJson.Locales)
+                    {
+                        TCHubLocales.Add(item.Key, JsonConvert.DeserializeObject<Dictionary<string, string>>(await wc.GetStringAsync(item.Value)));
+                    }
                     Program.JSummit = JSummit;
                     Program.TCHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(await wc.GetStringAsync(Program.TCHubJson.GameData));
                     await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, Token) =>
@@ -87,15 +94,25 @@ namespace LiveBot
             }
         }
 
-        public static string NameIDLookup(string ID)
+        public static string NameIDLookup(string ID, string locale = "en-GB")
         {
-            string HubText = Program.TCHubDictionary.FirstOrDefault(w => w.Key.Equals(ID)).Value ?? "[Item Name Missing]";
+            if (locale == null || !TCHubLocales.TryGetValue(locale, out Dictionary<string, string> dictionary))
+            {
+                dictionary = TCHubLocales.FirstOrDefault(w => w.Key == "en-GB").Value;
+            }
+
+            string HubText = dictionary.FirstOrDefault(w => w.Key.Equals(ID)).Value ?? "[Item Name Missing]";
             HubText = HubText.Replace("&#8209;", "-");
+            HubText = Regex.Replace(HubText, "<(\\w|[=\" #'/]){0,}>", "");
             return HubText;
         }
 
         public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
+            string locale = "en-GB";
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == UserInfo.Discord_Id);
+            if (userInfo != null)
+                locale = userInfo.Locale;
             Image<Rgba32> EventImage = Image.Load<Rgba32>(EventImageBytes);
             TCHubJson.Activities Activity = null;
             if (Rank != null)
@@ -130,7 +147,8 @@ namespace LiveBot
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Top,
-                    Origin = new PointF(NotComplete.Width / 2, NotComplete.Height / 2)
+                    Origin = new PointF(NotComplete.Width / 2, NotComplete.Height / 2),
+                    FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
                 NotComplete.Mutate(ctx => ctx
                     .Fill(Color.Black)
@@ -155,7 +173,7 @@ namespace LiveBot
             }
             TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
             string
-                EventTitle = (NameIDLookup(ThisEventNameID)),
+                EventTitle = (NameIDLookup(ThisEventNameID, locale)),
                 ActivityResult = $"Score: {Activity.Score}",
                 VehicleInfo = string.Empty;
             TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_Id);
@@ -175,7 +193,7 @@ namespace LiveBot
                 {
                     Brand = null;
                 }
-                VehicleInfo = $"{NameIDLookup(Brand != null ? Brand.Text_ID : "not found")} - {NameIDLookup(Model != null ? Model.Text_ID : "not found")}";
+                VehicleInfo = $"{NameIDLookup(Brand != null ? Brand.Text_ID : "not found", locale)} - {NameIDLookup(Model != null ? Model.Text_ID : "not found", locale)}";
             }
             if (leaderboard.Score_Format == "time")
             {
@@ -195,7 +213,8 @@ namespace LiveBot
                 VerticalAlignment = VerticalAlignment.Top,
                 WrappingLength = EventImage.Width - 10,
                 LineSpacing = 0.7f,
-                Origin = new PointF(5, 0)
+                Origin = new PointF(5, 0),
+                FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
             TextOptions VehicleTextOptions = new(VehicleFont)
             {
@@ -203,17 +222,20 @@ namespace LiveBot
                 VerticalAlignment = VerticalAlignment.Top,
                 WrappingLength = EventImage.Width - 10,
                 LineSpacing = 0.7f,
-                Origin = new PointF(5, EventImage.Height - 62)
+                Origin = new PointF(5, EventImage.Height - 62),
+                FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
             TextOptions BaseTopLelft = new(Basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top
+                VerticalAlignment = VerticalAlignment.Top,
+                FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
             TextOptions BaseTopRight = new(Basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top
+                VerticalAlignment = VerticalAlignment.Top,
+                FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
 
             using Image<Rgba32> TitleBar = new(EventImage.Width, 40);

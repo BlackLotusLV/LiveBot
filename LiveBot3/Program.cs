@@ -22,7 +22,6 @@ namespace LiveBot
         // TC Hub
 
         public static ConfigJson.TheCrewHubApi TCHubJson { get; set; }
-        public static Dictionary<string, string> TCHubDictionary { get; set; }
         public static TCHubJson.TCHub TCHub { get; set; }
         public static List<TCHubJson.Summit> JSummit { get; set; }
         public static ConfigJson.Bot CFGJson { get; set; }
@@ -54,11 +53,9 @@ namespace LiveBot
         public async Task RunBotAsync(string[] args)
         {
             // Load Fonts
-            Fonts.Add("Assets/Fonts/Hurme_Geometric_Sans_3_W03_Blk.ttf");
-            Fonts.Add("Assets/Fonts/RobotoMono-BoldItalic.ttf");
-            Fonts.Add("Assets/Fonts/RobotoMono-Bold.ttf");
-            Fonts.Add("Assets/Fonts/RobotoMono-Italic.ttf");
-            Fonts.Add("Assets/Fonts/RobotoMono-Regular.ttf");
+            Fonts.Add("Assets/Fonts/HurmeGeometricSans4-Black.ttf");
+            Fonts.Add("Assets/Fonts/Noto Sans Mono CJK JP Bold.otf");
+            Fonts.Add("Assets/Fonts/NotoSansArabic-Bold.ttf");
             // Load Config
             var json = string.Empty;
             using (var sr = new StreamReader(File.OpenRead("Config.json"), new UTF8Encoding(false)))

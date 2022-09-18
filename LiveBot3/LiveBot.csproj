@@ -15,10 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.3.0-nightly-01169" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.3.0-nightly-01169" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="4.3.0-nightly-01169" />
-    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.3.0-nightly-01169" />
+    <PackageReference Include="DSharpPlus" Version="4.3.0-nightly-01171" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.3.0-nightly-01171" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.3.0-nightly-01171" />
+    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.3.0-nightly-01171" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.0-preview.7.22376.2" />
     <PackageReference Include="Npgsql" Version="7.0.0-preview.7" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.0-preview.7" />
@@ -172,7 +172,7 @@
     <None Update="Assets\Disciplines\ic_Cat_Demoderby.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Disciplines\ic_Cat_Dragrace.png">
+    <None Update="Assets\Disciplines\ic_Cat_Dragster.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Disciplines\ic_Cat_Drift.png">
@@ -206,6 +206,21 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Disciplines\ic_Cat_Touringcar.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Fonts\HurmeGeometricSans4-Black.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Fonts\HurmeGeometricSans4-Regular.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Fonts\Noto Sans Mono CJK JP Bold.otf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Fonts\NotoSansArabic-Bold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Fonts\NotoSansMonoCJKJPRegular.otf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Fonts\RobotoMono-Bold.ttf">

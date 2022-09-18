@@ -23,5 +23,7 @@ namespace LiveBot.DB
 
         [Column("cookie_date")]
         public DateTime Cookie_Date { get; set; }
+        [Column("locale")]
+        public string Locale { get; set; }
     }
 }

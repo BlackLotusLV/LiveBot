@@ -60,18 +60,6 @@ namespace LiveBot
             return $"{seconds.Hours}:{seconds.Minutes}:{seconds.Seconds}.{sTime[1]}";
         }
 
-        public static string GetMissionList(List<Json.TCHubJson.Mission> MissionList, int page)
-        {
-            StringBuilder Missions = new();
-            Missions.AppendLine("```csharp");
-            for (int i = (page * 10) - 10; i < page * 10; i++)
-            {
-                Missions.AppendLine($"{i}\t{MissionList[i].ID}\t{HubMethods.NameIDLookup(MissionList[i].Text_ID)}");
-            }
-            Missions.Append("```");
-            return Missions.ToString();
-        }
-
         /// <summary>
         /// Sends a message in the moderator log channel
         /// </summary>

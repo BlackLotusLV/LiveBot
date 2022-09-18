@@ -106,6 +106,8 @@ namespace LiveBot.Json
 
             [JsonProperty("debug_title")]
             public string Debug_Title { get; private set; }
+            [JsonProperty("subtitle_text_id")]
+            public string Subtitle_Text_ID { get; set; }
 
             [JsonProperty("debug_subtitle")]
             public string Debug_Subtitle { get; private set; }

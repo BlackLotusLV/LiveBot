@@ -2,7 +2,7 @@
 
 namespace LiveBot
 {
-    internal class ConfigJson
+    sealed internal class ConfigJson
     {
         public struct Config
         {
@@ -65,9 +65,8 @@ namespace LiveBot
 
             [JsonProperty("gamedata")]
             public string GameData { get; private set; }
-
             [JsonProperty("dictionary")]
-            public string Dictionary { get; private set; }
+            public Dictionary<string,string> Locales { get; set; }
 
             [JsonProperty("news")]
             public string News { get; private set; }
