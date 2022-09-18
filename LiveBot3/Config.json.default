@@ -17,7 +17,22 @@
   "TCHub": {
     "summit": "TCHub API link for Summit info",
     "gamedata": "TCHub API link for game data",
-    "dictionary": "TCHub API link for text ID dictionary",
+    "dictionary": {
+      "en-GB": "HUB stuff",
+      "ja": "HUB stuff",
+      "ko": "HUB stuff",
+      "es-ES": "HUB stuff",
+      "ru": "HUB stuff",
+      "pt-BR": "HUB stuff",
+      "fr": "HUB stuff",
+      "de": "HUB stuff",
+      "it": "HUB stuff",
+      "nl": "HUB stuff",
+      "pl": "HUB stuff",
+      "ar": "HUB stuff",
+      "zh-CN": "HUB stuff",
+      "zh-TW": "HUB stuff"
+    },
     "news": "TCHub API link for News posts"
   }
 }
