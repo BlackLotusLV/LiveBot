@@ -89,7 +89,7 @@ namespace LiveBot.Services
                 }
                 else
                 {
-                    SB.Append($"*(This is an automated message, use the `{Program.CFGJson.CommandPrefix}modmail` feature if you want to report a mistake.)*");
+                    SB.Append($"*(This is an automated message. If you want to open a chat with a moderator, head over to the server and use `/send-modmail` command.)*");
                 }
 
                 try
