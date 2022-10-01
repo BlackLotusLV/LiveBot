@@ -230,12 +230,14 @@ namespace LiveBot.SlashCommands
                 var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 12.5f))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top
+                    VerticalAlignment = VerticalAlignment.Top,
+                    FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
                 var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top
+                    VerticalAlignment = VerticalAlignment.Top,
+                    FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
 
                 Image<Rgba32> BaseImage = new(1127, 765);
@@ -403,9 +405,33 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(msgBuilder);
         }
 
-        [SlashCommand("Rewards", "Summit rewards for selected date")]
-        public async Task Rewards(InteractionContext ctx, [Option("Week", "Which week do you want to see the rewards for? Defaults to current")] Week Week = Week.ThisWeek)
+        private sealed class RewardsOptions : IAutocompleteProvider
         {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                string locale = "en-GB";
+                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                if (userInfo != null)
+                    locale = userInfo.Locale;
+                List<DiscordAutoCompleteChoice> result = new();
+                for (int i = 0; i < 4; i++)
+                {
+                    if (Program.JSummit[i].Text_ID != "55475")
+                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIDLookup(Program.JSummit[i].Text_ID, locale), i));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+        [SlashCommand("Rewards", "Summit rewards for selected date")]
+        public async Task Rewards(
+            InteractionContext ctx,
+            [Autocomplete(typeof(RewardsOptions))][Maximum(3)][Minimum(0)][Option("Summit", "Which summit to see the rewards for.")] long weeknumber = 0)
+        {
+            string locale = "en-GB";
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            if (userInfo != null)
+                locale = userInfo.Locale;
+            Week Week = (Week)weeknumber;
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
 
@@ -466,20 +492,19 @@ namespace LiveBot.SlashCommands
                             {
                                 DisciplineForPart = Image.Load<Rgba32>($"Assets/Affix/unknown.png");
                             }
-                            string boosted = string.Empty;
-                            if (Rewards[i].Debug_Subtitle == "BOOSTED")
+                            StringBuilder sb = new();
+                            if (Rewards[i].Subtitle_Text_ID!="")
                             {
-                                boosted = "BOOSTED ";
+                                sb.Append($"{HubMethods.NameIDLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
                             }
-                            RewardTitle = $"{boosted}{HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("quality_text_id")).Value)} " +
-                            $"{affixBonusName} " +
-                            $"{Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("type")).Value}";
+                            sb.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                            RewardTitle =sb.ToString();
 
                             isParts = true;
                             break;
 
                         case "vanity":
-                            RewardTitle = HubMethods.NameIDLookup(Rewards[i].Title_Text_ID);
+                            RewardTitle = HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale);
                             if (RewardTitle is null)
                             {
                                 if (Rewards[i].Img_Path.Contains("emote"))
@@ -498,21 +523,28 @@ namespace LiveBot.SlashCommands
                             break;
 
                         case "currency":
-                            RewardTitle = $"{Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_type")).Value} - {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}";
+                            StringBuilder currencySB = new();
+                            if (Rewards[i].Extra.FirstOrDefault(w=>w.Key.Equals("currency_type")).Value.Equals("parts"))
+                            {
+                                currencySB.Append(HubMethods.NameIDLookup("55508", locale));
+                            }
+                            else
+                            {
+                                currencySB.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                            }
+                            currencySB.Append($"- {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}");
+                            RewardTitle = currencySB.ToString();
                             break;
 
                         case "vehicle":
-                            RewardTitle = $"{HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value)} - {HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value)}";
+                            RewardTitle = $"{HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
                             break;
 
                         default:
                             RewardTitle = "LiveBot needs to be updated to view this reward!";
                             break;
                     }
-                    if (RewardTitle is null)
-                    {
-                        RewardTitle = "LiveBot needs to be updated to view this reward!";
-                    }
+                    RewardTitle ??= "LiveBot needs to be updated to view this reward!";
 
                     RewardTitle = Regex.Replace(RewardTitle, "((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}", "").ToUpper();
 
@@ -521,10 +553,11 @@ namespace LiveBot.SlashCommands
                     TopBar.Mutate(ctx => ctx.
                     Fill(RewardColours[i])
                     );
-                    TextOptions TextOptions = new(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 25))
+                    TextOptions TextOptions = new(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 25))
                     {
                         WrappingLength = RewardWidth,
-                        Origin = new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15)
+                        Origin = new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15),
+                        FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                     };
                     RewardsImage.Mutate(ctx => ctx
                     .DrawImage(RewardImage, new Point((4 - Rewards[i].Level) * RewardWidth, 0), 1)
@@ -619,6 +652,53 @@ namespace LiveBot.SlashCommands
                 foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
                 {
                     result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.Profile_Id}", (long)item.Id));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
+        }
+
+        [SlashCommand("set-locale","Sets what dictionary to use from the hub")]
+        public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))][Option("Locale","Localisation")] string locale)
+        {
+            await ctx.DeferAsync(true);
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            if (userInfo==null)
+            {
+                DB.DBLists.InsertLeaderboard(new DB.Leaderboard { ID_User = ctx.User.Id, Locale = locale });
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
+                return;
+            }
+
+            userInfo.Locale = locale;
+            DB.DBLists.UpdateLeaderboard(userInfo);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
+        }
+        private sealed class LocaleOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in HubMethods.TCHubLocales.Keys)
+                {
+                    string locale = item switch
+                    {
+                        "en-GB" => "English",
+                        "ja" => "日本語",
+                        "ko" => "한국어",
+                        "es-ES" => "Español",
+                        "ru" => "Русский",
+                        "pt-BR" => "Português",
+                        "fr" => "Français",
+                        "de" => "Deutsch",
+                        "it" => "Italiano",
+                        "nl" => "Nederlands",
+                        "pl" => "Polski",
+                        "ar" => "العربية",
+                        "zh-CN" => "简体中文",
+                        "zh-TW" => "繁體中文",
+                        _ => item
+                    };
+                    result.Add(new DiscordAutoCompleteChoice(locale, item));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }

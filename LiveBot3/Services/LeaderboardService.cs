@@ -26,13 +26,14 @@ namespace LiveBot.Services
             _leaderboard.Enqueue(new LeaderboardItem(user, guild));
         }
 
-        public static void AddUserToLeaderboard(DiscordUser user)
+        public static void AddUserToLeaderboard(DiscordUser user, string locale)
         {
             if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) != null) return;
 
             DB.Leaderboard newEntry = new()
             {
-                ID_User = user.Id
+                ID_User = user.Id,
+                Locale= locale
             };
             DB.DBLists.InsertLeaderboard(newEntry);
         }

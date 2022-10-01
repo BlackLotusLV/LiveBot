@@ -1,4 +1,5 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using DSharpPlus.Entities;
+using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 
 namespace LiveBot.SlashCommands
@@ -20,6 +21,7 @@ namespace LiveBot.SlashCommands
         [SlashCommand("unwarn", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
+            [Autocomplete(typeof(UnwarnOptions))]
             [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long WarningID = -1)
         {
             await ctx.DeferAsync(true);
@@ -56,10 +58,7 @@ namespace LiveBot.SlashCommands
 
             WarnedUserStats.Warning_Level -= 1;
             DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
-            if (entry is null)
-            {
-                entry = Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
-            }
+            entry ??= Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
             entry.Active = false;
             DB.DBLists.UpdateWarnings(entry);
             DB.DBLists.UpdateServerRanks(WarnedUserStats);
@@ -76,6 +75,19 @@ namespace LiveBot.SlashCommands
             }
 
             await CustomMethod.SendModLogAsync(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
+        }
+        private sealed class UnwarnOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
+                {
+
+                    result.Add(new DiscordAutoCompleteChoice($"#{item.ID_Warning} - {item.Reason}",(long)item.ID_Warning));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
 
         [SlashCommand("Prune", "Prune the message in the channel")]
@@ -122,6 +134,13 @@ namespace LiveBot.SlashCommands
             await ctx.DeferAsync();
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
+        }
+
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions")]
+        public async Task InfractionsContextMenu(ContextMenuContext ctx)
+        {
+            await ctx.DeferAsync(true);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, ctx.TargetMember, true)));
         }
 
         [SlashCommand("FAQ", "Creates a new FAQ message")]
@@ -183,28 +202,40 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
+            DiscordEmbed embed = BuildMemberInfoEmbedAsync(member);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+        }
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Info")]
+        public async Task InfoContextMenu(ContextMenuContext ctx)
+        {
+            await ctx.DeferAsync(true);
+            DiscordEmbed embed = BuildMemberInfoEmbedAsync(ctx.TargetMember);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+        }
+        private DiscordEmbed BuildMemberInfoEmbedAsync(DiscordMember member)
+        {
             DiscordEmbedBuilder embedBuilder = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
-                    Name = user.Username,
-                    IconUrl = user.AvatarUrl
+                    Name = member.Username,
+                    IconUrl = member.AvatarUrl
                 },
-                Title = $"{user.Username} Info",
-                ImageUrl = user.AvatarUrl
+                Title = $"{member.Username} Info",
+                ImageUrl = member.AvatarUrl
             };
             embedBuilder
                 .AddField("Nickname", (member.Nickname ?? "None"), true)
-                .AddField("ID", user.Id.ToString(), true)
-                .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
+                .AddField("ID", member.Id.ToString(), true)
+                .AddField("Account Created On", $"<t:{member.CreationTimestamp.ToUnixTimeSeconds()}:F>")
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
             if (member.IsPending != null)
             {
                 bool ispending = member.IsPending ?? false;
                 embedBuilder.AddField("Accepted rules?", ispending ? "No" : "Yes");
             }
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
+            return embedBuilder.Build();
         }
 
         [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]

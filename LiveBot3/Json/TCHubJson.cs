@@ -34,7 +34,7 @@ namespace LiveBot.Json
             public ulong Summit_ID { get; private set; }
 
             [JsonProperty("text_id")]
-            public int Text_ID { get; private set; }
+            public string Text_ID { get; private set; }
 
             [JsonProperty("color1")]
             public string Color1 { get; private set; }
@@ -55,7 +55,7 @@ namespace LiveBot.Json
             public string Cover_Small { get; private set; }
 
             [JsonProperty("id")]
-            public ulong ID { get; private set; }
+            public long ID { get; private set; }
 
             [JsonProperty("events")]
             public Event[] Events { get; private set; }
@@ -106,6 +106,8 @@ namespace LiveBot.Json
 
             [JsonProperty("debug_title")]
             public string Debug_Title { get; private set; }
+            [JsonProperty("subtitle_text_id")]
+            public string Subtitle_Text_ID { get; set; }
 
             [JsonProperty("debug_subtitle")]
             public string Debug_Subtitle { get; private set; }
