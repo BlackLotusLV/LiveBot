@@ -136,7 +136,7 @@ namespace LiveBot.SlashCommands
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
         }
 
-        [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions")]
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions", false)]
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
@@ -206,7 +206,7 @@ namespace LiveBot.SlashCommands
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
-        [ContextMenu(ApplicationCommandType.UserContextMenu,"Info")]
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Info",false)]
         public async Task InfoContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
