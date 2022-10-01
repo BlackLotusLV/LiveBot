@@ -18,6 +18,9 @@ namespace LiveBot.SlashCommands
             string changelog = "[NEW] hub rewards command now offers summits by name not by week.\n" +
                 "[NEW] You can set your locale to see rewards of summits by your language with `/hub set-locale` command. This only supports ubi provided languages.\n" +
                 "[FIX] Adjusted certain summit rewards outputs, nothing major\n" +
+                "[NEW] Added Auto complete options for unwarn command\n" +
+                "[NEW] Added context menu for info command\n" +
+                "[NEW] Added context menu for infractions command\n" +
                 "";
             DiscordUser user = ctx.Client.CurrentUser;
             var embed = new DiscordEmbedBuilder

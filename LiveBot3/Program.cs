@@ -10,14 +10,14 @@ using SixLabors.Fonts;
 
 namespace LiveBot
 {
-    internal class Program
+    internal sealed class Program
     {
         public static DiscordClient Client { get; private set; }
         public InteractivityExtension Interactivity { get; private set; }
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20220903_B";
+        public static readonly string BotVersion = $"20221001_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
