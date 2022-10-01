@@ -1,4 +1,5 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using DSharpPlus.Entities;
+using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 
 namespace LiveBot.SlashCommands
@@ -56,10 +57,7 @@ namespace LiveBot.SlashCommands
 
             WarnedUserStats.Warning_Level -= 1;
             DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
-            if (entry is null)
-            {
-                entry = Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
-            }
+            entry ??= Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
             entry.Active = false;
             DB.DBLists.UpdateWarnings(entry);
             DB.DBLists.UpdateServerRanks(WarnedUserStats);
@@ -190,28 +188,40 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
+            DiscordEmbed embed = BuildMemberInfoEmbedAsync(member);
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+        }
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Info")]
+        public async Task InfoContextMenu(ContextMenuContext ctx)
+        {
+            await ctx.DeferAsync(true);
+            DiscordEmbed embed = BuildMemberInfoEmbedAsync(ctx.TargetMember);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+        }
+        private DiscordEmbed BuildMemberInfoEmbedAsync(DiscordMember member)
+        {
             DiscordEmbedBuilder embedBuilder = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
-                    Name = user.Username,
-                    IconUrl = user.AvatarUrl
+                    Name = member.Username,
+                    IconUrl = member.AvatarUrl
                 },
-                Title = $"{user.Username} Info",
-                ImageUrl = user.AvatarUrl
+                Title = $"{member.Username} Info",
+                ImageUrl = member.AvatarUrl
             };
             embedBuilder
                 .AddField("Nickname", (member.Nickname ?? "None"), true)
-                .AddField("ID", user.Id.ToString(), true)
-                .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
+                .AddField("ID", member.Id.ToString(), true)
+                .AddField("Account Created On", $"<t:{member.CreationTimestamp.ToUnixTimeSeconds()}:F>")
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
             if (member.IsPending != null)
             {
                 bool ispending = member.IsPending ?? false;
                 embedBuilder.AddField("Accepted rules?", ispending ? "No" : "Yes");
             }
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
+            return embedBuilder.Build();
         }
 
         [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]
