@@ -21,6 +21,7 @@ namespace LiveBot.SlashCommands
         [SlashCommand("unwarn", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
+            [Autocomplete(typeof(UnwarnOptions))]
             [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long WarningID = -1)
         {
             await ctx.DeferAsync(true);
@@ -74,6 +75,19 @@ namespace LiveBot.SlashCommands
             }
 
             await CustomMethod.SendModLogAsync(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
+        }
+        private sealed class UnwarnOptions : IAutocompleteProvider
+        {
+            public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                List<DiscordAutoCompleteChoice> result = new();
+                foreach (var item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
+                {
+
+                    result.Add(new DiscordAutoCompleteChoice($"#{item.ID_Warning} - {item.Reason}",(long)item.ID_Warning));
+                }
+                return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            }
         }
 
         [SlashCommand("Prune", "Prune the message in the channel")]
