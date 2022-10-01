@@ -32,9 +32,11 @@ namespace LiveBot.Services
             DiscordMember StreamMember = await guild.GetMemberAsync(e.User.Id);
             bool role = false, game = false;
             if (e.User?.Presence?.Activities == null) return;
-            string gameTitle = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").RichPresence.State;
-            string streamTitle = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").RichPresence.Details;
-            string streamURL = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").StreamUrl;
+            DiscordActivity activity = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
+            if (activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
+            string gameTitle = activity.RichPresence.State;
+            string streamTitle = activity.RichPresence.Details;
+            string streamURL = activity.StreamUrl;
             if (StreamNotification.Roles_ID != null)
             {
                 foreach (DiscordRole urole in StreamMember.Roles)
