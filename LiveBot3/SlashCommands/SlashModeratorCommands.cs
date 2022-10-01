@@ -124,6 +124,13 @@ namespace LiveBot.SlashCommands
                 new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
         }
 
+        [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions")]
+        public async Task InfractionsContextMenu(ContextMenuContext ctx)
+        {
+            await ctx.DeferAsync(true);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, ctx.TargetMember, true)));
+        }
+
         [SlashCommand("FAQ", "Creates a new FAQ message")]
         public async Task FAQ(InteractionContext ctx)
         {
