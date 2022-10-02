@@ -100,7 +100,7 @@ namespace LiveBot.SlashCommands
                     {
                         TierImg.Mutate(ctx => ctx
                             .DrawText(
-                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 17))
+                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 17))
                                 {
                                     Origin = new PointF(295, 340 + (j * 70)),
                                     HorizontalAlignment = HorizontalAlignment.Right,
@@ -117,7 +117,7 @@ namespace LiveBot.SlashCommands
                     );
                     FooterImg.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
+                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
                     );
                     BaseImg.Mutate(ctx => ctx
                         .DrawImage(SummitImg, SummitLocation, 1)
@@ -129,7 +129,7 @@ namespace LiveBot.SlashCommands
                     {
                         BaseImg.Mutate(ctx => ctx
                         .DrawText(
-                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 30))
+                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 30))
                             {
                                 Origin = new PointF(80 + (300 * i), 575 - (j * 70))
                             },
@@ -227,13 +227,13 @@ namespace LiveBot.SlashCommands
             if (Events.Points != 0)
             {
                 int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 12.5f))
+                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 12.5f))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
                     FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
-                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15))
+                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
