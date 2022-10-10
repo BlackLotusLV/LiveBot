@@ -465,7 +465,7 @@ namespace LiveBot.Automation
             }
             else if (e.CommunicationDisabledUntilAfter == null && e.CommunicationDisabledUntilBefore != null)
             {
-                await CustomMethod.SendModLogAsync(UserTimedOutLogChannel, e.Member, $"**Timed Out Until:** -", CustomMethod.ModLogType.TimeOutRemoved);
+                await CustomMethod.SendModLogAsync(UserTimedOutLogChannel, e.Member, $"**Timeout Removed**", CustomMethod.ModLogType.TimeOutRemoved);
             }
         }
 
