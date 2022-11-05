@@ -13,5 +13,6 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- script: dotnet build --configuration $(buildConfiguration)
+- script: dotnet build --configuration $(buildConfiguration) --runtime linux-x64
   displayName: 'dotnet build $(buildConfiguration)'
+
