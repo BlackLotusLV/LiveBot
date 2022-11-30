@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("Hub", "Commands in relation to the TheCrew-Hub leaderboards.")]
-    public class SlashTheCrewHubCommands : ApplicationCommandModule
+    public partial class SlashTheCrewHubCommands : ApplicationCommandModule
     {
         [SlashCommand("Summit", "Shows the tiers and current cut offs for the ongoing summit.")]
         public async Task Summit(InteractionContext ctx)
@@ -422,6 +422,11 @@ namespace LiveBot.SlashCommands
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
         }
+        [GeneratedRegex("\\w{0,}_")]
+        private static partial Regex MatchAffixRegex();
+        [GeneratedRegex("((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}")]
+        private static partial Regex MatchRewardRegex();
+
         [SlashCommand("Rewards", "Summit rewards for selected date")]
         public async Task Rewards(
             InteractionContext ctx,
@@ -456,9 +461,9 @@ namespace LiveBot.SlashCommands
                     {
                         case "phys_part":
                             string
-                                   affix1name = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix1")).Value ?? "unknown", "\\w{0,}_", string.Empty),
-                                   affix2name = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix2")).Value ?? "unknown", "\\w{0,}_", string.Empty),
-                                   affixBonusName = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("bonus_icon")).Value ?? "unknown", "\\w{0,}_", string.Empty);
+                                   affix1name = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix1")).Value ?? "unknown", string.Empty),
+                                   affix2name = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix2")).Value ?? "unknown", string.Empty),
+                                   affixBonusName = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("bonus_icon")).Value ?? "unknown", string.Empty);
                             try
                             {
                                 affix1 = Image.Load<Rgba32>($"Assets/Affix/{affix1name.ToLower()}.png");
@@ -546,7 +551,7 @@ namespace LiveBot.SlashCommands
                     }
                     RewardTitle ??= "LiveBot needs to be updated to view this reward!";
 
-                    RewardTitle = Regex.Replace(RewardTitle, "((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}", "").ToUpper();
+                    RewardTitle = MatchRewardRegex().Replace(RewardTitle, string.Empty).ToUpper();
 
                     using Image<Rgba32> RewardImage = Image.Load<Rgba32>(HubMethods.RewardsImageBitArr[(int)Week, i]);
                     using Image<Rgba32> TopBar = new(RewardImage.Width, 20);
@@ -585,12 +590,14 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
         }
+        [GeneratedRegex("https://ubisoft-avatars.akamaized.net/|/default(.*)")]
+        private static partial Regex HubLinkRegex();
 
         [SlashCommand("link-hub", "Links your hub information with Live bot.")]
         public async Task LinkHub(InteractionContext ctx, [Option("link", "Your Ubisoft avatar link.")] string link, [Option("platform", "The platform you want to link")] Platforms platform)
         {
             await ctx.DeferAsync(true);
-            link = Regex.Replace(link, "https://ubisoft-avatars.akamaized.net/|/default(.*)", "");
+            link = HubLinkRegex().Replace(link, string.Empty);
 
             if (!Guid.TryParse(link, out _))
             {
