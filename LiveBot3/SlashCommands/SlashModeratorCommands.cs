@@ -30,7 +30,7 @@ namespace LiveBot.SlashCommands
             var Warnings = DB.DBLists.Warnings.Where(f => ctx.Guild.Id == f.Server_ID && user.Id == f.User_ID).ToList();
             StringBuilder modmsgBuilder = new();
             DiscordMember member = null;
-            if (ServerSettings.WKB_Log == 0)
+            if (ServerSettings?.WKB_Log == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
                 return;
@@ -120,7 +120,7 @@ namespace LiveBot.SlashCommands
             };
             DB.DBLists.InsertWarnings(newEntry);
             DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (serverSettings.WKB_Log != 0)
+            if (serverSettings?.WKB_Log != 0)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
