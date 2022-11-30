@@ -63,7 +63,14 @@ namespace LiveBot
                     {
                         for (int j = 0; j < JSummit[i].Rewards.Length; j++)
                         {
-                            RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
+                            if (JSummit[i].Rewards[j].Img_Path == "")
+                            {
+                                RewardsImageBitArr[i, j] = null;
+                            }
+                            else
+                            {
+                                RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
+                            }
                         }
                     }
                     Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, "Info downloaded for {SummitId} summit.", JSummit[0].Summit_ID);

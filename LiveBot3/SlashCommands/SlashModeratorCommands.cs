@@ -282,5 +282,39 @@ namespace LiveBot.SlashCommands
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }
+        /*
+        [ContextMenu(ApplicationCommandType.MessageContextMenu,"Add Button", false)]
+        public async Task AddButton(ContextMenuContext ctx)
+        {
+            if (ctx.TargetMessage.Author != ctx.Client.CurrentUser)
+            {
+                await ctx.CreateResponseAsync(new DiscordInteractionResponseBuilder().WithContent("To add a button, the bot must be the author of the message. Try again").AsEphemeral());
+                return;
+            }
+
+            string customId = $"AddButton-{ctx.TargetMessage.Id}-{ctx.User.Id}";
+            DiscordInteractionResponseBuilder response = new()
+            {
+                Title = "Button PArameters",
+                CustomId = customId
+            };
+            response.AddComponents(new TextInputComponent());
+
+            await ctx.CreateResponseAsync(InteractionResponseType.Modal, response);
+            var interactivity = ctx.Client.GetInteractivity();
+            var modalResponse = await interactivity.WaitForModalAsync(customId, ctx.User);
+
+            if (!modalResponse.TimedOut)
+            {
+                DiscordMessage targetMessage = ctx.TargetMessage;
+                
+                DiscordMessageBuilder messageBuilder= new()
+                {
+                    Components = targetMessage.Components
+                }
+                
+            }
+        }
+        */
     }
 }

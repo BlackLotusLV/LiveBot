@@ -126,7 +126,7 @@ namespace LiveBot.Automation
                     {
                         Content = $"Deleted message and info too long, uploading file instead."
                     };
-                    msgBuilder.WithFile(upFile);
+                    msgBuilder.AddFile(upFile);
 
                     await DeleteLog.SendMessageAsync(msgBuilder);
                 }
@@ -181,7 +181,7 @@ namespace LiveBot.Automation
                 {
                     Content = $"Bulk delete log(Over the message cap) ({e.Messages.Count}) [{e.Messages[0].Timestamp} - {e.Messages[e.Messages.Count - 1].Timestamp}]"
                 };
-                msgBuilder.WithFile(upFile);
+                msgBuilder.AddFile(upFile);
                 await DeleteLog.SendMessageAsync(msgBuilder);
             }
         }
