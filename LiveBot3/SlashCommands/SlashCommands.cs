@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Npgsql.Replication.PgOutput.Messages;
 using System.Globalization;
+using LiveBot.DB;
 
 namespace LiveBot.SlashCommands
 {
@@ -41,7 +42,6 @@ namespace LiveBot.SlashCommands
             await ctx.CreateResponseAsync(embed: embed);
         }
 
-        [SlashRequireGuild]
         [SlashCommand("Send-ModMail", "Creates a new ModMailChannel")]
         public async Task ModMail(InteractionContext ctx, [Option("subject", "Short Description of the issue")] string subject = "*Subject left blank*")
         {
@@ -51,21 +51,21 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command requires to be exectued in the server you wish to contact."));
                 return;
             }
-
-            if (DB.DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == ctx.Guild.Id && w.User_ID == ctx.User.Id).MM_Blocked)
+            ServerRanks userRanks = DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == ctx.Guild.Id && w.User_ID == ctx.User.Id);
+            if (userRanks.MM_Blocked)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
             }
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
+            ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
 
-            if (serverSettings.ModMailID == 0)
+            if (serverSettings?.ModMailID == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been set up in this server. Can't open ModMail."));
                 return;
             }
 
-            if (DB.DBLists.ModMail.Any(w => w.User_ID == ctx.User.Id && w.IsActive))
+            if (DBLists.ModMail.Any(w => w.User_ID == ctx.User.Id && w.IsActive))
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
                 return;
@@ -159,12 +159,17 @@ namespace LiveBot.SlashCommands
         public async Task Rank(InteractionContext ctx)
         {
             await ctx.DeferAsync();
-            var ActivityList = DB.DBLists.UserActivity
+            var ActivityList = DBLists.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
                 .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
                 .OrderByDescending(w => w.Points.Sum())
                 .ToList();
-            var userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            var userInfo = DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            if (userInfo == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find your rank in the databse"));
+                return;
+            }
             int rank = 0;
             foreach (var item in ActivityList)
             {
@@ -233,7 +238,7 @@ namespace LiveBot.SlashCommands
 
         private static async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
         {
-            var ActivityList = DB.DBLists.UserActivity
+            var ActivityList = DBLists.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == ctx.Guild.Id)
                 .GroupBy(w => w.User_ID, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
                 .OrderByDescending(w => w.Points.Sum())
@@ -243,25 +248,33 @@ namespace LiveBot.SlashCommands
             for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(ActivityList[i].UserID);
-                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id);
-                stringBuilder.AppendLine($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}\t\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
+                Leaderboard userInfo = DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id);
+                stringBuilder.Append($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{ActivityList[i].Points.Sum()}");
+                if (userInfo!=null)
+                {
+                    stringBuilder.AppendLine($"\t\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
+                }
                 if (i == ActivityList.Count - 1)
                 {
                     i = page * 10;
                 }
             }
             int rank = 0;
-            string personalscore = string.Empty;
+            StringBuilder personalScore = new();
             foreach (var item in ActivityList)
             {
                 rank++;
                 if (item.UserID == ctx.User.Id)
                 {
-                    DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
-                    personalscore = $"⭐Rank: {rank}\t Points: {item.Points.Sum()}\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}";
+                    Leaderboard userInfo = DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                    personalScore.Append($"⭐Rank: {rank}\t Points: {item.Points.Sum()}");
+                    if (userInfo!=null)
+                    {
+                        personalScore.AppendLine($"\t🍪:{userInfo.Cookies_Taken}/{userInfo.Cookies_Given}");
+                    }
                 }
             }
-            stringBuilder.AppendLine($"\n# Your Ranking\n{personalscore}\n```");
+            stringBuilder.AppendLine($"\n# Your Ranking\n{personalScore.ToString()}\n```");
             return stringBuilder.ToString();
         }
 
@@ -275,10 +288,10 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
                 return;
             }
-            var giver = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
-            var reciever = DB.DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
+            var giver = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
+            var reciever = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
 
-            if (giver.Cookie_Date.Date == DateTime.UtcNow.Date)
+            if (giver?.Cookie_Date.Date == DateTime.UtcNow.Date)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
                 return;
@@ -287,8 +300,8 @@ namespace LiveBot.SlashCommands
             giver.Cookie_Date = DateTime.UtcNow.Date;
             giver.Cookies_Given++;
             reciever.Cookies_Taken++;
-            DB.DBLists.UpdateLeaderboard(giver);
-            DB.DBLists.UpdateLeaderboard(reciever);
+            DBLists.UpdateLeaderboard(giver);
+            DBLists.UpdateLeaderboard(reciever);
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
 

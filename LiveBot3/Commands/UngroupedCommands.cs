@@ -179,7 +179,7 @@ namespace LiveBot.Commands
             }
 
             await new DiscordMessageBuilder()
-                .WithFile(ITImage)
+                .AddFile(ITImage)
                 .WithContent(content)
                 .WithAllowedMention(new UserMention())
                 .SendAsync(ctx.Channel);
@@ -192,7 +192,7 @@ namespace LiveBot.Commands
             await ctx.TriggerTypingAsync();
             FileStream image = new("Assets/img/bs.gif", FileMode.Open);
             await new DiscordMessageBuilder()
-                .WithFile(image)
+                .AddFile(image)
                 .WithAllowedMention(new UserMention())
                 .WithContent($"{(discordMember == null ? ctx.Member.Mention : discordMember.Mention)}")
                 .SendAsync(ctx.Channel);

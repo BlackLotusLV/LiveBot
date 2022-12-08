@@ -5,9 +5,10 @@
         public static async Task AcceptRules(object Client, GuildMemberUpdateEventArgs e)
         {
             if (e.PendingBefore == null) return;
-            if (e.PendingBefore.Value && !e.PendingAfter.Value && e.RolesAfter.Count == 0)
+            if (e.PendingBefore.Value && !e.PendingAfter.Value)
             {
                 var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
+                if (WelcomeSettings == null) return;
 
                 if (WelcomeSettings.Channel_ID == 0 || !WelcomeSettings.HasScreening) return;
                 DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));

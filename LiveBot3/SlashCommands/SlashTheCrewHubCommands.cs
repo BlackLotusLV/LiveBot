@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("Hub", "Commands in relation to the TheCrew-Hub leaderboards.")]
-    public class SlashTheCrewHubCommands : ApplicationCommandModule
+    public partial class SlashTheCrewHubCommands : ApplicationCommandModule
     {
         [SlashCommand("Summit", "Shows the tiers and current cut offs for the ongoing summit.")]
         public async Task Summit(InteractionContext ctx)
@@ -100,7 +100,7 @@ namespace LiveBot.SlashCommands
                     {
                         TierImg.Mutate(ctx => ctx
                             .DrawText(
-                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 17))
+                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 17))
                                 {
                                     Origin = new PointF(295, 340 + (j * 70)),
                                     HorizontalAlignment = HorizontalAlignment.Right,
@@ -117,7 +117,7 @@ namespace LiveBot.SlashCommands
                     );
                     FooterImg.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
+                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
                     );
                     BaseImg.Mutate(ctx => ctx
                         .DrawImage(SummitImg, SummitLocation, 1)
@@ -129,7 +129,7 @@ namespace LiveBot.SlashCommands
                     {
                         BaseImg.Mutate(ctx => ctx
                         .DrawText(
-                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 30))
+                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 30))
                             {
                                 Origin = new PointF(80 + (300 * i), 575 - (j * 70))
                             },
@@ -227,13 +227,13 @@ namespace LiveBot.SlashCommands
             if (Events.Points != 0)
             {
                 int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 12.5f))
+                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 12.5f))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
                     FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
-                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15))
+                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
@@ -422,6 +422,11 @@ namespace LiveBot.SlashCommands
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
         }
+        [GeneratedRegex("\\w{0,}_")]
+        private static partial Regex MatchAffixRegex();
+        [GeneratedRegex("((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}")]
+        private static partial Regex MatchRewardRegex();
+
         [SlashCommand("Rewards", "Summit rewards for selected date")]
         public async Task Rewards(
             InteractionContext ctx,
@@ -456,9 +461,9 @@ namespace LiveBot.SlashCommands
                     {
                         case "phys_part":
                             string
-                                   affix1name = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix1")).Value ?? "unknown", "\\w{0,}_", string.Empty),
-                                   affix2name = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix2")).Value ?? "unknown", "\\w{0,}_", string.Empty),
-                                   affixBonusName = Regex.Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("bonus_icon")).Value ?? "unknown", "\\w{0,}_", string.Empty);
+                                   affix1name = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix1")).Value ?? "unknown", string.Empty),
+                                   affix2name = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("affix2")).Value ?? "unknown", string.Empty),
+                                   affixBonusName = MatchAffixRegex().Replace(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("bonus_icon")).Value ?? "unknown", string.Empty);
                             try
                             {
                                 affix1 = Image.Load<Rgba32>($"Assets/Affix/{affix1name.ToLower()}.png");
@@ -546,7 +551,7 @@ namespace LiveBot.SlashCommands
                     }
                     RewardTitle ??= "LiveBot needs to be updated to view this reward!";
 
-                    RewardTitle = Regex.Replace(RewardTitle, "((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}", "").ToUpper();
+                    RewardTitle = MatchRewardRegex().Replace(RewardTitle, string.Empty).ToUpper();
 
                     using Image<Rgba32> RewardImage = Image.Load<Rgba32>(HubMethods.RewardsImageBitArr[(int)Week, i]);
                     using Image<Rgba32> TopBar = new(RewardImage.Width, 20);
@@ -585,12 +590,14 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
         }
+        [GeneratedRegex("https://ubisoft-avatars.akamaized.net/|/default(.*)")]
+        private static partial Regex HubLinkRegex();
 
         [SlashCommand("link-hub", "Links your hub information with Live bot.")]
         public async Task LinkHub(InteractionContext ctx, [Option("link", "Your Ubisoft avatar link.")] string link, [Option("platform", "The platform you want to link")] Platforms platform)
         {
             await ctx.DeferAsync(true);
-            link = Regex.Replace(link, "https://ubisoft-avatars.akamaized.net/|/default(.*)", "");
+            link = HubLinkRegex().Replace(link, string.Empty);
 
             if (!Guid.TryParse(link, out _))
             {

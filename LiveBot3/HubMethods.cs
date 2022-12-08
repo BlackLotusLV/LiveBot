@@ -63,7 +63,14 @@ namespace LiveBot
                     {
                         for (int j = 0; j < JSummit[i].Rewards.Length; j++)
                         {
-                            RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
+                            if (JSummit[i].Rewards[j].Img_Path == "")
+                            {
+                                RewardsImageBitArr[i, j] = null;
+                            }
+                            else
+                            {
+                                RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
+                            }
                         }
                     }
                     Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, "Info downloaded for {SummitId} summit.", JSummit[0].Summit_ID);
@@ -137,9 +144,9 @@ namespace LiveBot
                     .Resize(380, 483)
                     );
             }
-            Font Basefont = new(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 18);
-            Font SummitCaps15 = new(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 15);
-            Font VehicleFont = new(Program.Fonts.Get("HurmeGeometricSans3W03-Blk"), 11.5f);
+            Font Basefont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 18);
+            Font SummitCaps15 = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15);
+            Font VehicleFont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 11.5f);
             if (Activity == null)
             {
                 using Image<Rgba32> NotComplete = new(EventImage.Width, EventImage.Height);
