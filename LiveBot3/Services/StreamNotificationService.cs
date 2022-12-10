@@ -58,13 +58,17 @@ namespace LiveBot.Services
             DiscordMember StreamMember = await guild.GetMemberAsync(e.User.Id);
             if (e.User?.Presence?.Activities == null) return;
             DiscordActivity activity = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
-            if (activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
+            if (activity == null || activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
             string gameTitle = activity.RichPresence.State;
             string streamTitle = activity.RichPresence.Details;
             string streamURL = activity.StreamUrl;
 
-            bool role = StreamNotification.Roles_ID == null || StreamMember.Roles.Any(r => StreamNotification.Roles_ID.Contains(r.Id));
-            bool game = StreamNotification.Games == null || StreamNotification.Games.Contains(gameTitle);
+            var roleIds = new HashSet<ulong>(StreamNotification.Roles_ID ?? Array.Empty<ulong>());
+            var games = new HashSet<string>(StreamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+
+            bool role = roleIds.Count == 0 || StreamMember.Roles.Any(r => roleIds.Contains(r.Id));
+            bool game = games.Count == 0 || games.Contains(gameTitle);
+
             if (!game || !role) return;
             string description = $"**Streamer:**\n {e.User.Mention}\n\n" +
                  $"**Game:**\n{gameTitle}\n\n" +
