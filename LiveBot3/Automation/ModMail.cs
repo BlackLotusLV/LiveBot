@@ -9,8 +9,8 @@
             var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Author.Id && w.IsActive);
             if (e.Guild == null && MMEntry != null && !(e.Message.Content.StartsWith($"{Program.CFGJson.CommandPrefix}modmail") || e.Message.Content.StartsWith($"{Program.CFGJson.CommandPrefix}mm")))
             {
-                DiscordGuild Guild = Client.Guilds.FirstOrDefault(w => w.Value.Id == MMEntry.Server_ID).Value;
-                DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == MMEntry.Server_ID).ModMailID);
+                DiscordGuild Guild = Client.Guilds.First(w => w.Value.Id == MMEntry.Server_ID).Value;
+                DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.ID_Server == MMEntry.Server_ID).ModMailID);
                 DiscordEmbedBuilder embed = new()
                 {
                     Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -60,7 +60,7 @@
             ModMail.IsActive = false;
             string DMNotif = string.Empty;
             DiscordGuild Guild = await Program.Client.GetGuildAsync(ModMail.Server_ID);
-            DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == Guild.Id).ModMailID);
+            DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.ID_Server == Guild.Id).ModMailID);
             DiscordEmbedBuilder embed = new()
             {
                 Title = $"[CLOSED] #{ModMail.ID} {ClosingText}",
@@ -107,7 +107,7 @@
             await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
             DiscordGuild guild = await Client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace("openmodmail","")));
-            if (DB.DBLists.ServerRanks.FirstOrDefault(w=>w.Server_ID == guild.Id && w.User_ID == e.User.Id).MM_Blocked)
+            if (DB.DBLists.ServerRanks.First(w=>w.Server_ID == guild.Id && w.User_ID == e.User.Id).MM_Blocked)
             {
                 await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
@@ -149,7 +149,7 @@
                 Description = "No subject, Mod Mail Opened with button"
             };
 
-            DiscordChannel modMailChannel = guild.GetChannel(DB.DBLists.ServerSettings.FirstOrDefault(w=>w.ID_Server== guild.Id).ModMailID);
+            DiscordChannel modMailChannel = guild.GetChannel(DB.DBLists.ServerSettings.First(w=>w.ID_Server== guild.Id).ModMailID);
             await new DiscordMessageBuilder()
                 .AddComponents(CloseButton)
                 .WithEmbed(embed)
