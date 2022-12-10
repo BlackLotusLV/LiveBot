@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.SlashCommands;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace LiveBot.Services
 {
@@ -7,15 +8,32 @@ namespace LiveBot.Services
     {
         private static readonly ConcurrentQueue<WarningItem> _warnings = new();
 
+        // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
+        private static readonly CancellationTokenSource cts = new();
+        private static readonly CancellationToken token = cts.Token;
+
         private static readonly Thread Warningthread = new(async () =>
              {
-                 while (true)
+                 while (!token.IsCancellationRequested)
                  {
-                     while (_warnings.TryDequeue(out WarningItem item))
+                     try
                      {
-                         await WarnUserAsync(item.User, item.Admin, item.Guild, item.Channel, item.Reason, item.Automsg, item.Ctx);
+                         if (_warnings.IsEmpty)
+                         {
+                             Thread.Sleep(100);
+                             continue;
+                         }
+
+                         if (_warnings.TryDequeue(out WarningItem item))
+                         {
+                             await WarnUserAsync(item.User, item.Admin, item.Guild, item.Channel, item.Reason, item.Automsg, item.Ctx);
+                             Thread.Sleep(10);
+                         }
                      }
-                     Thread.Sleep(100);
+                     catch(Exception ex)
+                     {
+                         Program.Client.Logger.LogError(CustomLogEvents.LiveBot, "Warning Service experienced an error\n{exceptionMessage}", ex.Message);
+                     }
                  }
              });
 
@@ -23,6 +41,17 @@ namespace LiveBot.Services
         {
             Warningthread.Start();
             Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Warning Service started!");
+        }
+
+        public static void StopService()
+        {
+            // Request cancellation of the thread
+            cts.Cancel();
+
+            // Wait for the thread to finish
+            Warningthread.Join();
+
+            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Warning service stopped!");
         }
 
         public static void QueueWarning(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool automsg, InteractionContext ctx = null)
@@ -48,7 +77,7 @@ namespace LiveBot.Services
             string modinfo = "";
             StringBuilder SB = new();
             bool kick = false, ban = false;
-            if (ServerSettings.WKB_Log != 0)
+            if (ServerSettings?.WKB_Log != 0)
             {
                 DiscordChannel modlog = server.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
 
