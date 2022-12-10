@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace LiveBot.Automation
 {
-    internal static class AutoMod
+    internal static partial class AutoMod
     {
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
 
@@ -42,7 +42,7 @@ namespace LiveBot.Automation
                 {
                     msgDeleted = true;
                 }
-                if (!msgDeleted && DB.DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == e.Guild.Id && w.User_ID == e.Author.Id).Warning_Level < 5)
+                if (!msgDeleted && DB.DBLists.ServerRanks.First(w => w.Server_ID == e.Guild.Id && w.User_ID == e.Author.Id).Warning_Level < 5)
                 {
                     if (word.Offense.Contains("ASCII"))
                     {
@@ -248,7 +248,7 @@ namespace LiveBot.Automation
                 var UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID);
                 if (UserSettings is null)
                 {
-                    Services.LeaderboardService.AddToServerLeaderboard((DiscordUser)e.Member, e.Guild);
+                    Services.LeaderboardService.AddToServerLeaderboard(e.Member, e.Guild);
                     UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Kick_Count++;
@@ -262,7 +262,7 @@ namespace LiveBot.Automation
             _ = Task.Run(async () =>
             {
                 var wkb_Settings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == e.Guild.Id);
-                DiscordGuild Guild = Client.Guilds.FirstOrDefault(w => w.Key == (wkb_Settings.ID_Server)).Value;
+                DiscordGuild Guild = Client.Guilds.FirstOrDefault(w => w.Key == wkb_Settings.ID_Server).Value;
                 if (wkb_Settings.WKB_Log != 0)
                 {
                     int timesRun = 0;
@@ -375,9 +375,7 @@ namespace LiveBot.Automation
         {
             if (e.Author.IsBot || e.Guild == null) return;
 
-            var Server_Settings = (from ss in DB.DBLists.ServerSettings
-                                   where ss.ID_Server == e.Guild?.Id
-                                   select ss).FirstOrDefault();
+            var Server_Settings = DB.DBLists.ServerSettings.FirstOrDefault(w=>w.ID_Server==e.Guild.Id);
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (
                     Server_Settings != null &&
@@ -385,7 +383,7 @@ namespace LiveBot.Automation
                     Server_Settings.HasEveryoneProtection &&
                     !member.Permissions.HasPermission(Permissions.MentionEveryone) &&
                     e.Message.Content.Contains("@everyone") &&
-                    !Regex.IsMatch(e.Message.Content, "`[a-zA-Z0-1.,:/ ]{0,}@everyone[a-zA-Z0-1.,:/ ]{0,}`")
+                    !EveryoneTagRegex().IsMatch(e.Message.Content)
                 )
             {
                 bool msgDeleted = false;
@@ -452,7 +450,7 @@ namespace LiveBot.Automation
         public static async Task User_Timed_Out_Log(object Client, GuildMemberUpdateEventArgs e)
         {
             if (e.Member.IsBot) return;
-            DB.ServerSettings SS = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == e.Guild.Id);
+            DB.ServerSettings SS = DB.DBLists.ServerSettings.First(w => w.ID_Server == e.Guild.Id);
             if (SS.WKB_Log == 0) return;
 
             if (e.CommunicationDisabledUntilBefore == e.CommunicationDisabledUntilAfter) return;
@@ -476,5 +474,8 @@ namespace LiveBot.Automation
                 MessageList.RemoveRange(0, MessageList.Count - 100);
             }
         }
+
+        [GeneratedRegex("`[a-zA-Z0-1.,:/ ]{0,}@everyone[a-zA-Z0-1.,:/ ]{0,}`")]
+        private static partial Regex EveryoneTagRegex();
     }
 }

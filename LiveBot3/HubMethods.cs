@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace LiveBot
 {
-    internal static class HubMethods
+    internal static partial class HubMethods
     {
         private static DateTime TCHubLastUpdated;
         public static byte[,][] RewardsImageBitArr { get; set; } = new byte[4, 4][];
@@ -110,7 +110,7 @@ namespace LiveBot
 
             string HubText = dictionary.FirstOrDefault(w => w.Key.Equals(ID)).Value ?? "[Item Name Missing]";
             HubText = HubText.Replace("&#8209;", "-");
-            HubText = Regex.Replace(HubText, "<(\\w|[=\" #'/]){0,}>", "");
+            HubText = itemTextRegex().Replace(HubText, "");
             return HubText;
         }
 
@@ -180,7 +180,7 @@ namespace LiveBot
             }
             TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
             string
-                EventTitle = (NameIDLookup(ThisEventNameID, locale)),
+                EventTitle = NameIDLookup(ThisEventNameID, locale),
                 ActivityResult = $"Score: {Activity.Score}",
                 VehicleInfo = string.Empty;
             TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_Id);
@@ -279,5 +279,8 @@ namespace LiveBot
 
             return EventImage;
         }
+
+        [GeneratedRegex("<(\\w|[=\" #'/]){0,}>")]
+        private static partial Regex itemTextRegex();
     }
 }
