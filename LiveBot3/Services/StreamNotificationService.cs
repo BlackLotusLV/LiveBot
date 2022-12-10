@@ -56,75 +56,39 @@ namespace LiveBot.Services
         public static async Task StreamNotificationAsync(DB.StreamNotifications StreamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
         {
             DiscordMember StreamMember = await guild.GetMemberAsync(e.User.Id);
-            bool role = false, game = false;
             if (e.User?.Presence?.Activities == null) return;
             DiscordActivity activity = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
             if (activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
             string gameTitle = activity.RichPresence.State;
             string streamTitle = activity.RichPresence.Details;
             string streamURL = activity.StreamUrl;
-            if (StreamNotification.Roles_ID != null)
+
+            bool role = StreamNotification.Roles_ID == null || StreamMember.Roles.Any(r => StreamNotification.Roles_ID.Contains(r.Id));
+            bool game = StreamNotification.Games == null || StreamNotification.Games.Contains(gameTitle);
+            if (!game || !role) return;
+            string description = $"**Streamer:**\n {e.User.Mention}\n\n" +
+                 $"**Game:**\n{gameTitle}\n\n" +
+                 $"**Stream title:**\n{streamTitle}\n\n" +
+                 $"**Stream Link:**\n{streamURL}";
+            DiscordEmbedBuilder embed = new()
             {
-                foreach (DiscordRole urole in StreamMember.Roles)
+                Color = new DiscordColor(0x6441A5),
+                Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
-                    foreach (decimal roleid in StreamNotification.Roles_ID)
-                    {
-                        if (urole.Id == roleid)
-                        {
-                            role = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (StreamNotification.Roles_ID == null)
-            {
-                role = true;
-            }
-            if (StreamNotification.Games != null)
-            {
-                foreach (string ugame in StreamNotification.Games)
+                    IconUrl = e.User.AvatarUrl,
+                    Name = "STREAM",
+                    Url = streamURL
+                },
+                Description = description,
+                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
                 {
-                    try
-                    {
-                        if (gameTitle == ugame)
-                        {
-                            game = true;
-                            break;
-                        }
-                    }
-                    catch { game = false; }
-                }
-            }
-            else if (StreamNotification.Games == null)
-            {
-                game = true;
-            }
-            if (game && role)
-            {
-                DiscordEmbedBuilder embed = new()
-                {
-                    Color = new DiscordColor(0x6441A5),
-                    Author = new DiscordEmbedBuilder.EmbedAuthor
-                    {
-                        IconUrl = e.User.AvatarUrl,
-                        Name = "STREAM",
-                        Url = streamURL
-                    },
-                    Description = $"**Streamer:**\n {e.User.Mention}\n\n" +
-            $"**Game:**\n{gameTitle}\n\n" +
-            $"**Stream title:**\n{streamTitle}\n\n" +
-            $"**Stream Link:**\n{streamURL}",
-                    Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
-                    {
-                        Url = e.User.AvatarUrl
-                    },
-                    Title = $"Check out {e.User.Username} is now Streaming!"
-                };
-                await channel.SendMessageAsync(embed: embed);
-                //adds user to list
-                Automation.LiveStream.LiveStreamerList.Add(streamer);
-            }
+                    Url = e.User.AvatarUrl
+                },
+                Title = $"Check out {e.User.Username} is now Streaming!"
+            };
+            await channel.SendMessageAsync(embed: embed);
+            //adds user to list
+            Automation.LiveStream.LiveStreamerList.Add(streamer);
         }
     }
 
