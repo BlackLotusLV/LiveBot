@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Threading;
 
 namespace LiveBot.Services
 {
@@ -6,21 +7,46 @@ namespace LiveBot.Services
     {
         private static readonly ConcurrentQueue<StreamNotifItem> _notifications = new();
 
+        // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
+        private static readonly CancellationTokenSource cts = new();
+        private static readonly CancellationToken token = cts.Token;
+
         private static readonly Thread Notificationthread = new(async () =>
         {
-            while (true)
+            while (!token.IsCancellationRequested)
             {
-                while (_notifications.TryDequeue(out StreamNotifItem item))
+                try
                 {
-                    await StreamNotificationAsync(item.StreamNotification,item.EventArgs,item.Guild,item.Channel,item.Streamer);
+                    if (_notifications.IsEmpty)
+                    {
+                        Thread.Sleep(1000);
+                        continue;
+                    }
+                    if (_notifications.TryDequeue(out StreamNotifItem item))
+                    {
+                        await StreamNotificationAsync(item.StreamNotification, item.EventArgs, item.Guild, item.Channel, item.Streamer);
+                    }
                 }
-                Thread.Sleep(1000);
+                catch (Exception ex)
+                {
+                    Program.Client.Logger.LogError(CustomLogEvents.LiveBot, "Stream Notification Service experienced an error\n{exceptionMessage}", ex.Message);
+                }
             }
         });
         public static void StartService()
         {
             Notificationthread.Start();
             Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Stream Notification Service started!");
+        }
+        public static void StopService()
+        {
+            // Request cancellation of the thread
+            cts.Cancel();
+
+            // Wait for the thread to finish
+            Notificationthread.Join();
+
+            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped!");
         }
 
         public static void QueueStream(DB.StreamNotifications StreamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
