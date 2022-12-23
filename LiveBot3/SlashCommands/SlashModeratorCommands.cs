@@ -15,7 +15,7 @@ namespace LiveBot.SlashCommands
             [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            await Services.WarningService.WarnUserAsync(user, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
+            Services.WarningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
 
         [SlashCommand("unwarn", "Removes a warning from the user")]
@@ -283,7 +283,7 @@ namespace LiveBot.SlashCommands
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }
 
-        [ContextMenu(ApplicationCommandType.MessageContextMenu,"Add Button", false)]
+        [ContextMenu(ApplicationCommandType.MessageContextMenu, "Add Button", false)]
         public async Task AddButton(ContextMenuContext ctx)
         {
             if (ctx.TargetMessage.Author != ctx.Client.CurrentUser)
@@ -298,7 +298,7 @@ namespace LiveBot.SlashCommands
                 Title = "Button Parameters",
                 CustomId = customId
             };
-            response.AddComponents(new TextInputComponent("Custom ID","customid"));
+            response.AddComponents(new TextInputComponent("Custom ID", "customid"));
             response.AddComponents(new TextInputComponent("Label", "label"));
             response.AddComponents(new TextInputComponent("Emoji", "emoji", required: false));
 
@@ -306,47 +306,46 @@ namespace LiveBot.SlashCommands
             var interactivity = ctx.Client.GetInteractivity();
             var modalResponse = await interactivity.WaitForModalAsync(customId, ctx.User);
 
-            if (!modalResponse.TimedOut)
+            if (modalResponse.TimedOut) return;
+
+            DiscordMessageBuilder modified = new DiscordMessageBuilder()
+                .WithContent(ctx.TargetMessage.Content)
+                .AddEmbeds(ctx.TargetMessage.Embeds);
+
+            DiscordComponentEmoji emoji = null;
+            if (modalResponse.Result.Values["emoji"] != string.Empty)
             {
-                DiscordMessageBuilder modified = new DiscordMessageBuilder()
-                    .WithContent(ctx.TargetMessage.Content)
-                    .AddEmbeds(ctx.TargetMessage.Embeds);
-
-                DiscordComponentEmoji emoji = null;
-                if (modalResponse.Result.Values["emoji"] != string.Empty)
+                if (UInt64.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId))
                 {
-                    if (UInt64.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId))
-                    {
-                        emoji = new DiscordComponentEmoji(emojiId);
-                    }
-                    else
-                    {
-                        emoji = new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
-                    }
+                    emoji = new DiscordComponentEmoji(emojiId);
                 }
-
-                if (ctx.TargetMessage.Components.Count==0)
+                else
                 {
-                    modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
+                    emoji = new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
                 }
-                foreach (var row in ctx.TargetMessage.Components)
-                {
-                    if (row.Components.Count==5)
-                    {
-                        modified.AddComponents(row);
-                    }
-                    else
-                    {
-                        List<DiscordComponent> buttons = row.Components.ToList();
-                        buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
-                        modified.AddComponents(buttons);
-                    }
-                }
-
-
-                await ctx.TargetMessage.ModifyAsync(modified);
-                await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customid"]}").AsEphemeral());
             }
+
+            if (ctx.TargetMessage.Components.Count == 0)
+            {
+                modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
+            }
+            foreach (var row in ctx.TargetMessage.Components)
+            {
+                if (row.Components.Count == 5)
+                {
+                    modified.AddComponents(row);
+                }
+                else
+                {
+                    List<DiscordComponent> buttons = row.Components.ToList();
+                    buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
+                    modified.AddComponents(buttons);
+                }
+            }
+
+
+            await ctx.TargetMessage.ModifyAsync(modified);
+            await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customid"]}").AsEphemeral());
         }
     }
 }

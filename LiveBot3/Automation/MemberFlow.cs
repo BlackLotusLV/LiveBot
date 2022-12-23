@@ -4,7 +4,7 @@
     {
         public static async Task Welcome_Member(object Client, GuildMemberAddEventArgs e)
         {
-            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
+            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.First(w => w.Server_ID == e.Guild.Id);
             if (WelcomeSettings.Channel_ID == 0 || WelcomeSettings.HasScreening) return;
             DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));
 
@@ -20,7 +20,7 @@
 
         public static async Task Say_Goodbye(object Client, GuildMemberRemoveEventArgs e)
         {
-            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
+            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.First(w => w.Server_ID == e.Guild.Id);
             bool pendingcheck = true;
             if (WelcomeSettings.HasScreening && e.Member.IsPending == true)
             {

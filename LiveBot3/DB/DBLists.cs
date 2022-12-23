@@ -567,7 +567,7 @@ namespace LiveBot.DB
             }
             else
             {
-                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID).ID_Server_Rank;
+                o.Server_Ranks_ID = ServerRanks.First(w => w.User_ID == o.User_ID && w.Server_ID == o.Guild_ID).ID_Server_Rank;
             }
             using var ctx = new UserActivityContext();
             ctx.UserActivity.Add(o);
@@ -681,7 +681,7 @@ namespace LiveBot.DB
             }
             else
             {
-                o.Server_Ranks_ID = ServerRanks.FirstOrDefault(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
+                o.Server_Ranks_ID = ServerRanks.First(w => w.User_ID == o.User_ID && w.Server_ID == o.Server_ID).ID_Server_Rank;
             }
             using var ctx = new ModMailContext();
             ctx.ModMail.Add(o);
