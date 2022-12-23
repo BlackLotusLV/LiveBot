@@ -249,7 +249,7 @@ namespace LiveBot.Automation
                 if (UserSettings is null)
                 {
                     Services.LeaderboardService.AddToServerLeaderboard(e.Member, e.Guild);
-                    UserSettings = DB.DBLists.ServerRanks.FirstOrDefault(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
+                    UserSettings = DB.DBLists.ServerRanks.First(f => e.Member.Id == f.User_ID && e.Guild.Id == f.Server_ID);
                 }
                 UserSettings.Kick_Count++;
                 DB.DBLists.UpdateServerRanks(UserSettings);

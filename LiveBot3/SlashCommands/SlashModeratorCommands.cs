@@ -15,7 +15,7 @@ namespace LiveBot.SlashCommands
             [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            await Services.WarningService.WarnUserAsync(user, ctx.Member, ctx.Guild, ctx.Channel, reason, false, ctx);
+            Services.WarningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
 
         [SlashCommand("unwarn", "Removes a warning from the user")]
