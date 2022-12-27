@@ -9,24 +9,26 @@ namespace LiveBot.Automation
     {
         
         private readonly IWarningService _warningService;
+        private readonly ILeaderboardService _leaderboardService;
 
-        public AutoMod(IWarningService warningService)
+        public AutoMod(IWarningService warningService,ILeaderboardService leaderboardService)
         {
             _warningService = warningService;
+            _leaderboardService = leaderboardService;
         }
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
 
 #pragma warning disable IDE0044 // Add readonly modifier
-        private static List<DiscordMessage> MessageList = new();
+        private static List<DiscordMessage> _messageList = new();
 #pragma warning restore IDE0044 // Add readonly modifier
 
-        public static Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
+        public Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
         {
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == e.Member.Id && lb.Server_ID == e.Guild.Id);
             if (local is null)
             {
-                Services.LeaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
+                _leaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
             }
             return Task.CompletedTask;
         }
@@ -140,10 +142,10 @@ namespace LiveBot.Automation
                     await DeleteLog.SendMessageAsync(msgBuilder);
                 }
             }
-            var DeletedMSG = MessageList.FirstOrDefault(w => w.Timestamp.Equals(e.Message.Timestamp) && w.Content.Equals(e.Message.Content));
+            var DeletedMSG = _messageList.FirstOrDefault(w => w.Timestamp.Equals(e.Message.Timestamp) && w.Content.Equals(e.Message.Content));
             if (DeletedMSG != null)
             {
-                MessageList.Remove(DeletedMSG);
+                _messageList.Remove(DeletedMSG);
             }
         }
 
@@ -340,8 +342,8 @@ namespace LiveBot.Automation
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
-            MessageList.Add(e.Message);
-            List<DiscordMessage> duplicateMessages = MessageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
+            _messageList.Add(e.Message);
+            List<DiscordMessage> duplicateMessages = _messageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
             int i = duplicateMessages.Count;
             if (i < 5) return;
 
@@ -477,9 +479,9 @@ namespace LiveBot.Automation
 
         public static void ClearMSGCache()
         {
-            if (MessageList.Count > 100)
+            if (_messageList.Count > 100)
             {
-                MessageList.RemoveRange(0, MessageList.Count - 100);
+                _messageList.RemoveRange(0, _messageList.Count - 100);
             }
         }
 

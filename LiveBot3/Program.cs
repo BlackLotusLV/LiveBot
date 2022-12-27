@@ -91,6 +91,7 @@ namespace LiveBot
             ServiceProvider service = new ServiceCollection()
                 .AddSingleton<IWarningService, WarningService>()
                 .AddSingleton<IStreamNotificationService, StreamNotificationService>()
+                .AddSingleton<ILeaderboardService, LeaderboardService>()
                 .BuildServiceProvider();
             
             DB.DBLists.LoadAllLists(); // loads data from database
@@ -136,14 +137,15 @@ namespace LiveBot
             // Services
             IWarningService warningService = service.GetService<IWarningService>();
             IStreamNotificationService streamNotificationService = service.GetService<IStreamNotificationService>();
+            ILeaderboardService leaderboardService = service.GetService<ILeaderboardService>();
             
             warningService.StartService(Client);
             streamNotificationService.StartService(Client);
+            leaderboardService.StartService(Client);
 
             AutoMod autoMod = ActivatorUtilities.CreateInstance<AutoMod>(service);
             LiveStream liveStream = ActivatorUtilities.CreateInstance<LiveStream>(service);
-            
-            LeaderboardService.StartService();
+            UserActivityTracker userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(service);
 
             //
 
@@ -152,7 +154,7 @@ namespace LiveBot
                 Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
                 Client.PresenceUpdated += liveStream.Stream_Notification;
 
-                Client.GuildMemberAdded += AutoMod.Add_To_Leaderboards;
+                Client.GuildMemberAdded += autoMod.Add_To_Leaderboards;
                 Client.MessageCreated += AutoMod.Media_Only_Filter;
                 Client.MessageCreated += autoMod.Banned_Words;
                 Client.MessageCreated += autoMod.Spam_Protection;
@@ -168,7 +170,7 @@ namespace LiveBot
                 Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
                 Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
 
-                Client.MessageCreated += UserActivityTracker.Add_Points;
+                Client.MessageCreated += userActivityTracker.Add_Points;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
 

@@ -5,14 +5,21 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using LiveBot.DB;
+using LiveBot.Services;
 
 namespace LiveBot.Automation
 {
     internal class UserActivityTracker
     {
+        private readonly ILeaderboardService _leaderboardService;
+
+        public UserActivityTracker(ILeaderboardService leaderboardService)
+        {
+            _leaderboardService = leaderboardService;
+        }
         private static List<Cooldowns> CoolDowns { get; set; } = new List<Cooldowns>();
 
-        public static async Task Add_Points(object Client, MessageCreateEventArgs e)
+        public async Task Add_Points(object Client, MessageCreateEventArgs e)
         {
             if (e.Guild == null || e.Author.IsBot) return;
 
@@ -21,7 +28,7 @@ namespace LiveBot.Automation
 
             if (DBLists.Leaderboard.FirstOrDefault(w=>w.ID_User==e.Author.Id)==null)
             {
-                Services.LeaderboardService.QueueLeaderboardItem(e.Author, e.Guild);
+                _leaderboardService.QueueLeaderboardItem(e.Author,e.Guild);
                 return;
             }
             UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id && w.Date == DateTime.UtcNow.Date);
