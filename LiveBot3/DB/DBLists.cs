@@ -617,14 +617,11 @@ namespace LiveBot.DB
             var userRanks = ServerRanks.FirstOrDefault(w => w.Server_ID == o.Server_ID && w.User_ID==o.User_ID);
             if (userRanks == null)
             {
-                int level = 0;
-                if (o.Type == "warning") level = 1;
-                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID, Warning_Level = level });
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID});
             }
             else
             {
                 o.Server_Ranks_ID = userRanks.ID_Server_Rank;
-                userRanks.Warning_Level++;
                 if (o.Type == "warning") UpdateServerRanks(userRanks);
             }
             using var ctx = new WarningsContext();

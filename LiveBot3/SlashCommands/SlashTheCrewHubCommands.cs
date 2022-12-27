@@ -20,7 +20,7 @@ namespace LiveBot.SlashCommands
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             string PCJson = string.Empty, XBJson = string.Empty, PSJson = string.Empty, StadiaJson = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-summit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summit.png";
             float outlineSize = 0.7f;
             byte[] SummitLogo;
             int[,] TierCutoff = new int[,] { { 4000, 8000, 15000 }, { 11000, 21000, 41000 }, { 2100, 4200, 8500 }, { 100, 200, 400 } };
@@ -188,7 +188,7 @@ namespace LiveBot.SlashCommands
             await HubMethods.UpdateHubInfo();
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-mysummit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-mysummit.png";
 
             bool SendImage = false;
 
@@ -329,7 +329,7 @@ namespace LiveBot.SlashCommands
             int TotalPoints = 0;
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-topsummit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-topsummit.png";
             string search = string.Empty;
 
             bool alleventscompleted = true;
@@ -442,7 +442,7 @@ namespace LiveBot.SlashCommands
 
             Color[] RewardColours = new Color[] { Rgba32.ParseHex("#0060A9"), Rgba32.ParseHex("#D5A45F"), Rgba32.ParseHex("#C2C2C2"), Rgba32.ParseHex("#B07C4D") };
 
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-summitrewards.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summitrewards.png";
             int RewardWidth = 412;
             TCHubJson.Reward[] Rewards = Program.JSummit[(int)Week].Rewards;
             using (Image<Rgba32> RewardsImage = new(4 * RewardWidth, 328))

@@ -39,9 +39,9 @@ namespace LiveBot.DB
         [Required]
         [Column("server_id")]
         public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
+        { get => _serverId; set { _serverId = Convert.ToUInt64(value); } }
 
-        private ulong _Server_ID;
+        private ulong _serverId;
 
         [Required]
         [Column("type")]

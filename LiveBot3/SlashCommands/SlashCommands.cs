@@ -1,30 +1,25 @@
 ﻿using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
-using DSharpPlus.Interactivity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Primitives;
-using Npgsql.Replication.PgOutput.Messages;
-using System.Globalization;
 using LiveBot.DB;
 
 namespace LiveBot.SlashCommands
 {
     internal class SlashCommands : ApplicationCommandModule
     {
-        [SlashCommand("Livebot-info", "Information about live bot")]
+        [SlashCommand("LiveBot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
         {
             DateTime current = DateTime.UtcNow;
-            TimeSpan time = current - Program.start;
-            string changelog = "[NEW] hub rewards command now offers summits by name not by week.\n" +
-                "[NEW] You can set your locale to see rewards of summits by your language with `/hub set-locale` command. This only supports ubi provided languages.\n" +
-                "[FIX] Adjusted certain summit rewards outputs, nothing major\n" +
-                "[NEW] Added Auto complete options for unwarn command\n" +
-                "[NEW] Added context menu for info command\n" +
-                "[NEW] Added context menu for infractions command\n" +
-                "";
+            TimeSpan time = current - Program.Start;
+            const string changelog = "[NEW] hub rewards command now offers summits by name not by week.\n" +
+                                     "[NEW] You can set your locale to see rewards of summits by your language with `/hub set-locale` command. This only supports ubi provided languages.\n" +
+                                     "[FIX] Adjusted certain summit rewards outputs, nothing major\n" +
+                                     "[NEW] Added Auto complete options for unwarn command\n" +
+                                     "[NEW] Added context menu for info command\n" +
+                                     "[NEW] Added context menu for infractions command\n" +
+                                     "";
             DiscordUser user = ctx.Client.CurrentUser;
-            var embed = new DiscordEmbedBuilder
+            DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
@@ -52,12 +47,12 @@ namespace LiveBot.SlashCommands
                 return;
             }
             ServerRanks userRanks = DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == ctx.Guild.Id && w.User_ID == ctx.User.Id);
-            if (userRanks.MM_Blocked)
+            if (userRanks == null || userRanks.MM_Blocked)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
             }
-            ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
+            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
 
             if (serverSettings?.ModMailID == 0)
             {
@@ -72,24 +67,24 @@ namespace LiveBot.SlashCommands
             }
 
             Random r = new();
-            string colorID = string.Format("#{0:X6}", r.Next(0x1000000));
-            DB.ModMail newEntry = new()
+            string colorId = $"#{r.Next(0x1000000):X6}";
+            ModMail newEntry = new()
             {
                 Server_ID = ctx.Guild.Id,
                 User_ID = ctx.User.Id,
                 LastMSGTime = DateTime.UtcNow,
-                ColorHex = colorID,
+                ColorHex = colorId,
                 IsActive = true,
                 HasChatted = false
             };
 
-            long EntryID = DB.DBLists.InsertModMail(newEntry);
-            DiscordButtonComponent CloseButton = new(ButtonStyle.Danger, $"close{EntryID}", "Close", false, new DiscordComponentEmoji("✖️"));
+            long entryId = DB.DBLists.InsertModMail(newEntry);
+            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"close{entryId}", "Close", false, new DiscordComponentEmoji("✖️"));
 
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{EntryID} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{entryId} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
-            await ctx.Member.SendMessageAsync(new DiscordMessageBuilder().AddComponents(CloseButton).WithContent($"**----------------------------------------------------**\n" +
-                            $"Modmail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {Automation.ModMail.TimeoutMinutes} minutes after last message is sent.*\n" +
+            await ctx.Member.SendMessageAsync(new DiscordMessageBuilder().AddComponents(closeButton).WithContent($"**----------------------------------------------------**\n" +
+                            $"Mod mail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {Automation.ModMail.TimeoutMinutes} minutes after last message is sent.*\n" +
                             $"**Subject: {subject}**"));
 
             DiscordEmbedBuilder embed = new()
@@ -99,14 +94,14 @@ namespace LiveBot.SlashCommands
                     Name = $"{ctx.User.Username} ({ctx.User.Id})",
                     IconUrl = ctx.User.AvatarUrl
                 },
-                Title = $"[NEW] #{EntryID} Mod Mail created by {ctx.User.Username}.",
-                Color = new DiscordColor(colorID),
+                Title = $"[NEW] #{entryId} Mod Mail created by {ctx.User.Username}.",
+                Color = new DiscordColor(colorId),
                 Description = subject
             };
 
             DiscordChannel modMailChannel = ctx.Guild.GetChannel(serverSettings.ModMailID);
             await new DiscordMessageBuilder()
-                .AddComponents(CloseButton)
+                .AddComponents(closeButton)
                 .WithEmbed(embed)
                 .SendAsync(modMailChannel);
         }
@@ -288,9 +283,14 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
                 return;
             }
-            var giver = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
-            var reciever = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
+            Leaderboard giver = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == ctx.Member.Id);
+            Leaderboard receiver = DBLists.Leaderboard.FirstOrDefault(f => f.ID_User == member.Id);
 
+            if (giver == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You do not have a Database entry, one will be created, please try again."));
+                
+            }
             if (giver?.Cookie_Date.Date == DateTime.UtcNow.Date)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
@@ -299,9 +299,9 @@ namespace LiveBot.SlashCommands
 
             giver.Cookie_Date = DateTime.UtcNow.Date;
             giver.Cookies_Given++;
-            reciever.Cookies_Taken++;
+            receiver.Cookies_Taken++;
             DBLists.UpdateLeaderboard(giver);
-            DBLists.UpdateLeaderboard(reciever);
+            DBLists.UpdateLeaderboard(receiver);
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
 
