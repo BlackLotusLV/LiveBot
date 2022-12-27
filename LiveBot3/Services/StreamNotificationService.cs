@@ -1,28 +1,37 @@
 ﻿using System.Collections.Concurrent;
-using System.Threading;
+using LiveBot.DB;
 
 namespace LiveBot.Services
 {
-    internal static class StreamNotificationService
+    public interface IStreamNotificationService
     {
-        private static readonly ConcurrentQueue<StreamNotifItem> _notifications = new();
+        void StartService(DiscordClient client);
+        void StopService(DiscordClient client);
+        void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer);
+    }
+    public class StreamNotificationService : IStreamNotificationService
+    {
+        private static readonly ConcurrentQueue<StreamNotificationItem> Notifications = new();
 
         // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
-        private static readonly CancellationTokenSource cts = new();
-        private static readonly CancellationToken token = cts.Token;
+        private static readonly CancellationTokenSource Cts = new();
+        private static readonly CancellationToken Token = Cts.Token;
 
-        private static readonly Thread Notificationthread = new(async () =>
+        private static readonly Thread NotificationThread = new(Start);
+
+        private static async void Start()
         {
-            while (!token.IsCancellationRequested)
+            while (!Token.IsCancellationRequested)
             {
                 try
                 {
-                    if (_notifications.IsEmpty)
+                    if (Notifications.IsEmpty)
                     {
                         Thread.Sleep(1000);
                         continue;
                     }
-                    if (_notifications.TryDequeue(out StreamNotifItem item))
+
+                    if (Notifications.TryDequeue(out StreamNotificationItem item))
                     {
                         await StreamNotificationAsync(item.StreamNotification, item.EventArgs, item.Guild, item.Channel, item.Streamer);
                     }
@@ -32,48 +41,49 @@ namespace LiveBot.Services
                     Program.Client.Logger.LogError(CustomLogEvents.LiveBot, "Stream Notification Service experienced an error\n{exceptionMessage}", ex.Message);
                 }
             }
-        });
-        public static void StartService()
-        {
-            Notificationthread.Start();
-            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Stream Notification Service started!");
         }
-        public static void StopService()
+
+        public void StartService(DiscordClient client)
+        {
+            NotificationThread.Start();
+            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Stream Notification Service started!");
+        }
+        public void StopService(DiscordClient client)
         {
             // Request cancellation of the thread
-            cts.Cancel();
+            Cts.Cancel();
 
             // Wait for the thread to finish
-            Notificationthread.Join();
+            NotificationThread.Join();
 
-            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped!");
+            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped!");
         }
 
-        public static void QueueStream(DB.StreamNotifications StreamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
+        public void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
         {
-            _notifications.Enqueue(new StreamNotifItem(StreamNotification,e,guild,channel,streamer));
+            Notifications.Enqueue(new StreamNotificationItem(streamNotification,e,guild,channel,streamer));
         }
-        public static async Task StreamNotificationAsync(DB.StreamNotifications StreamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
+        private static async Task StreamNotificationAsync(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
         {
-            DiscordMember StreamMember = await guild.GetMemberAsync(e.User.Id);
-            if (e.User?.Presence?.Activities == null) return;
+            DiscordMember streamMember = await guild.GetMemberAsync(e.User.Id);
+            if (e.User==null || e.User.Presence ==null || e.User.Presence.Activities == null) return;
             DiscordActivity activity = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
             if (activity == null || activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
             string gameTitle = activity.RichPresence.State;
             string streamTitle = activity.RichPresence.Details;
-            string streamURL = activity.StreamUrl;
+            string streamUrl = activity.StreamUrl;
 
-            var roleIds = new HashSet<ulong>(StreamNotification.Roles_ID ?? Array.Empty<ulong>());
-            var games = new HashSet<string>(StreamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var roleIds = new HashSet<ulong>(streamNotification.Roles_ID ?? Array.Empty<ulong>());
+            var games = new HashSet<string>(streamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
 
-            bool role = roleIds.Count == 0 || StreamMember.Roles.Any(r => roleIds.Contains(r.Id));
+            bool role = roleIds.Count == 0 || streamMember.Roles.Any(r => roleIds.Contains(r.Id));
             bool game = games.Count == 0 || games.Contains(gameTitle);
 
             if (!game || !role) return;
             string description = $"**Streamer:**\n {e.User.Mention}\n\n" +
                  $"**Game:**\n{gameTitle}\n\n" +
                  $"**Stream title:**\n{streamTitle}\n\n" +
-                 $"**Stream Link:**\n{streamURL}";
+                 $"**Stream Link:**\n{streamUrl}";
             DiscordEmbedBuilder embed = new()
             {
                 Color = new DiscordColor(0x6441A5),
@@ -81,7 +91,7 @@ namespace LiveBot.Services
                 {
                     IconUrl = e.User.AvatarUrl,
                     Name = "STREAM",
-                    Url = streamURL
+                    Url = streamUrl
                 },
                 Description = description,
                 Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
@@ -97,20 +107,20 @@ namespace LiveBot.Services
     }
 
 
-    internal class StreamNotifItem
+    internal class StreamNotificationItem
     {
-        public DB.StreamNotifications StreamNotification { get; set; }
+        public StreamNotifications StreamNotification { get; set; }
         public PresenceUpdateEventArgs EventArgs { get; set; }
         public DiscordGuild Guild { get; set; }
         public DiscordChannel Channel { get; set; }
         public Automation.LiveStreamer Streamer { get; set; }
-        public StreamNotifItem(DB.StreamNotifications StreamNotification, PresenceUpdateEventArgs EventArgs, DiscordGuild Guild, DiscordChannel Channel, Automation.LiveStreamer Streamer)
+        public StreamNotificationItem(StreamNotifications streamNotification, PresenceUpdateEventArgs eventArgs, DiscordGuild guild, DiscordChannel channel, Automation.LiveStreamer streamer)
         {
-            this.StreamNotification = StreamNotification;
-            this.EventArgs = EventArgs;
-            this.Guild = Guild;
-            this.Channel = Channel;
-            this.Streamer = Streamer;
+            this.StreamNotification = streamNotification;
+            this.EventArgs = eventArgs;
+            this.Guild = guild;
+            this.Channel = channel;
+            this.Streamer = streamer;
         }
     }
 }

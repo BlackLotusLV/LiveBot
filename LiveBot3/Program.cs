@@ -90,6 +90,7 @@ namespace LiveBot
 
             ServiceProvider service = new ServiceCollection()
                 .AddSingleton<IWarningService, WarningService>()
+                .AddSingleton<IStreamNotificationService, StreamNotificationService>()
                 .BuildServiceProvider();
             
             DB.DBLists.LoadAllLists(); // loads data from database
@@ -134,12 +135,14 @@ namespace LiveBot
 
             // Services
             IWarningService warningService = service.GetService<IWarningService>();
+            IStreamNotificationService streamNotificationService = service.GetService<IStreamNotificationService>();
             
             warningService.StartService(Client);
+            streamNotificationService.StartService(Client);
 
             AutoMod autoMod = ActivatorUtilities.CreateInstance<AutoMod>(service);
+            LiveStream liveStream = ActivatorUtilities.CreateInstance<LiveStream>(service);
             
-            Services.StreamNotificationService.StartService();
             Services.LeaderboardService.StartService();
 
             //
@@ -147,7 +150,7 @@ namespace LiveBot
             if (!TestBuild) //Only enables these when using live version
             {
                 Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
-                Client.PresenceUpdated += LiveStream.Stream_Notification;
+                Client.PresenceUpdated += liveStream.Stream_Notification;
 
                 Client.GuildMemberAdded += AutoMod.Add_To_Leaderboards;
                 Client.MessageCreated += AutoMod.Media_Only_Filter;
