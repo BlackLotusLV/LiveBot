@@ -7,7 +7,7 @@
         public static async Task ModMailDM(DiscordClient Client, MessageCreateEventArgs e)
         {
             var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Author.Id && w.IsActive);
-            if (e.Guild == null && MMEntry != null && !(e.Message.Content.StartsWith($"{Program.CFGJson.CommandPrefix}modmail") || e.Message.Content.StartsWith($"{Program.CFGJson.CommandPrefix}mm")))
+            if (e.Guild == null && MMEntry != null && !(e.Message.Content.StartsWith($"{Program.ConfigJson.CommandPrefix}modmail") || e.Message.Content.StartsWith($"{Program.ConfigJson.CommandPrefix}mm")))
             {
                 DiscordGuild Guild = Client.Guilds.First(w => w.Value.Id == MMEntry.Server_ID).Value;
                 DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.ID_Server == MMEntry.Server_ID).ModMailID);

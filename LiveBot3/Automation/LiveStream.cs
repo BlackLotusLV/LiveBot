@@ -11,9 +11,9 @@ namespace LiveBot.Automation
             _streamNotificationService = streamNotificationService;
         }
 
-        public static List<LiveStreamer> LiveStreamerList { get; set; } = new List<LiveStreamer>();
+        private static List<LiveStreamer> LiveStreamerList { get; set; } = new List<LiveStreamer>();
 
-        public static readonly int StreamCheckDelay = 5;
+        private static readonly int StreamCheckDelay = 5;
 
         public async Task Stream_Notification(object client, PresenceUpdateEventArgs e)
         {
@@ -63,13 +63,5 @@ namespace LiveBot.Automation
             }
             await Task.Delay(1);
         }
-    }
-
-    public class LiveStreamer
-    {
-        public DiscordUser User { get; init; }
-        public DateTime Time { get; init; }
-        public DiscordGuild Guild { get; init; }
-        public DiscordChannel Channel { get; init; }
     }
 }

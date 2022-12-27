@@ -22,10 +22,10 @@ namespace LiveBot
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
-        public static ConfigJson.TheCrewHubApi TCHubJson { get; set; }
-        public static TCHubJson.TCHub TCHub { get; set; }
+        public static ConfigJson.TheCrewHubApi TheCrewHubJson { get; set; }
+        public static TCHubJson.TCHub TheCrewHub { get; set; }
         public static List<TCHubJson.Summit> JSummit { get; set; }
-        public static ConfigJson.Bot CFGJson { get; set; }
+        public static ConfigJson.Bot ConfigJson { get; set; }
 
         // Lists
 
@@ -39,7 +39,7 @@ namespace LiveBot
         public static FontCollection Fonts { get; set; } = new();
 
         // Timers
-        private Timer StreamDelayTimer { get; set; } = new(e => TimerMethod.StreamListCheck(LiveStream.LiveStreamerList, LiveStream.StreamCheckDelay));
+        
 
         private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
         private Timer MessageCacheClearTimer { get; set; } = new(e => AutoMod.ClearMSGCache());
@@ -61,24 +61,24 @@ namespace LiveBot
             string json;
             using (StreamReader sr = new(File.OpenRead("Config.json"), new UTF8Encoding(false)))
                 json = await sr.ReadToEndAsync();
-            CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DevBot;
+            ConfigJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DevBot;
 
             // Start The Crew Hub service
-            TCHubJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCHub;
+            TheCrewHubJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCHub;
             Thread hubThread = new(async () => await HubMethods.UpdateHubInfo());
             hubThread.Start();
 
             LogLevel logLevel = LogLevel.Debug;
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
             {
-                CFGJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
+                ConfigJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
 
                 TestBuild = false;
                 logLevel = LogLevel.Information;
             }
             DiscordConfiguration cfg = new()
             {
-                Token = CFGJson.Token,
+                Token = ConfigJson.Token,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
                 ReconnectIndefinitely = false,
@@ -105,7 +105,7 @@ namespace LiveBot
             });
             CommandsNextConfiguration commandNextConfig = new()
             {
-                StringPrefixes = new string[] { CFGJson.CommandPrefix },
+                StringPrefixes = new string[] { ConfigJson.CommandPrefix },
                 CaseSensitive = false,
                 IgnoreExtraArguments = true,
                 Services = service
@@ -143,7 +143,7 @@ namespace LiveBot
             AutoMod autoMod = ActivatorUtilities.CreateInstance<AutoMod>(service);
             LiveStream liveStream = ActivatorUtilities.CreateInstance<LiveStream>(service);
             
-            Services.LeaderboardService.StartService();
+            LeaderboardService.StartService();
 
             //
 
@@ -228,7 +228,6 @@ namespace LiveBot
             }
             if (e.Guild.Id == 150283740172517376)
             {
-                StreamDelayTimer.Change(TimeSpan.Zero, TimeSpan.FromMinutes(2));
                 HubUpdateTimer.Change(TimeSpan.Zero, TimeSpan.FromMinutes(30));
                 MessageCacheClearTimer.Change(TimeSpan.Zero, TimeSpan.FromDays(1));
                 ModMailCloserTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(30));

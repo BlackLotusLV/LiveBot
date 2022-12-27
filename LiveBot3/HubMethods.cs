@@ -27,7 +27,7 @@ namespace LiveBot
             string JSummitString = string.Empty;
             try
             {
-                JSummitString = await wc.GetStringAsync(Program.TCHubJson.Summit);
+                JSummitString = await wc.GetStringAsync(Program.TheCrewHubJson.Summit);
             }
             catch (WebException e)
             {
@@ -49,12 +49,12 @@ namespace LiveBot
                 {
                     TCHubLastUpdated = endtime;
 
-                    foreach (var item in Program.TCHubJson.Locales)
+                    foreach (var item in Program.TheCrewHubJson.Locales)
                     {
                         TCHubLocales.Add(item.Key, JsonConvert.DeserializeObject<Dictionary<string, string>>(await wc.GetStringAsync(item.Value)));
                     }
                     Program.JSummit = JSummit;
-                    Program.TCHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(await wc.GetStringAsync(Program.TCHubJson.GameData));
+                    Program.TheCrewHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(await wc.GetStringAsync(Program.TheCrewHubJson.GameData));
                     await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, Token) =>
                     {
                         JSummit[0].Events.FirstOrDefault(w => w.ID == Event.ID).Image_Byte = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{Event.Img_Path}", Token);
@@ -88,7 +88,7 @@ namespace LiveBot
 
             try
             {
-                NewsString = await wc.GetStringAsync(Program.TCHubJson.News);
+                NewsString = await wc.GetStringAsync(Program.TheCrewHubJson.News);
             }
             catch (WebException e)
             {
@@ -97,7 +97,7 @@ namespace LiveBot
             }
             if (Connected)
             {
-                Program.TCHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(NewsString);
+                Program.TheCrewHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(NewsString);
             }
         }
 
@@ -172,11 +172,11 @@ namespace LiveBot
             string ThisEventNameID = string.Empty;
             if (Event.Is_Mission)
             {
-                ThisEventNameID = Program.TCHub.Missions.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
+                ThisEventNameID = Program.TheCrewHub.Missions.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
             }
             else
             {
-                ThisEventNameID = Program.TCHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
+                ThisEventNameID = Program.TheCrewHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
             }
             TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
             string
@@ -190,11 +190,11 @@ namespace LiveBot
             }
             else
             {
-                TCHubJson.Model Model = Program.TCHub.Models.FirstOrDefault(w => w.ID == Entries.Vehicle_ID);
+                TCHubJson.Model Model = Program.TheCrewHub.Models.FirstOrDefault(w => w.ID == Entries.Vehicle_ID);
                 TCHubJson.Brand Brand;
                 if (Model != null)
                 {
-                    Brand = Program.TCHub.Brands.FirstOrDefault(w => w.ID == Model.Brand_ID);
+                    Brand = Program.TheCrewHub.Brands.FirstOrDefault(w => w.ID == Model.Brand_ID);
                 }
                 else
                 {
