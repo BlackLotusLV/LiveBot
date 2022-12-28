@@ -8,24 +8,18 @@ namespace LiveBot.Services
         void StartService(DiscordClient client);
         void StopService(DiscordClient client);
         void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer);
-        static List<LiveStreamer> LiveStreamerList { get; set; }
     }
     public class StreamNotificationService : IStreamNotificationService
     {
-        public static List<LiveStreamer> LiveStreamerList { get; private set; } = new List<LiveStreamer>();
+        public static List<LiveStreamer> LiveStreamerList { get; set; } = new();
+        public static int StreamCheckDelay { get; } = 5;
 
-        private static readonly int StreamCheckDelay = 5;
-        
         private static readonly ConcurrentQueue<StreamNotificationItem> Notifications = new();
         // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
         private static readonly CancellationTokenSource Cts = new();
         private static readonly CancellationToken Token = Cts.Token;
         
-        private static readonly Thread NotificationThread = new(Start);
-        
-        private Timer StreamDelayTimer { get; } = new(e => StreamListCheck());
-
-        private static async void Start()
+        private static readonly Thread NotificationThread = new(async () =>
         {
             while (!Token.IsCancellationRequested)
             {
@@ -47,7 +41,9 @@ namespace LiveBot.Services
                     Program.Client.Logger.LogError(CustomLogEvents.LiveBot, "Stream Notification Service experienced an error\n{exceptionMessage}", ex.Message);
                 }
             }
-        }
+        });
+        
+        private Timer StreamDelayTimer { get; } = new(e => StreamListCheck());
 
         public void StartService(DiscordClient client)
         {
@@ -69,7 +65,7 @@ namespace LiveBot.Services
 
         public void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer)
         {
-            Notifications.Enqueue(new StreamNotificationItem(streamNotification,e,guild,channel,streamer));
+            Notifications.Enqueue(new(streamNotification,e,guild,channel,streamer));
         }
         private static async Task StreamNotificationAsync(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer)
         {

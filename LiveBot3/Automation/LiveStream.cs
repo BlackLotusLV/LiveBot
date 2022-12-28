@@ -11,10 +11,6 @@ namespace LiveBot.Automation
             _streamNotificationService = streamNotificationService;
         }
 
-        private static List<LiveStreamer> LiveStreamerList { get; } = new();
-
-        private static readonly int StreamCheckDelay = 5;
-
         public async Task Stream_Notification(object client, PresenceUpdateEventArgs e)
         {
             if (e.User == null || e.User.IsBot || e.User.Presence == null) return;
@@ -35,7 +31,7 @@ namespace LiveBot.Automation
                 int itemIndex;
                 try
                 {
-                    itemIndex = LiveStreamerList.FindIndex(a =>
+                    itemIndex = StreamNotificationService.LiveStreamerList.FindIndex(a =>
                         a.User.Id == e.User.Id
                         && a.Guild.Id == e.User.Presence.Guild.Id
                         && a.Channel.Id == channel.Id);
@@ -48,10 +44,10 @@ namespace LiveBot.Automation
                     && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == null)
                 {
                     //removes user from list
-                    if (LiveStreamerList[itemIndex].Time.AddHours(StreamCheckDelay) < DateTime.UtcNow
-                        && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == LiveStreamerList[itemIndex].User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube"))
+                    if (StreamNotificationService.LiveStreamerList[itemIndex].Time.AddHours(StreamNotificationService.StreamCheckDelay) < DateTime.UtcNow
+                        && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == StreamNotificationService.LiveStreamerList[itemIndex].User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube"))
                     {
-                        LiveStreamerList.RemoveAt(itemIndex);
+                        StreamNotificationService.LiveStreamerList.RemoveAt(itemIndex);
                     }
                 }
                 else if (itemIndex == -1
