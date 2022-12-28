@@ -34,11 +34,9 @@ namespace LiveBot.Services
                         continue;
                     }
 
-                    if (Warnings.TryDequeue(out WarningItem item))
-                    {
-                        await WarnUserAsync(item.User, item.Admin, item.Guild, item.Channel, item.Reason, item.AutoMessage, item.Ctx);
-                        Thread.Sleep(10);
-                    }
+                    if (!Warnings.TryDequeue(out WarningItem item)) continue;
+                    await WarnUserAsync(item.User, item.Admin, item.Guild, item.Channel, item.Reason, item.AutoMessage, item.Ctx);
+                    Thread.Sleep(10);
                 }
                 catch (Exception ex)
                 {

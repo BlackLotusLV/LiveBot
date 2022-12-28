@@ -417,7 +417,7 @@ namespace LiveBot.SlashCommands
                 for (int i = 0; i < 4; i++)
                 {
                     if (Program.JSummit[i].Text_ID != "55475")
-                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIDLookup(Program.JSummit[i].Text_ID, locale), i));
+                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIdLookup(Program.JSummit[i].Text_ID, locale), i));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -500,16 +500,16 @@ namespace LiveBot.SlashCommands
                             StringBuilder sb = new();
                             if (Rewards[i].Subtitle_Text_ID!="")
                             {
-                                sb.Append($"{HubMethods.NameIDLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
+                                sb.Append($"{HubMethods.NameIdLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
                             }
-                            sb.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                            sb.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
                             RewardTitle =sb.ToString();
 
                             isParts = true;
                             break;
 
                         case "vanity":
-                            RewardTitle = HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale);
+                            RewardTitle = HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale);
                             if (RewardTitle is null)
                             {
                                 if (Rewards[i].Img_Path.Contains("emote"))
@@ -531,18 +531,18 @@ namespace LiveBot.SlashCommands
                             StringBuilder currencySB = new();
                             if (Rewards[i].Extra.FirstOrDefault(w=>w.Key.Equals("currency_type")).Value.Equals("parts"))
                             {
-                                currencySB.Append(HubMethods.NameIDLookup("55508", locale));
+                                currencySB.Append(HubMethods.NameIdLookup("55508", locale));
                             }
                             else
                             {
-                                currencySB.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                                currencySB.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
                             }
                             currencySB.Append($"- {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}");
                             RewardTitle = currencySB.ToString();
                             break;
 
                         case "vehicle":
-                            RewardTitle = $"{HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
+                            RewardTitle = $"{HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
                             break;
 
                         default:

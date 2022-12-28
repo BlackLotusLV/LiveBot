@@ -2,7 +2,7 @@
 
 namespace LiveBot.Json
 {
-    internal class TCHubJson
+    public class TCHubJson
     {
         public class TCHub
         {

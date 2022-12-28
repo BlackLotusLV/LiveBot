@@ -11,7 +11,7 @@ namespace LiveBot.Automation
             _streamNotificationService = streamNotificationService;
         }
 
-        private static List<LiveStreamer> LiveStreamerList { get; set; } = new List<LiveStreamer>();
+        private static List<LiveStreamer> LiveStreamerList { get; } = new();
 
         private static readonly int StreamCheckDelay = 5;
 

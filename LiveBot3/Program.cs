@@ -1,4 +1,5 @@
-﻿using DSharpPlus.CommandsNext;
+﻿using System.Reflection.Metadata;
+using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.SlashCommands;
@@ -18,7 +19,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime Start = DateTime.UtcNow;
-        public static readonly string BotVersion = $"20221210_A";
+        public const string BotVersion = $"20221228_A";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -39,15 +40,13 @@ namespace LiveBot
         public static FontCollection Fonts { get; set; } = new();
 
         // Timers
-        
-
-        private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
         private Timer MessageCacheClearTimer { get; set; } = new(e => AutoMod.ClearMSGCache());
         private Timer ModMailCloserTimer { get; set; } = new(async e => await ModMail.ModMailCloser());
+        private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
 
         private static void Main(string[] args)
         {
-            var prog = new Program();
+            Program prog = new Program();
             prog.RunBotAsync(args).GetAwaiter().GetResult();
         }
 
@@ -67,7 +66,7 @@ namespace LiveBot
             TheCrewHubJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCHub;
             Thread hubThread = new(async () => await HubMethods.UpdateHubInfo());
             hubThread.Start();
-
+            
             LogLevel logLevel = LogLevel.Debug;
             if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
             {
@@ -146,6 +145,8 @@ namespace LiveBot
             AutoMod autoMod = ActivatorUtilities.CreateInstance<AutoMod>(service);
             LiveStream liveStream = ActivatorUtilities.CreateInstance<LiveStream>(service);
             UserActivityTracker userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(service);
+            
+            
 
             //
 
