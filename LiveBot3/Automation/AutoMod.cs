@@ -1,35 +1,47 @@
 ﻿using DSharpPlus.Exceptions;
 using System.Text.RegularExpressions;
+using LiveBot.DB;
+using LiveBot.Services;
 
 namespace LiveBot.Automation
 {
-    internal static partial class AutoMod
+    public partial class AutoMod
     {
+        
+        private readonly IWarningService _warningService;
+        private readonly ILeaderboardService _leaderboardService;
+
+        public AutoMod(IWarningService warningService,ILeaderboardService leaderboardService)
+        {
+            _warningService = warningService;
+            _leaderboardService = leaderboardService;
+        }
+        
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
 
 #pragma warning disable IDE0044 // Add readonly modifier
-        private static List<DiscordMessage> MessageList = new();
+        private static List<DiscordMessage> _messageList = new();
 #pragma warning restore IDE0044 // Add readonly modifier
 
-        public static Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
+        public Task Add_To_Leaderboards(object O, GuildMemberAddEventArgs e)
         {
             DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == e.Member.Id && lb.Server_ID == e.Guild.Id);
             if (local is null)
             {
-                Services.LeaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
+                _leaderboardService.QueueLeaderboardItem(e.Member, e.Guild);
             }
             return Task.CompletedTask;
         }
 
-        public static async Task Banned_Words(DiscordClient Client, MessageCreateEventArgs e)
+        public async Task Banned_Words(DiscordClient Client, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
-            var wordlist = (from bw in DB.DBLists.AMBannedWords
+            List<AMBannedWords> wordlist = (from bw in DB.DBLists.AMBannedWords
                             where bw.Server_ID == e.Guild.Id
                             select bw).ToList();
-            foreach (var word in from word in wordlist
+            foreach (AMBannedWords word in from word in wordlist
                                  where Regex.IsMatch(e.Message.Content.ToLower(), @$"\b{word.Word}\b")
                                  select word)
             {
@@ -42,18 +54,17 @@ namespace LiveBot.Automation
                 {
                     msgDeleted = true;
                 }
-                if (!msgDeleted && DB.DBLists.ServerRanks.First(w => w.Server_ID == e.Guild.Id && w.User_ID == e.Author.Id).Warning_Level < 5)
+
+                if (msgDeleted || DBLists.Warnings.Count(w => w.User_ID == e.Author.Id && w.Server_ID == e.Guild.Id && w.Type == "warning" && w.Active) >= 5) return;
+                if (word.Offense.Contains("ASCII"))
                 {
-                    if (word.Offense.Contains("ASCII"))
-                    {
-                        Services.WarningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"{word.Offense}", true);
-                        Client.Logger.LogInformation(CustomLogEvents.AutoMod, "User {Username}({UserId}) Warned for ASCII spam", e.Author.Username, e.Author.Id);
-                    }
-                    else
-                    {
-                        Services.WarningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"{word.Offense} - Trigger word: `{word.Word}`", true);
-                        Client.Logger.LogInformation(CustomLogEvents.AutoMod, "User {Username}({UserId}) Warned for using a trigger word.\n\t\tOffense - {Offense}\n\t\tContent - {TriggerWord}", e.Author.Username, e.Author.Id, word.Offense, word.Word);
-                    }
+                    _warningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"{word.Offense}", true);
+                    Client.Logger.LogInformation(CustomLogEvents.AutoMod, "User {Username}({UserId}) Warned for ASCII spam", e.Author.Username, e.Author.Id);
+                }
+                else
+                {
+                    _warningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"{word.Offense} - Trigger word: `{word.Word}`", true);
+                    Client.Logger.LogInformation(CustomLogEvents.AutoMod, "User {Username}({UserId}) Warned for using a trigger word.\n\t\tOffense - {Offense}\n\t\tContent - {TriggerWord}", e.Author.Username, e.Author.Id, word.Offense, word.Word);
                 }
             }
         }
@@ -119,7 +130,7 @@ namespace LiveBot.Automation
                 }
                 else
                 {
-                    string location = $"{Program.tmpLoc}{e.Message.Id}-DeleteLog.txt";
+                    string location = $"{Program.TmpLoc}{e.Message.Id}-DeleteLog.txt";
                     File.WriteAllText(location, $"{Description}\n**Contents:** {converteddeletedmsg}");
                     using var upFile = new FileStream(location, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                     var msgBuilder = new DiscordMessageBuilder
@@ -131,10 +142,10 @@ namespace LiveBot.Automation
                     await DeleteLog.SendMessageAsync(msgBuilder);
                 }
             }
-            var DeletedMSG = MessageList.FirstOrDefault(w => w.Timestamp.Equals(e.Message.Timestamp) && w.Content.Equals(e.Message.Content));
+            var DeletedMSG = _messageList.FirstOrDefault(w => w.Timestamp.Equals(e.Message.Timestamp) && w.Content.Equals(e.Message.Content));
             if (DeletedMSG != null)
             {
-                MessageList.Remove(DeletedMSG);
+                _messageList.Remove(DeletedMSG);
             }
         }
 
@@ -175,8 +186,8 @@ namespace LiveBot.Automation
             }
             else
             {
-                File.WriteAllText($"{Program.tmpLoc}{e.Messages.Count}-BulkDeleteLog.txt", sb.ToString());
-                using var upFile = new FileStream($"{Program.tmpLoc}{e.Messages.Count}-BulkDeleteLog.txt", FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+                File.WriteAllText($"{Program.TmpLoc}{e.Messages.Count}-BulkDeleteLog.txt", sb.ToString());
+                using var upFile = new FileStream($"{Program.TmpLoc}{e.Messages.Count}-BulkDeleteLog.txt", FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                 var msgBuilder = new DiscordMessageBuilder
                 {
                     Content = $"Bulk delete log(Over the message cap) ({e.Messages.Count}) [{e.Messages[0].Timestamp} - {e.Messages[e.Messages.Count - 1].Timestamp}]"
@@ -322,40 +333,39 @@ namespace LiveBot.Automation
             return Task.CompletedTask;
         }
 
-        public static async Task Spam_Protection(object o, MessageCreateEventArgs e)
+        public async Task Spam_Protection(object o, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
-            var Server_Settings = (from ss in DB.DBLists.ServerSettings
-                                   where ss.ID_Server == e.Guild?.Id
-                                   select ss).FirstOrDefault();
+            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == e.Guild.Id);
 
-            if (Server_Settings == null || Server_Settings.WKB_Log == 0 || Server_Settings.Spam_Exception_Channels.Any(id => id == e.Channel.Id)) return;
+            if (serverSettings == null || serverSettings.WKB_Log == 0 || serverSettings.Spam_Exception_Channels.Any(id => id == e.Channel.Id)) return;
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
-            MessageList.Add(e.Message);
-            var duplicatemessages = MessageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
-            int i = duplicatemessages.Count;
-            if (duplicatemessages.Count >= 5)
+            _messageList.Add(e.Message);
+            List<DiscordMessage> duplicateMessages = _messageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
+            int i = duplicateMessages.Count;
+            if (i < 5) return;
+
+            TimeSpan time = (duplicateMessages[i - 1].CreationTimestamp - duplicateMessages[i - 5].CreationTimestamp) / 5;
+            if (time >= TimeSpan.FromSeconds(6)) return;
+            
+            List<DiscordChannel> channelList = duplicateMessages.GetRange(i - 5, 5).Select(s => s.Channel).Distinct().ToList();
+            await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+            foreach (DiscordChannel channel in channelList)
             {
-                TimeSpan time = (duplicatemessages[i - 1].CreationTimestamp - duplicatemessages[i - 5].CreationTimestamp) / 5;
-                if (time < TimeSpan.FromSeconds(6))
-                {
-                    List<DiscordChannel> ChannelList = duplicatemessages.GetRange(i - 5, 5).Select(s => s.Channel).Distinct().ToList();
-                    await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
-                    foreach (DiscordChannel channel in ChannelList)
-                    {
-                        await channel.DeleteMessagesAsync(duplicatemessages.GetRange(i - 5, 5));
-                    }
-                    if (DB.DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == e.Guild.Id && w.User_ID == e.Author.Id).Warning_Level < 5)
-                    {
-                        Services.WarningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"Spam protection triggered - flood", true);
-                    }
-                }
+                await channel.DeleteMessagesAsync(duplicateMessages.GetRange(i - 5, 5));
+            }
+
+            int infractionLevel = DBLists.Warnings.Count(w => w.User_ID == member.Id && w.Server_ID == e.Guild.Id && w.Type == "warning" && w.Active);
+
+            if (infractionLevel < 5)
+            {
+                _warningService.QueueWarning(e.Author, Program.Client.CurrentUser, e.Guild, e.Channel, $"Spam protection triggered - flood", true);
             }
         }
 
-        public static async Task Link_Spam_Protection(DiscordClient Client, MessageCreateEventArgs e)
+        public async Task Link_Spam_Protection(DiscordClient Client, MessageCreateEventArgs e)
         {
             var Server_Settings = (from ss in DB.DBLists.ServerSettings
                                    where ss.ID_Server == e.Guild?.Id
@@ -367,11 +377,11 @@ namespace LiveBot.Automation
             {
                 await e.Message.DeleteAsync();
                 await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
-                Services.WarningService.QueueWarning(e.Author, Client.CurrentUser, e.Guild, e.Channel, $"Spam protection triggered - invite links", true);
+                _warningService.QueueWarning(e.Author, Client.CurrentUser, e.Guild, e.Channel, $"Spam protection triggered - invite links", true);
             }
         }
 
-        public static async Task Everyone_Tag_Protection(DiscordClient Client, MessageCreateEventArgs e)
+        public async Task Everyone_Tag_Protection(DiscordClient Client, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
 
@@ -398,7 +408,7 @@ namespace LiveBot.Automation
                 if (!msgDeleted)
                 {
                     await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
-                    Services.WarningService.QueueWarning(e.Author, Client.CurrentUser, e.Guild, e.Channel, $"Tried to tag everyone", true);
+                    _warningService.QueueWarning(e.Author, Client.CurrentUser, e.Guild, e.Channel, $"Tried to tag everyone", true);
                 }
             }
         }
@@ -469,9 +479,9 @@ namespace LiveBot.Automation
 
         public static void ClearMSGCache()
         {
-            if (MessageList.Count > 100)
+            if (_messageList.Count > 100)
             {
-                MessageList.RemoveRange(0, MessageList.Count - 100);
+                _messageList.RemoveRange(0, _messageList.Count - 100);
             }
         }
 

@@ -13,7 +13,7 @@ namespace LiveBot
 {
     internal static partial class HubMethods
     {
-        private static DateTime TCHubLastUpdated;
+        private static ulong _summitId;
         public static byte[,][] RewardsImageBitArr { get; set; } = new byte[4, 4][];
 
         public static Dictionary<string, Dictionary<string, string>> TCHubLocales { get; private set; } = new();
@@ -21,97 +21,84 @@ namespace LiveBot
         public static async Task UpdateHubInfo(bool forced = false)
         {
             List<TCHubJson.Summit> JSummit;
-            DateTime endtime;
             using HttpClient wc = new();
-            bool Connected = true;
             string JSummitString = string.Empty;
             try
             {
-                JSummitString = await wc.GetStringAsync(Program.TCHubJson.Summit);
+                JSummitString = await wc.GetStringAsync(Program.TheCrewHubJson.Summit);
             }
             catch (WebException e)
             {
-                Connected = false;
                 Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, e, "Connection error. Either wrong API link, or the Hub is down.");
+                return;
             }
-            if (Connected)
-            {
-                JSummit = JsonConvert.DeserializeObject<List<TCHubJson.Summit>>(JSummitString);
-                if (forced)
-                {
-                    endtime = TCHubLastUpdated;
-                }
-                else
-                {
-                    endtime = CustomMethod.EpochConverter(JSummit[0].End_Date * 1000);
-                }
-                if (endtime != TCHubLastUpdated || forced)
-                {
-                    TCHubLastUpdated = endtime;
 
-                    foreach (var item in Program.TCHubJson.Locales)
+            JSummit = JsonConvert.DeserializeObject<List<TCHubJson.Summit>>(JSummitString);
+            if (_summitId == JSummit[0].Summit_ID && !forced) return;
+
+            _summitId = JSummit[0].Summit_ID;
+            foreach (var item in Program.TheCrewHubJson.Locales)
+            {
+                TCHubLocales.Add(item.Key, JsonConvert.DeserializeObject<Dictionary<string, string>>(await wc.GetStringAsync(item.Value)));
+            }
+
+            Program.JSummit = JSummit;
+            Program.TheCrewHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(await wc.GetStringAsync(Program.TheCrewHubJson.GameData));
+            await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(),
+                async (Event, Token) =>
+                {
+                    JSummit[0].Events.First(w => w.ID == Event.ID).Image_Byte = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{Event.Img_Path}", Token);
+                });
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = 0; j < JSummit[i].Rewards.Length; j++)
+                {
+                    if (JSummit[i].Rewards[j].Img_Path == "")
                     {
-                        TCHubLocales.Add(item.Key, JsonConvert.DeserializeObject<Dictionary<string, string>>(await wc.GetStringAsync(item.Value)));
+                        RewardsImageBitArr[i, j] = null;
                     }
-                    Program.JSummit = JSummit;
-                    Program.TCHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(await wc.GetStringAsync(Program.TCHubJson.GameData));
-                    await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, Token) =>
+                    else
                     {
-                        JSummit[0].Events.FirstOrDefault(w => w.ID == Event.ID).Image_Byte = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{Event.Img_Path}", Token);
-                    });
-                    for (int i = 0; i < 4; i++)
-                    {
-                        for (int j = 0; j < JSummit[i].Rewards.Length; j++)
-                        {
-                            if (JSummit[i].Rewards[j].Img_Path == "")
-                            {
-                                RewardsImageBitArr[i, j] = null;
-                            }
-                            else
-                            {
-                                RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
-                            }
-                        }
+                        RewardsImageBitArr[i, j] = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[i].Rewards[j].Img_Path}");
                     }
-                    Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, "Info downloaded for {SummitId} summit.", JSummit[0].Summit_ID);
                 }
             }
+
+            Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, "Info downloaded for {SummitId} summit.", JSummit[0].Summit_ID);
         }
 
-        public static async Task DownloadHubNews()
+    public static async Task DownloadHubNews()
         {
             using HttpClient wc = new();
             wc.DefaultRequestHeaders.Add("Ubi-AppId", "dda77324-f9d6-44ea-9ecb-30e57b286f6d");
             wc.DefaultRequestHeaders.Add("Ubi-localeCode", "us-en");
-            string NewsString = string.Empty;
-            bool Connected = true;
+            string newsString = string.Empty;
+            bool connected = true;
 
             try
             {
-                NewsString = await wc.GetStringAsync(Program.TCHubJson.News);
+                newsString = await wc.GetStringAsync(Program.TheCrewHubJson.News);
             }
             catch (WebException e)
             {
-                Connected = false;
+                connected = false;
                 Program.Client.Logger.LogInformation(CustomLogEvents.TCHub, e, "Connection error. Either wrong API link, or the Hub is down.");
             }
-            if (Connected)
+            if (connected)
             {
-                Program.TCHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(NewsString);
+                Program.TheCrewHub = JsonConvert.DeserializeObject<TCHubJson.TCHub>(newsString);
             }
         }
 
-        public static string NameIDLookup(string ID, string locale = "en-GB")
+        public static string NameIdLookup(string ID, string locale = "en-GB")
         {
             if (locale == null || !TCHubLocales.TryGetValue(locale, out Dictionary<string, string> dictionary))
             {
                 dictionary = TCHubLocales.FirstOrDefault(w => w.Key == "en-GB").Value;
             }
 
-            string HubText = dictionary.FirstOrDefault(w => w.Key.Equals(ID)).Value ?? "[Item Name Missing]";
-            HubText = HubText.Replace("&#8209;", "-");
-            HubText = itemTextRegex().Replace(HubText, "");
-            return HubText;
+            string hubText = dictionary.FirstOrDefault(w => w.Key.Equals(ID)).Value ?? "[Item Name Missing]";
+            return WebUtility.HtmlDecode(hubText);
         }
 
         public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
@@ -144,25 +131,25 @@ namespace LiveBot
                     .Resize(380, 483)
                     );
             }
-            Font Basefont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 18);
-            Font SummitCaps15 = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15);
-            Font VehicleFont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 11.5f);
+            Font basefont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 18);
+            Font summitCaps15 = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15);
+            Font vehicleFont = new(Program.Fonts.Get("HurmeGeometricSans4 Black"), 11.5f);
             if (Activity == null)
             {
-                using Image<Rgba32> NotComplete = new(EventImage.Width, EventImage.Height);
-                TextOptions TextOptions = new(Basefont)
+                using Image<Rgba32> notComplete = new(EventImage.Width, EventImage.Height);
+                TextOptions textOptions = new(basefont)
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Top,
-                    Origin = new PointF(NotComplete.Width / 2, NotComplete.Height / 2),
+                    Origin = new PointF(notComplete.Width / 2, notComplete.Height / 2),
                     FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
                 };
-                NotComplete.Mutate(ctx => ctx
+                notComplete.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText(TextOptions, "Event not completed!", Color.White)
+                    .DrawText(textOptions, "Event not completed!", Color.White)
                     );
                 EventImage.Mutate(ctx => ctx
-                .DrawImage(NotComplete, new Point(0, 0), 0.8f)
+                .DrawImage(notComplete, new Point(0, 0), 0.8f)
                 );
                 return EventImage;
             }
@@ -172,15 +159,15 @@ namespace LiveBot
             string ThisEventNameID = string.Empty;
             if (Event.Is_Mission)
             {
-                ThisEventNameID = Program.TCHub.Missions.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
+                ThisEventNameID = Program.TheCrewHub.Missions.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
             }
             else
             {
-                ThisEventNameID = Program.TCHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
+                ThisEventNameID = Program.TheCrewHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
             }
             TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
             string
-                EventTitle = NameIDLookup(ThisEventNameID, locale),
+                EventTitle = NameIdLookup(ThisEventNameID, locale),
                 ActivityResult = $"Score: {Activity.Score}",
                 VehicleInfo = string.Empty;
             TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_Id);
@@ -190,17 +177,17 @@ namespace LiveBot
             }
             else
             {
-                TCHubJson.Model Model = Program.TCHub.Models.FirstOrDefault(w => w.ID == Entries.Vehicle_ID);
+                TCHubJson.Model Model = Program.TheCrewHub.Models.FirstOrDefault(w => w.ID == Entries.Vehicle_ID);
                 TCHubJson.Brand Brand;
                 if (Model != null)
                 {
-                    Brand = Program.TCHub.Brands.FirstOrDefault(w => w.ID == Model.Brand_ID);
+                    Brand = Program.TheCrewHub.Brands.FirstOrDefault(w => w.ID == Model.Brand_ID);
                 }
                 else
                 {
                     Brand = null;
                 }
-                VehicleInfo = $"{NameIDLookup(Brand != null ? Brand.Text_ID : "not found", locale)} - {NameIDLookup(Model != null ? Model.Text_ID : "not found", locale)}";
+                VehicleInfo = $"{NameIdLookup(Brand != null ? Brand.Text_ID : "not found", locale)} - {NameIdLookup(Model != null ? Model.Text_ID : "not found", locale)}";
             }
             if (leaderboard.Score_Format == "time")
             {
@@ -214,7 +201,7 @@ namespace LiveBot
             {
                 ActivityResult = $"Distance: {Activity.Score}m";
             }
-            TextOptions EventTitleOptions = new(SummitCaps15)
+            TextOptions EventTitleOptions = new(summitCaps15)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -223,7 +210,7 @@ namespace LiveBot
                 Origin = new PointF(5, 0),
                 FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
-            TextOptions VehicleTextOptions = new(VehicleFont)
+            TextOptions VehicleTextOptions = new(vehicleFont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -232,13 +219,13 @@ namespace LiveBot
                 Origin = new PointF(5, EventImage.Height - 62),
                 FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
-            TextOptions BaseTopLelft = new(Basefont)
+            TextOptions BaseTopLelft = new(basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
                 FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
             };
-            TextOptions BaseTopRight = new(Basefont)
+            TextOptions BaseTopRight = new(basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,

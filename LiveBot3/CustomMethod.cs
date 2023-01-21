@@ -205,12 +205,12 @@ namespace LiveBot
             }
             kcount = UserStats.Kick_Count;
             bcount = UserStats.Ban_Count;
-            wlevel = UserStats.Warning_Level;
             var WarningsList = DB.DBLists.Warnings.Where(w => w.User_ID == User.Id && w.Server_ID == Guild.Id).OrderBy(w => w.Time_Created).ToList();
             if (!AdminCommand)
             {
                 WarningsList.RemoveAll(w => w.Type == "note");
             }
+            wlevel = WarningsList.Count(w => w.Type == "warning" && w.Active);
             wcount = WarningsList.Count(w => w.Type == "warning");
             foreach (var item in WarningsList)
             {

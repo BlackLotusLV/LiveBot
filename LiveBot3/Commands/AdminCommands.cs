@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
+using LiveBot.Services;
 
 namespace LiveBot.Commands
 {
@@ -9,12 +10,18 @@ namespace LiveBot.Commands
     [RequirePermissions(Permissions.KickMembers)]
     public class AdminCommands : BaseCommandModule
     {
+        private readonly IWarningService _warningService;
+
+        public AdminCommands(IWarningService warningService)
+        {
+            _warningService = warningService;
+        }
         [Command("uptime")] //uptime command
         [Aliases("live")]
         public async Task Uptime(CommandContext ctx)
         {
             DateTime current = DateTime.UtcNow;
-            TimeSpan time = current - Program.start;
+            TimeSpan time = current - Program.Start;
             await ctx.Message.RespondAsync($"{time.Days} Days {time.Hours}:{time.Minutes}.{time.Seconds}");
         }
 
@@ -34,79 +41,7 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            Services.WarningService.QueueWarning(username, ctx.Member, ctx.Guild, ctx.Channel, reason, false);
-        }
-
-        [Command("unwarn")]
-        [Description("Removes a warning from a user")]
-        [RequireGuild]
-        public async Task Unwarning(CommandContext ctx, DiscordUser username, int WarningID = -1)
-        {
-            await ctx.TriggerTypingAsync();
-            await ctx.Message.DeleteAsync();
-            var WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => ctx.Guild.Id == f.Server_ID && username.Id == f.User_ID);
-            var ServerSettings = DB.DBLists.ServerSettings.FirstOrDefault(f => ctx.Guild.Id == f.ID_Server);
-            var Warnings = DB.DBLists.Warnings.Where(f => ctx.Guild.Id == f.Server_ID && username.Id == f.User_ID).ToList();
-            string MSGOut, modmsg = string.Empty;
-            bool check = true;
-            DiscordMember member = null;
-            if (ServerSettings.WKB_Log != 0)
-            {
-                try
-                {
-                    member = await ctx.Guild.GetMemberAsync(username.Id);
-                }
-                catch (Exception)
-                {
-                    await ctx.Channel.SendMessageAsync($"{username.Username} is no longer in the server.");
-                }
-
-                DiscordChannel modlog = ctx.Guild.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
-                if (WarnedUserStats is null)
-                {
-                    await ctx.RespondAsync($"This user, {username.Username}, has no warning history.");
-                }
-                else
-                {
-                    if (WarnedUserStats.Warning_Level is 0)
-                    {
-                        MSGOut = "This user warning level is already 0";
-                        check = false;
-                    }
-                    else
-                    {
-                        WarnedUserStats.Warning_Level -= 1;
-                        MSGOut = $"Warning level lowered for {username.Username}";
-                        DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
-                        entry ??= Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
-                        entry.Active = false;
-                        DB.DBLists.UpdateWarnings(entry);
-                        DB.DBLists.UpdateServerRanks(WarnedUserStats);
-                    }
-                    if (check)
-                    {
-                        string Description = $"{username.Mention} has been unwarned by {ctx.User.Mention}. Warning level now {WarnedUserStats.Warning_Level}";
-                        try
-                        {
-                            await member.SendMessageAsync($"Your warning level in **{ctx.Guild.Name}** has been lowered to {WarnedUserStats.Warning_Level} by {ctx.User.Mention}");
-                        }
-                        catch
-                        {
-                            modmsg = $":exclamation::exclamation:{username.Mention} could not be contacted via DM.";
-                        }
-                        await CustomMethod.SendModLogAsync(modlog, username, Description, CustomMethod.ModLogType.Unwarn, modmsg);
-                    }
-                    DiscordMessage msg = await ctx.RespondAsync(MSGOut);
-                    await Task.Delay(10000);
-                    await msg.DeleteAsync();
-                }
-                DiscordMessage info = await ctx.Channel.SendMessageAsync($"{username.Username}, Has been un-warned!");
-                await Task.Delay(10000).ContinueWith(t => info.DeleteAsync());
-            }
-            else
-            {
-                await ctx.RespondAsync("This server has not set up this feature!");
-            }
+            _warningService.QueueWarning(username, ctx.Member, ctx.Guild, ctx.Channel, reason, false);
         }
 
         [Command("getkicks")]

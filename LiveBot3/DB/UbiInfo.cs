@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("Ubi_Info", Schema = "livebot")]
-    internal class UbiInfo
+    public class UbiInfo
     {
         [Key]
         [Column("id")]

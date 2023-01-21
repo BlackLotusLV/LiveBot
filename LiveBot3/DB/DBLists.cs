@@ -4,7 +4,7 @@ namespace LiveBot.DB
 {
     internal static class DBLists
     {
-        public static readonly int TableCount = 16;
+        public static readonly int TableCount = 17;
         public static int LoadedTableCount { get; set; } = 0;
 
         public static List<VehicleList> VehicleList { get; set; } = new(); //1
@@ -23,6 +23,7 @@ namespace LiveBot.DB
         public static List<ButtonRoles> ButtonRoles { get; set; } = new();//14
         public static List<UbiInfo> UbiInfo { get; set; } = new();//15
         public static List<UserActivity> UserActivity { get; set; } = new();//16
+        public static List<Whitelist> WhiteList { get; set; }  = new(); // 17
 
         public static void LoadAllLists()
         {
@@ -46,13 +47,35 @@ namespace LiveBot.DB
                     () => LoadRoleTagSettings(true, sw),
                     () => LoadButtonRoles(true, sw),
                     () => LoadUbiInfo(true, sw),
-                    () => LoadUserActivity(true, sw)
+                    () => LoadUserActivity(true, sw),
+                    () => LoadWhitelist(true, sw)
                     );
-                sw.Stop();
             }).Start();
         }
 
         #region Load Functions
+
+        public static void LoadWhitelist(bool progress = false, Stopwatch timer = null)
+        {
+            bool check = false;
+            if (timer == null)
+            {
+                timer = Stopwatch.StartNew();
+                check = true;
+            }
+            using var ctx = new WhitelistContext();
+            WhiteList = ctx.Whitelist.ToList();
+            if (check) timer.Stop();
+            if (progress)
+            {
+                LoadedTableCount++;
+                CustomMethod.DBProgress(LoadedTableCount, timer.Elapsed, "WhiteList");
+            }
+            else
+            {
+                Program.Client.Logger.LogInformation(CustomLogEvents.TableLoaded, @"WhiteList Loaded [{seconds}.{miliseconds}]", timer.Elapsed.Seconds, timer.Elapsed.Milliseconds.ToString("D3"));
+            }
+        }
 
         public static void LoadUserActivity(bool progress = false, Stopwatch timer = null)
         {
@@ -465,6 +488,13 @@ namespace LiveBot.DB
 
         #region Update Functions
 
+        public static void UpdateWhteList(params Whitelist[] o)
+        {
+            using var ctx = new WhitelistContext();
+            ctx.UpdateRange(o);
+            ctx.SaveChanges();
+        }
+
         public static void UpdateUserActivity(params UserActivity[] o)
         {
             using var ctx = new UserActivityContext();
@@ -617,14 +647,11 @@ namespace LiveBot.DB
             var userRanks = ServerRanks.FirstOrDefault(w => w.Server_ID == o.Server_ID && w.User_ID==o.User_ID);
             if (userRanks == null)
             {
-                int level = 0;
-                if (o.Type == "warning") level = 1;
-                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID, Warning_Level = level });
+                o.Server_Ranks_ID = InsertServerRanks(new ServerRanks { User_ID = o.User_ID, Server_ID = o.Server_ID});
             }
             else
             {
                 o.Server_Ranks_ID = userRanks.ID_Server_Rank;
-                userRanks.Warning_Level++;
                 if (o.Type == "warning") UpdateServerRanks(userRanks);
             }
             using var ctx = new WarningsContext();

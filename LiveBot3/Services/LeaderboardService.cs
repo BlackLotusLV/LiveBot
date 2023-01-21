@@ -2,29 +2,35 @@
 
 namespace LiveBot.Services
 {
-    internal static class LeaderboardService
+    public interface ILeaderboardService
+    {
+        void StartService(DiscordClient client);
+        void StopService(DiscordClient client);
+        void QueueLeaderboardItem(DiscordUser user, DiscordGuild guild);
+    }
+    public class LeaderboardService : ILeaderboardService
     {
         // Use a concurrent bag instead of a queue to avoid locking and improve performance
-        private static readonly ConcurrentBag<LeaderboardItem> _leaderboard = new();
+        private static readonly ConcurrentBag<LeaderboardItem> Leaderboard = new();
 
         // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
-        private static readonly CancellationTokenSource cts = new();
-        private static readonly CancellationToken token = cts.Token;
+        private static readonly CancellationTokenSource Cts = new();
+        private static readonly CancellationToken Token = Cts.Token;
 
-        private static readonly Thread thread = new(() =>
+        private static readonly Thread Thread = new(() =>
         {
             // Check if cancellation has been requested
-            while (!token.IsCancellationRequested)
+            while (!Token.IsCancellationRequested)
             {
                 try
                 {
-                    if (_leaderboard.IsEmpty)
+                    if (Leaderboard.IsEmpty)
                     {
                         Thread.Sleep(100);
                         continue;
                     }
 
-                    if (_leaderboard.TryTake(out LeaderboardItem item))
+                    if (Leaderboard.TryTake(out LeaderboardItem item))
                     {
                         AddToServerLeaderboard(item.User, item.Guild);
                     }
@@ -36,26 +42,26 @@ namespace LiveBot.Services
             }
         });
 
-        public static void StartService()
+        public void StartService(DiscordClient client)
         {
-            thread.Start();
-            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service started!");
+            Thread.Start();
+            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service started!");
         }
 
-        public static void StopService()
+        public void StopService(DiscordClient client)
         {
             // Request cancellation of the thread
-            cts.Cancel();
+            Cts.Cancel();
 
             // Wait for the thread to finish
-            thread.Join();
+            Thread.Join();
 
-            Program.Client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped!");
+            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped!");
         }
 
-        public static void QueueLeaderboardItem(DiscordUser user, DiscordGuild guild)
+        public void QueueLeaderboardItem(DiscordUser user, DiscordGuild guild)
         {
-            _leaderboard.Add(new LeaderboardItem(user, guild));
+            Leaderboard.Add(new LeaderboardItem(user, guild));
         }
 
         public static void AddUserToLeaderboard(DiscordUser user, string locale)
@@ -83,7 +89,7 @@ namespace LiveBot.Services
             DB.DBLists.InsertServerRanks(newEntry);
         }
 
-        internal class LeaderboardItem
+        private class LeaderboardItem
         {
             public DiscordGuild Guild { get; set; }
             public DiscordUser User { get; set; }

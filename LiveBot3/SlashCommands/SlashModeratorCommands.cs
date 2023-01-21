@@ -1,6 +1,8 @@
 ﻿using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
+using LiveBot.DB;
+using LiveBot.Services;
 
 namespace LiveBot.SlashCommands
 {
@@ -9,81 +11,37 @@ namespace LiveBot.SlashCommands
     [SlashRequireGuild]
     internal class SlashModeratorCommands : ApplicationCommandModule
     {
+        private readonly IWarningService _warningService;
+
+        public SlashModeratorCommands(IWarningService warningService)
+        {
+            _warningService = warningService;
+        }
         [SlashCommand("warn", "Warn a user.")]
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
             [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            Services.WarningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
+            _warningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
         }
 
         [SlashCommand("unwarn", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
             [Autocomplete(typeof(UnwarnOptions))]
-            [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long WarningID = -1)
+            [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long warningId = -1)
         {
             await ctx.DeferAsync(true);
-            var WarnedUserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => ctx.Guild.Id == f.Server_ID && user.Id == f.User_ID);
-            var ServerSettings = DB.DBLists.ServerSettings.FirstOrDefault(f => ctx.Guild.Id == f.ID_Server);
-            var Warnings = DB.DBLists.Warnings.Where(f => ctx.Guild.Id == f.Server_ID && user.Id == f.User_ID).ToList();
-            StringBuilder modmsgBuilder = new();
-            DiscordMember member = null;
-            if (ServerSettings?.WKB_Log == 0)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
-                return;
-            }
-            try
-            {
-                member = await ctx.Guild.GetMemberAsync(user.Id);
-            }
-            catch (Exception)
-            {
-                modmsgBuilder.AppendLine($"{user.Mention} is no longer in the server.");
-            }
-
-            DiscordChannel modlog = ctx.Guild.GetChannel(Convert.ToUInt64(ServerSettings.WKB_Log));
-            if (WarnedUserStats is null)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This user, {user.Username}, has no warning history."));
-                return;
-            }
-            if (WarnedUserStats.Warning_Level == 0)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"This user, {user.Username}, warning level is already 0."));
-                return;
-            }
-
-            WarnedUserStats.Warning_Level -= 1;
-            DB.Warnings entry = Warnings.FirstOrDefault(f => f.Active is true && f.ID_Warning == WarningID);
-            entry ??= Warnings.Where(f => f.Active is true).OrderBy(f => f.ID_Warning).FirstOrDefault();
-            entry.Active = false;
-            DB.DBLists.UpdateWarnings(entry);
-            DB.DBLists.UpdateServerRanks(WarnedUserStats);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Warning level lowered for {user.Username}"));
-
-            string Description = $"{user.Mention} has been unwarned by {ctx.User.Mention}. Warning level now {WarnedUserStats.Warning_Level}";
-            try
-            {
-                await member.SendMessageAsync($"Your warning level in **{ctx.Guild.Name}** has been lowered to {WarnedUserStats.Warning_Level} by {ctx.User.Mention}");
-            }
-            catch
-            {
-                modmsgBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
-            }
-
-            await CustomMethod.SendModLogAsync(modlog, user, Description, CustomMethod.ModLogType.Unwarn, modmsgBuilder.ToString());
+            await _warningService.RemoveWarningAsync(user, ctx, (int)warningId);
         }
         private sealed class UnwarnOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
+                foreach (Warnings item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
                 {
-
                     result.Add(new DiscordAutoCompleteChoice($"#{item.ID_Warning} - {item.Reason}",(long)item.ID_Warning));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);

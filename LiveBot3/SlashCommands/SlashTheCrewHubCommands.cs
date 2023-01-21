@@ -1,4 +1,5 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using System.Diagnostics;
+using DSharpPlus.SlashCommands;
 using LiveBot.Json;
 using Newtonsoft.Json;
 using SixLabors.Fonts;
@@ -20,7 +21,7 @@ namespace LiveBot.SlashCommands
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             string PCJson = string.Empty, XBJson = string.Empty, PSJson = string.Empty, StadiaJson = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-summit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summit.png";
             float outlineSize = 0.7f;
             byte[] SummitLogo;
             int[,] TierCutoff = new int[,] { { 4000, 8000, 15000 }, { 11000, 21000, 41000 }, { 2100, 4200, 8500 }, { 100, 200, 400 } };
@@ -188,7 +189,7 @@ namespace LiveBot.SlashCommands
             await HubMethods.UpdateHubInfo();
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-mysummit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-mysummit.png";
 
             bool SendImage = false;
 
@@ -323,13 +324,14 @@ namespace LiveBot.SlashCommands
         [SlashCommand("Top-Summit", "Shows the summit board with all the world record scores.")]
         public async Task TopSummit(InteractionContext ctx, [Option("platform", "Which platform leaderboard you want to see")] Platforms platform = Platforms.pc)
         {
+            Stopwatch sw = Stopwatch.StartNew();
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
 
             int TotalPoints = 0;
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-topsummit.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-topsummit.png";
             string search = string.Empty;
 
             bool alleventscompleted = true;
@@ -403,6 +405,7 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddFile(upFile);
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
+            Console.WriteLine(sw.Elapsed);
         }
 
         private sealed class RewardsOptions : IAutocompleteProvider
@@ -417,7 +420,7 @@ namespace LiveBot.SlashCommands
                 for (int i = 0; i < 4; i++)
                 {
                     if (Program.JSummit[i].Text_ID != "55475")
-                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIDLookup(Program.JSummit[i].Text_ID, locale), i));
+                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIdLookup(Program.JSummit[i].Text_ID, locale), i));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -442,7 +445,7 @@ namespace LiveBot.SlashCommands
 
             Color[] RewardColours = new Color[] { Rgba32.ParseHex("#0060A9"), Rgba32.ParseHex("#D5A45F"), Rgba32.ParseHex("#C2C2C2"), Rgba32.ParseHex("#B07C4D") };
 
-            string imageLoc = $"{Program.tmpLoc}{ctx.User.Id}-summitrewards.png";
+            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summitrewards.png";
             int RewardWidth = 412;
             TCHubJson.Reward[] Rewards = Program.JSummit[(int)Week].Rewards;
             using (Image<Rgba32> RewardsImage = new(4 * RewardWidth, 328))
@@ -500,16 +503,16 @@ namespace LiveBot.SlashCommands
                             StringBuilder sb = new();
                             if (Rewards[i].Subtitle_Text_ID!="")
                             {
-                                sb.Append($"{HubMethods.NameIDLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
+                                sb.Append($"{HubMethods.NameIdLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
                             }
-                            sb.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                            sb.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
                             RewardTitle =sb.ToString();
 
                             isParts = true;
                             break;
 
                         case "vanity":
-                            RewardTitle = HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale);
+                            RewardTitle = HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale);
                             if (RewardTitle is null)
                             {
                                 if (Rewards[i].Img_Path.Contains("emote"))
@@ -531,18 +534,18 @@ namespace LiveBot.SlashCommands
                             StringBuilder currencySB = new();
                             if (Rewards[i].Extra.FirstOrDefault(w=>w.Key.Equals("currency_type")).Value.Equals("parts"))
                             {
-                                currencySB.Append(HubMethods.NameIDLookup("55508", locale));
+                                currencySB.Append(HubMethods.NameIdLookup("55508", locale));
                             }
                             else
                             {
-                                currencySB.Append(HubMethods.NameIDLookup(Rewards[i].Title_Text_ID, locale));
+                                currencySB.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
                             }
                             currencySB.Append($"- {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}");
                             RewardTitle = currencySB.ToString();
                             break;
 
                         case "vehicle":
-                            RewardTitle = $"{HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIDLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
+                            RewardTitle = $"{HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
                             break;
 
                         default:

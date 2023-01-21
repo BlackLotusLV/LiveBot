@@ -31,7 +31,7 @@ namespace LiveBot.Commands
                         GuildNameString.AppendLine($"`{Guild.Name.Replace(' ', '-').ToLower()}`");
                     }
                 }
-                GuildNameString.AppendLine($"To start a modmail write `{Program.CFGJson.CommandPrefix}modmail server-name-here`");
+                GuildNameString.AppendLine($"To start a modmail write `{Program.ConfigJson.CommandPrefix}modmail server-name-here`");
                 if (!GuildNameDict.ContainsValue(serverName.Replace(' ', '-').ToLower()))
                 {
                     await ctx.RespondAsync(GuildNameString.ToString());
