@@ -157,7 +157,7 @@ namespace LiveBot.SlashCommands
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
+                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
                 {
                     switch (item.Platform)
                     {
@@ -195,7 +195,7 @@ namespace LiveBot.SlashCommands
 
             string search = string.Empty;
 
-            List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.User.Id).ToList();
+            List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.User.Id).ToList();
             DB.UbiInfo UbiInfo = new();
             if (UbiInfoList.Count == 0)
             {
@@ -221,7 +221,7 @@ namespace LiveBot.SlashCommands
             List<TCHubJson.Summit> JSummit = Program.JSummit;
             using (HttpClient wc = new())
             {
-                SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{UbiInfo.Platform}/profile/{UbiInfo.Profile_Id}");
+                SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{UbiInfo.Platform}/profile/{UbiInfo.ProfileId}");
             }
             TCHubJson.Rank Events = JsonConvert.DeserializeObject<TCHubJson.Rank>(SJson);
 
@@ -372,7 +372,7 @@ namespace LiveBot.SlashCommands
                 if (Activity.Entries.Length != 0)
                 {
                     Rank = JsonConvert.DeserializeObject<TCHubJson.Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{search}/profile/{Activity.Entries[0].Profile_ID}", CancellationToken.None));
-                    ubiInfo = new DB.UbiInfo { Platform = search, Profile_Id = Activity.Entries[0].Profile_ID };
+                    ubiInfo = new DB.UbiInfo { Platform = search, ProfileId = Activity.Entries[0].Profile_ID };
                 }
                 Image image = await HubMethods.BuildEventImage(
                         Event,
@@ -413,7 +413,7 @@ namespace LiveBot.SlashCommands
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 string locale = "en-GB";
-                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
                 if (userInfo != null)
                     locale = userInfo.Locale;
                 List<DiscordAutoCompleteChoice> result = new();
@@ -436,7 +436,7 @@ namespace LiveBot.SlashCommands
             [Autocomplete(typeof(RewardsOptions))][Maximum(3)][Minimum(0)][Option("Summit", "Which summit to see the rewards for.")] long weeknumber = 0)
         {
             string locale = "en-GB";
-            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
             if (userInfo != null)
                 locale = userInfo.Locale;
             Week Week = (Week)weeknumber;
@@ -617,10 +617,10 @@ namespace LiveBot.SlashCommands
                 Platforms.stadia => "stadia"
             };
 #pragma warning restore CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
-            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Platform == search && w.Profile_Id == link);
+            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Platform == search && w.ProfileId == link);
             if (info != null)
             {
-                if (info.Discord_Id != ctx.User.Id)
+                if (info.UserDiscordId != ctx.User.Id)
                 {
                     await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "The Ubisoft account you are trying to link has already been linked with a different Discord account." });
                     return;
@@ -631,8 +631,8 @@ namespace LiveBot.SlashCommands
 
             DB.UbiInfo newEntry = new()
             {
-                Discord_Id = ctx.User.Id,
-                Profile_Id = link,
+                UserDiscordId = ctx.User.Id,
+                ProfileId = link,
                 Platform = search
             };
 
@@ -651,7 +651,7 @@ namespace LiveBot.SlashCommands
                 return;
             }
             DB.DBLists.DeleteUbiInfo(entry);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.Profile_Id}** - **{entry.Platform}** from your Discord account"));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.ProfileId}** - **{entry.Platform}** from your Discord account"));
         }
 
         private sealed class LinkedAccountOptions : IAutocompleteProvider
@@ -659,9 +659,9 @@ namespace LiveBot.SlashCommands
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.Discord_Id == ctx.Member.Id))
+                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
                 {
-                    result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.Profile_Id}", (long)item.Id));
+                    result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.ProfileId}", (long)item.Id));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -671,10 +671,10 @@ namespace LiveBot.SlashCommands
         public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))][Option("Locale","Localisation")] string locale)
         {
             await ctx.DeferAsync(true);
-            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == ctx.User.Id);
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
             if (userInfo==null)
             {
-                DB.DBLists.InsertLeaderboard(new DB.Leaderboard { ID_User = ctx.User.Id, Locale = locale });
+                DB.DBLists.InsertLeaderboard(new DB.Leaderboard { UserDiscordId = ctx.User.Id, Locale = locale });
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
                 return;
             }

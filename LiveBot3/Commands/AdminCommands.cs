@@ -168,7 +168,7 @@ namespace LiveBot.Commands
             StringBuilder sb = new();
             int i = 0;
             sb.AppendLine("```csharp\n\t\tUsername");
-            foreach (var item in DB.DBLists.Warnings.Where(w => w.Server_ID == ctx.Guild.Id).GroupBy(w => w.Admin_ID)
+            foreach (var item in DB.DBLists.Warnings.Where(w => w.GuildId == ctx.Guild.Id).GroupBy(w => w.AdminDiscordId)
                 .Select(s => new
                 {
                     Admin_ID = s.Key,
@@ -227,10 +227,10 @@ namespace LiveBot.Commands
                 };
                 DB.DBLists.InsertBannedWords(newEntry);
                 info = $"The word `{BannedWord}` has been added to the list. They will be warned with `{warning}`";
-                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-                if (ss != null && ss.WKB_Log != 0)
+                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+                if (ss != null && ss.ModerationLogChannelId != 0)
                 {
-                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Added]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{BannedWord}```**", CustomMethod.ModLogType.Info);
+                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.ModerationLogChannelId), ctx.User, $"**[Banned Word Pattern Added]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{BannedWord}```**", CustomMethod.ModLogType.Info);
                 }
             }
             else
@@ -261,10 +261,10 @@ namespace LiveBot.Commands
                 context.Remove(DBEntry);
                 context.SaveChanges();
                 info = $"The word `{word}` has been removed from the list.";
-                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-                if (ss != null && ss.WKB_Log != 0)
+                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+                if (ss != null && ss.ModerationLogChannelId != 0)
                 {
-                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.WKB_Log), ctx.User, $"**[Banned Word Pattern Removed]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{word}```", CustomMethod.ModLogType.Info);
+                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.ModerationLogChannelId), ctx.User, $"**[Banned Word Pattern Removed]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{word}```", CustomMethod.ModLogType.Info);
                 }
             }
             else
@@ -346,19 +346,19 @@ namespace LiveBot.Commands
 
             DB.Warnings newEntry = new()
             {
-                Server_ID = ctx.Guild.Id,
-                Active = false,
-                Admin_ID = ctx.Message.Author.Id,
+                GuildId = ctx.Guild.Id,
+                IsActive = false,
+                AdminDiscordId = ctx.Message.Author.Id,
                 Type = "note",
-                User_ID = user.Id,
-                Time_Created = DateTime.UtcNow,
+                UserDiscordId = user.Id,
+                TimeCreated = DateTime.UtcNow,
                 Reason = note
             };
             DB.DBLists.InsertWarnings(newEntry);
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (serverSettings.WKB_Log != 0)
+            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+            if (serverSettings.ModerationLogChannelId != 0)
             {
-                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
+                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
 

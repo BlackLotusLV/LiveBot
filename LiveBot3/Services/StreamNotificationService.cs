@@ -77,7 +77,7 @@ namespace LiveBot.Services
             string streamTitle = activity.RichPresence.Details;
             string streamUrl = activity.StreamUrl;
 
-            var roleIds = new HashSet<ulong>(streamNotification.Roles_ID ?? Array.Empty<ulong>());
+            var roleIds = new HashSet<ulong>(streamNotification.RoleIds ?? Array.Empty<ulong>());
             var games = new HashSet<string>(streamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
 
             bool role = roleIds.Count == 0 || streamMember.Roles.Any(r => roleIds.Contains(r.Id));

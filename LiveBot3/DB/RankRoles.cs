@@ -6,26 +6,38 @@ namespace LiveBot.DB
     [Table("Rank_Roles", Schema = "livebot")]
     public class RankRoles
     {
+        public RankRoles(LiveBotDbContext context)
+        {
+            ServerSettings serverSettings = context.ServerSettings.FirstOrDefault(x => x.GuildId == this.GuildId);
+            if (serverSettings != null) return;
+            serverSettings = new ServerSettings() { GuildId = this.GuildId };
+            context.ServerSettings.Add(serverSettings);
+        }
         [Key]
         [Column("id_rank_roles", TypeName = "serial")]
-        public int ID_Rank_Roles { get; set; }
+        public int IdRankRoles { get; set; }
 
-        [Required]
-        [Column("server_id")]
-        public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
+        [Required, Column("server_id"), ForeignKey("Button_Roles_server_id_fkey")]
+        public ulong GuildId
+        { 
+            get => _guildId; 
+            set => _guildId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Server_ID;
+        private ulong _guildId;
 
         [Required]
         [Column("role_id")]
-        public ulong Role_ID
-        { get => _Role_ID; set { _Role_ID = Convert.ToUInt64(value); } }
+        public ulong RoleId
+        { 
+            get => _roleId;
+            set => _roleId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Role_ID;
+        private ulong _roleId;
 
         [Required]
         [Column("server_rank")]
-        public long Server_Rank { get; set; }
+        public long ServerRank { get; set; }
     }
 }

@@ -8,29 +8,37 @@ namespace LiveBot.DB
     {
         [Key]
         [Column("stream_notification_id")]
-        public int Stream_Notification_ID { get; set; }
+        public int StreamNotificationId { get; set; }
 
-        [Required]
-        [Column("server_id")]
-        public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
+        [Required,Column("server_id"),ForeignKey("Stream_Notification_server_id_fkey")]
+        public ulong GuildId
+        { 
+            get => _guildId; 
+            set => _guildId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Server_ID;
+        private ulong _guildId;
 
         [Column("games")]
         public string[] Games { get; set; }
 
         [Column("roles_id")]
-        public ulong[] Roles_ID
-        { get => _Roles_ID; set { _Roles_ID = value.Select(w => Convert.ToUInt64(w)).ToArray(); } }
+        public ulong[] RoleIds
+        { 
+            get => _roleIds; 
+            set => _roleIds = value.Select(Convert.ToUInt64).ToArray();
+        }
 
-        private ulong[] _Roles_ID;
+        private ulong[] _roleIds;
 
         [Required]
         [Column("channel_id")]
-        public ulong Channel_ID
-        { get => _Channel_ID; set { _Channel_ID = Convert.ToUInt64(value); } }
+        public ulong ChannelId
+        { 
+            get => _channelId;
+            set => _channelId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Channel_ID;
+        private ulong _channelId;
     }
 }

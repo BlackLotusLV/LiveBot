@@ -1,45 +1,49 @@
-﻿namespace LiveBot.Automation
+﻿using LiveBot.DB;
+
+namespace LiveBot.Automation
 {
-    internal static class MemberFlow
+    internal  class MemberFlow
     {
-        public static async Task Welcome_Member(object Client, GuildMemberAddEventArgs e)
+        private readonly LiveBotDbContext _databaseContext;
+
+        public MemberFlow(LiveBotDbContext databaseContext)
         {
-            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.First(w => w.Server_ID == e.Guild.Id);
-            if (WelcomeSettings.Channel_ID == 0 || WelcomeSettings.HasScreening) return;
-            DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));
+            _databaseContext = databaseContext;
+        }
+        public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
+        {
+            ServerSettings serverSettings = _databaseContext.ServerSettings.FirstOrDefault(x => x.GuildId == e.Guild.Id);
+            if (serverSettings==null || serverSettings.WelcomeSettings.ChannelId==0 || serverSettings.WelcomeSettings.HasScreening) return;
+            DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(serverSettings.WelcomeSettings.ChannelId));
 
-            if (WelcomeSettings.Welcome_Message == null) return;
-            string msg = WelcomeSettings.Welcome_Message;
+            if (serverSettings.WelcomeSettings.WelcomeMessage == null) return;
+            string msg = serverSettings.WelcomeSettings.WelcomeMessage;
             msg = msg.Replace("$Mention", $"{e.Member.Mention}");
-            await WelcomeChannel.SendMessageAsync(msg);
+            await welcomeChannel.SendMessageAsync(msg);
 
-            if (WelcomeSettings.Role_ID==0) return;
-            DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(WelcomeSettings.Role_ID));
+            if (serverSettings.WelcomeSettings.RoleId==0) return;
+            DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(serverSettings.WelcomeSettings.RoleId));
             await e.Member.GrantRoleAsync(role);
         }
 
-        public static async Task Say_Goodbye(object Client, GuildMemberRemoveEventArgs e)
+        public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.First(w => w.Server_ID == e.Guild.Id);
-            bool pendingcheck = true;
-            if (WelcomeSettings.HasScreening && e.Member.IsPending == true)
+            ServerSettings serverSettings = _databaseContext.ServerSettings.FirstOrDefault(x => x.GuildId == e.Guild.Id);
+            bool pendingCheck = serverSettings != null && !(serverSettings.WelcomeSettings.HasScreening && e.Member.IsPending == true);
+            if (serverSettings != null && serverSettings.WelcomeSettings.ChannelId != 0 && pendingCheck)
             {
-                pendingcheck = false;
-            }
-            if (WelcomeSettings.Channel_ID != 0 && pendingcheck)
-            {
-                DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));
-                if (WelcomeSettings.Goodbye_Message != null)
+                DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(serverSettings.WelcomeSettings.ChannelId));
+                if (serverSettings.WelcomeSettings.GoodbyeMessage != null)
                 {
-                    string msg = WelcomeSettings.Goodbye_Message;
+                    string msg = serverSettings.WelcomeSettings.GoodbyeMessage;
                     msg = msg.Replace("$Username", $"{e.Member.Username}");
-                    await WelcomeChannel.SendMessageAsync(msg);
+                    await welcomeChannel.SendMessageAsync(msg);
                 }
             }
-            var ModMailEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Member.Id && w.Server_ID == e.Guild.Id && w.IsActive);
-            if (ModMailEntry != null)
+            DB.ModMail modMailEntry = _databaseContext.ModMail.FirstOrDefault(w => w.UserDiscordId == e.Member.Id && w.GuildId == e.Guild.Id && w.IsActive);
+            if (modMailEntry != null)
             {
-                await ModMail.CloseModMailAsync(ModMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
+                await ModMail.CloseModMailAsync(modMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
             }
         }
     }

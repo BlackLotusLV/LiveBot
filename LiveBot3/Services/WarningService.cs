@@ -71,8 +71,8 @@ namespace LiveBot.Services
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
         {
-            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(f => ctx.Guild.Id == f.ID_Server);
-            List<Warnings> infractions = DBLists.Warnings.Where(w => ctx.Guild.Id == w.Server_ID && user.Id == w.User_ID && w.Type == "warning" && w.Active).ToList();
+            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(f => ctx.Guild.Id == f.GuildId);
+            List<Warnings> infractions = DBLists.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserDiscordId && w.Type == "warning" && w.IsActive).ToList();
             int infractionLevel = infractions.Count;
 
             if (infractionLevel == 0)
@@ -83,7 +83,7 @@ namespace LiveBot.Services
 
             StringBuilder modMessageBuilder = new();
             DiscordMember member = null;
-            if (serverSettings == null || serverSettings.WKB_Log == 0)
+            if (serverSettings == null || serverSettings.ModerationLogChannelId == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
                 return;
@@ -98,14 +98,14 @@ namespace LiveBot.Services
                 modMessageBuilder.AppendLine($"{user.Mention} is no longer in the server.");
             }
 
-            DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
-            Warnings entry = infractions.FirstOrDefault(f => f.Active && f.ID_Warning == warningId);
-            entry ??= infractions.Where(f => f.Active).OrderBy(f => f.ID_Warning).First();
-            entry.Active = false;
+            DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
+            Warnings entry = infractions.FirstOrDefault(f => f.IsActive && f.IdWarning == warningId);
+            entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.IdWarning).First();
+            entry.IsActive = false;
             DBLists.UpdateWarnings(entry);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.ID_Warning} deactivated for {user.Username}({user.Id})"));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.IdWarning} deactivated for {user.Username}({user.Id})"));
 
-            string description = $"{ctx.User.Mention} deactivated infraction #{entry.ID_Warning} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
+            string description = $"{ctx.User.Mention} deactivated infraction #{entry.IdWarning} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
             try
             {
                 if (member != null) await member.SendMessageAsync($"Your infraction level in **{ctx.Guild.Name}** has been lowered to {infractionLevel - 1} by {ctx.User.Mention}");
@@ -120,7 +120,7 @@ namespace LiveBot.Services
 
         private static async Task WarnUserAsync(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool autoMessage, InteractionContext ctx = null)
         {
-            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(f => server.Id == f.ID_Server);
+            ServerSettings serverSettings = DBLists.ServerSettings.FirstOrDefault(f => server.Id == f.GuildId);
 
             DiscordMember member = null;
             try
@@ -135,7 +135,7 @@ namespace LiveBot.Services
 
             string modInfo = "";
             bool kick = false, ban = false;
-            if (serverSettings == null || serverSettings.WKB_Log == 0)
+            if (serverSettings == null || serverSettings.ModerationLogChannelId == 0)
             {
                 if (ctx == null)
                 {
@@ -149,22 +149,22 @@ namespace LiveBot.Services
                 return;
             }
 
-            DiscordChannel modLog = server.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
+            DiscordChannel modLog = server.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
 
             Warnings newWarning = new()
             {
                 Reason = reason,
-                Active = true,
-                Time_Created = DateTime.UtcNow,
-                Admin_ID = admin.Id,
-                User_ID = user.Id,
-                Server_ID = server.Id,
+                IsActive = true,
+                TimeCreated = DateTime.UtcNow,
+                AdminDiscordId = admin.Id,
+                UserDiscordId = user.Id,
+                GuildId = server.Id,
                 Type = "warning"
             };
             DBLists.InsertWarnings(newWarning);
 
-            int warningCount = DBLists.Warnings.Count(w => w.User_ID == user.Id && w.Server_ID == server.Id && w.Type == "warning");
-            int infractionLevel = DBLists.Warnings.Count(w => w.User_ID == user.Id && w.Server_ID == server.Id && w.Type == "warning" && w.Active);
+            int warningCount = DBLists.Warnings.Count(w => w.UserDiscordId == user.Id && w.GuildId == server.Id && w.Type == "warning");
+            int infractionLevel = DBLists.Warnings.Count(w => w.UserDiscordId == user.Id && w.GuildId == server.Id && w.Type == "warning" && w.IsActive);
 
             DiscordEmbedBuilder embedToUser = new()
             {

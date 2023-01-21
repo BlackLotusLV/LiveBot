@@ -26,12 +26,12 @@ namespace LiveBot.Automation
             Cooldowns cooldowns = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (cooldowns != null && cooldowns.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
 
-            if (DBLists.Leaderboard.FirstOrDefault(w=>w.ID_User==e.Author.Id)==null)
+            if (DBLists.Leaderboard.FirstOrDefault(w=>w.UserDiscordId==e.Author.Id)==null)
             {
                 _leaderboardService.QueueLeaderboardItem(e.Author,e.Guild);
                 return;
             }
-            UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id && w.Date == DateTime.UtcNow.Date);
+            UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id && w.Date == DateTime.UtcNow.Date);
             if (userActivity == null)
             {
                 DBLists.InsertUserActivity(new(e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
@@ -44,24 +44,24 @@ namespace LiveBot.Automation
             CoolDowns.Add(new Cooldowns(e.Author, e.Guild, DateTime.UtcNow));
 
             long userPoints = DBLists.UserActivity
-                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.Guild_ID == e.Guild.Id && w.User_ID == e.Author.Id)
+                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id)
                 .Sum(w => w.Points);
-            var rankRole = DBLists.RankRoles.AsParallel().Where(w => w.Server_ID == e.Guild.Id).ToList();
-            var rankRoleUnder = DBLists.RankRoles.AsParallel().Where(w => w.Server_ID == e.Guild.Id && w.Server_Rank <= userPoints).OrderByDescending(w => w.Server_Rank).ToList();
+            var rankRole = DBLists.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id).ToList();
+            var rankRoleUnder = DBLists.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
 
             DiscordMember member = e.Author as DiscordMember;
-            if (rankRoleUnder.Count != 0  && !member.Roles.Any(w=>w.Id == rankRoleUnder[0].Role_ID))
+            if (rankRoleUnder.Count != 0  && !member.Roles.Any(w=>w.Id == rankRoleUnder[0].RoleId))
             {
-                if (member.Roles.Any(w=>rankRole.Any(x=>x.Role_ID==w.Id)))
+                if (member.Roles.Any(w=>rankRole.Any(x=>x.RoleId==w.Id)))
                 {
-                    await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => x.Role_ID == w.Id && w.Id != rankRoleUnder[0].Role_ID)));
+                    await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => x.RoleId == w.Id && w.Id != rankRoleUnder[0].RoleId)));
                 }
-                await member.GrantRoleAsync(e.Guild.Roles.Values.FirstOrDefault(w => w.Id == rankRoleUnder[0].Role_ID));
+                await member.GrantRoleAsync(e.Guild.Roles.Values.FirstOrDefault(w => w.Id == rankRoleUnder[0].RoleId));
                 return;
             }
-            if (rankRoleUnder.Count == 0 && member.Roles.Any(w => rankRole.Any(x => x.Role_ID == w.Id)))
+            if (rankRoleUnder.Count == 0 && member.Roles.Any(w => rankRole.Any(x => x.RoleId == w.Id)))
             {
-                await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => w.Id == x.Role_ID)));
+                await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => w.Id == x.RoleId)));
                 return;
             }
         }

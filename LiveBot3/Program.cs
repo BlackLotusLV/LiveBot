@@ -17,6 +17,7 @@ namespace LiveBot;
 
 internal sealed class Program
 {
+    private ServiceProvider _provider;
     private static void Main(string[] args)
     {
         Program program = new();
@@ -56,6 +57,7 @@ internal sealed class Program
         ServiceProvider serviceProvider = new ServiceCollection()
             .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString))
             .BuildServiceProvider();
+        _provider = serviceProvider;
 
         DiscordConfiguration discordConfig = new()
         {
@@ -79,15 +81,60 @@ internal sealed class Program
         };
 
         DiscordClient discordClient = new(discordConfig);
+        CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
 
         discordClient.Ready += Ready;
         discordClient.GuildAvailable += GuildAvailable;
         discordClient.ClientErrored += ClientErrored;
 
+        commandsNextExtension.CommandExecuted += CommandExecuted;
+        commandsNextExtension.CommandErrored += CommandErrored;
+
+        slashCommandsExtension.SlashCommandExecuted += SlashExecuted;
+        slashCommandsExtension.SlashCommandErrored += SlashErrored;
+
+        slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
+        slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
+
+        var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
+
         if (!testBuild)
         {
             discordClient.Logger.LogInformation("Running live version");
+            
+            discordClient.PresenceUpdated += liveStream.Stream_Notification;
+
+            discordClient.GuildMemberAdded += autoMod.Add_To_Leaderboards;
+            discordClient.MessageCreated += AutoMod.Media_Only_Filter;
+            discordClient.MessageCreated += autoMod.Banned_Words;
+            discordClient.MessageCreated += autoMod.Spam_Protection;
+            discordClient.MessageCreated += autoMod.Link_Spam_Protection;
+            discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
+            discordClient.MessageDeleted += AutoMod.Delete_Log;
+            discordClient.MessagesBulkDeleted += AutoMod.Bulk_Delete_Log;
+            discordClient.GuildMemberAdded += AutoMod.User_Join_Log;
+            discordClient.GuildMemberRemoved += AutoMod.User_Leave_Log;
+            discordClient.GuildMemberRemoved += AutoMod.User_Kicked_Log;
+            discordClient.GuildBanAdded += AutoMod.User_Banned_Log;
+            discordClient.GuildBanRemoved += AutoMod.User_Unbanned_Log;
+            discordClient.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
+            discordClient.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
+
+            discordClient.MessageCreated += userActivityTracker.Add_Points;
+
+            discordClient.ComponentInteractionCreated += Roles.Button_Roles;
+            
+            discordClient.ComponentInteractionCreated += WhiteListButton.Activate;
+
+            discordClient.GuildMemberAdded += memberFlow.Welcome_Member;
+            discordClient.GuildMemberRemoved += memberFlow.Say_Goodbye;
+
+            discordClient.GuildMemberUpdated += MembershipScreening.AcceptRules;
+
+            discordClient.MessageCreated += Automation.ModMail.ModMailDM;
+            discordClient.ComponentInteractionCreated += Automation.ModMail.ModMailCloseButton;
+            discordClient.ComponentInteractionCreated += Automation.ModMail.ModMailDMOpenButton;
 
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
@@ -108,20 +155,87 @@ internal sealed class Program
         await discordClient.ConnectAsync(botActivity);
         await Task.Delay(-1);
     }
-    private Task Ready(DiscordClient client, ReadyEventArgs e)
+    private static Task Ready(DiscordClient client, ReadyEventArgs e)
     {
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
         return Task.CompletedTask;
     }
 
-    private Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
+    private async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
+        await using var dbContext = _provider.GetService<LiveBotDbContext>();
+        ServerSettings entry = await dbContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
+        if (entry==null)
+        {
+            ServerSettings newEntry = new()
+            {
+                GuildId = e.Guild.Id,
+                DeleteLogChannelId = 0,
+                UserTrafficChannelId = 0,
+                ModerationLogChannelId = 0,
+                SpamExceptionChannels = new ulong[] { 0 }
+            };
+            await dbContext.ServerSettings.AddAsync(newEntry);
+            await dbContext.SaveChangesAsync();
+        }
+
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
-        return Task.CompletedTask;
     }
-    private Task ClientErrored(DiscordClient client, ClientErrorEventArgs e)
+    private static Task ClientErrored(DiscordClient client, ClientErrorEventArgs e)
     {
         client.Logger.LogError(CustomLogEvents.ClientError, e.Exception, "Exception occurred");
+        return Task.CompletedTask;
+    }
+
+    private static Task CommandExecuted(CommandsNextExtension ext, CommandExecutionEventArgs e)
+    {
+        ext.Client.Logger.LogInformation("{username} successfully executed '{commandName}' command", e.Context.User.Username,e.Command.QualifiedName);
+        return Task.CompletedTask;
+    }
+
+    private static async Task CommandErrored(CommandsNextExtension ext, CommandErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.CommandError, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Command?.QualifiedName ?? "<unknown command>");
+        if (e.Exception is not ChecksFailedException ex) return;
+        DiscordEmoji noEntry = DiscordEmoji.FromName(e.Context.Client, ":no_entry:");
+        string msgContent = ex.FailedChecks[0] switch
+        {
+            CooldownAttribute => $"{DiscordEmoji.FromName(e.Context.Client, ":clock:")} You, {e.Context.Member?.Mention}, tried to execute the command too fast, wait and try again later.",
+            RequireRolesAttribute => $"{noEntry} You, {e.Context.User.Mention}, don't have the required role for this command",
+            RequireDirectMessageAttribute => $"{noEntry} You are trying to use a command that is only available in DMs",
+            _ => $"{noEntry} You, {e.Context.User.Mention}, do not have the permissions required to execute this command."
+        };
+        DiscordEmbedBuilder embed = new()
+        {
+            Title = "Access denied",
+            Description = msgContent,
+            Color = new DiscordColor(0xFF0000) // red
+        };
+        DiscordMessage errorMsg = await e.Context.RespondAsync(string.Empty, embed: embed);
+        await Task.Delay(10000).ContinueWith(t => errorMsg.DeleteAsync());
+    }
+
+    private static Task SlashExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)
+    {
+        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        return Task.CompletedTask;
+    }
+
+    private static Task SlashErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
+        return Task.CompletedTask;
+    }
+
+    private static Task ContextMenuExecuted(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
+    {
+        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        return Task.CompletedTask;
+    }
+
+    private static Task ContextMenuErrored(SlashCommandsExtension ext, ContextMenuErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
         return Task.CompletedTask;
     }
 }

@@ -197,20 +197,20 @@ namespace LiveBot
                 wcount = 0,
                 splitcount = 1;
             StringBuilder Reason = new();
-            var UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
+            var UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
             if (UserStats == null)
             {
                 Services.LeaderboardService.AddToServerLeaderboard(User, Guild);
-                UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.User_ID && Guild.Id == f.Server_ID);
+                UserStats = DB.DBLists.ServerRanks.FirstOrDefault(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
             }
-            kcount = UserStats.Kick_Count;
-            bcount = UserStats.Ban_Count;
-            var WarningsList = DB.DBLists.Warnings.Where(w => w.User_ID == User.Id && w.Server_ID == Guild.Id).OrderBy(w => w.Time_Created).ToList();
+            kcount = UserStats.KickCount;
+            bcount = UserStats.BanCount;
+            var WarningsList = DB.DBLists.Warnings.Where(w => w.UserDiscordId == User.Id && w.GuildId == Guild.Id).OrderBy(w => w.TimeCreated).ToList();
             if (!AdminCommand)
             {
                 WarningsList.RemoveAll(w => w.Type == "note");
             }
-            wlevel = WarningsList.Count(w => w.Type == "warning" && w.Active);
+            wlevel = WarningsList.Count(w => w.Type == "warning" && w.IsActive);
             wcount = WarningsList.Count(w => w.Type == "warning");
             foreach (var item in WarningsList)
             {
@@ -229,7 +229,7 @@ namespace LiveBot
                         break;
 
                     default: // warning
-                        if (item.Active)
+                        if (item.IsActive)
                         {
                             Reason.Append("[✅] ");
                         }
@@ -239,7 +239,7 @@ namespace LiveBot
                         }
                         break;
                 }
-                string addedInfraction = $"**ID:**{item.ID_Warning}\t**By:** <@{item.Admin_ID}>\t**Date:** <t:{(int)(item.Time_Created - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
+                string addedInfraction = $"**ID:**{item.IdWarning}\t**By:** <@{item.AdminDiscordId}>\t**Date:** <t:{(int)(item.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
 
                 if (Reason.Length + addedInfraction.Length > 1023 * splitcount)
                 {

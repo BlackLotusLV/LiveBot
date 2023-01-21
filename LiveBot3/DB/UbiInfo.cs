@@ -6,19 +6,31 @@ namespace LiveBot.DB
     [Table("Ubi_Info", Schema = "livebot")]
     public class UbiInfo
     {
+        public UbiInfo(LiveBotDbContext context)
+        {
+            Leaderboard leaderboard = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == this.UserDiscordId);
+            if (leaderboard != null) return;
+            leaderboard = new Leaderboard(context) { UserDiscordId = this.UserDiscordId };
+            context.Leaderboard.Add(leaderboard);
+        }
+        
         [Key]
         [Column("id")]
         public int Id { get; set; }
 
+        [ForeignKey("ubi_info_fk")]
         [Required]
         [Column("discord_id")]
-        public ulong Discord_Id 
-        { get => _Discord_Id; set { _Discord_Id = Convert.ToUInt64(value); } }
+        public ulong UserDiscordId
+        {
+            get => _userDiscordId; 
+            init => _userDiscordId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Discord_Id;
+        private readonly ulong _userDiscordId;
         [Required]
         [Column("profile_id")]
-        public string Profile_Id { get; set; }
+        public string ProfileId { get; set; }
 
         [Required]
         [Column("platform")]

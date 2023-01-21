@@ -6,27 +6,46 @@ namespace LiveBot.DB
     [Table("Mod_Mail", Schema = "livebot")]
     public class ModMail
     {
+        public ModMail(LiveBotDbContext context, ulong guildId, ulong userDiscordId, DateTime lastMessageTime, string colorHex)
+        {
+            GuildId = guildId;
+            UserDiscordId = userDiscordId;
+            LastMessageTime = lastMessageTime;
+            ColorHex = colorHex;
+            
+            ServerRanks serverRanks = context.ServerRanks.FirstOrDefault(x => x.UserDiscordId==userDiscordId && x.GuildId==guildId);
+            if (serverRanks != null) return;
+            serverRanks = new ServerRanks(context) { UserDiscordId = this.UserDiscordId, GuildId = this.GuildId};
+            var item = context.ServerRanks.Add(serverRanks);
+            this.ServerRanksId = item.Entity.IdServerRank;
+        }
         [Key]
         [Column("id_modmail")]
-        public long ID { get; set; }
+        public long ModMailId { get; set; }
 
         [Required]
         [Column("server_id")]
-        public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
+        public ulong GuildId
+        { 
+            get => _guildId;
+            set => _guildId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Server_ID;
+        private ulong _guildId;
 
         [Required]
         [Column("user_id")]
-        public ulong User_ID
-        { get => _User_ID; set { _User_ID = Convert.ToUInt64(value); } }
+        public ulong UserDiscordId
+        { 
+            get => _userDiscordId;
+            set => _userDiscordId = Convert.ToUInt64(value);
+        }
 
-        private ulong _User_ID;
+        private ulong _userDiscordId;
 
         [Required]
         [Column("last_message_time")]
-        public DateTime LastMSGTime { get; set; }
+        public DateTime LastMessageTime { get; set; }
 
         [Required]
         [Column("has_chatted")]
@@ -40,8 +59,9 @@ namespace LiveBot.DB
         [Column("color_hex")]
         public string ColorHex { get; set; }
 
+        [ForeignKey("mod_mail_fk")]
         [Required]
         [Column("server_ranks_id")]
-        public int Server_Ranks_ID { get; set; }
+        public int ServerRanksId { get; set; }
     }
 }

@@ -6,25 +6,29 @@ namespace LiveBot.DB
     [Table("Server_Welcome_Settings", Schema = "livebot")]
     public class ServerWelcomeSettings
     {
-        [Key]
-        [Column("server_id")]
-        public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
+        [Key,ForeignKey("server_welcome_settings_fk"),Column("server_id")]
+        public ulong GuildId
+        { 
+            get => _guildId;
+            set => _guildId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Server_ID;
+        private ulong _guildId;
 
-        [Required]
-        [Column("channel_id")]
-        public ulong Channel_ID
-        { get => _Channel_ID; set { _Channel_ID = Convert.ToUInt64(value); } }
+        [Required,Column("channel_id")]
+        public ulong ChannelId
+        { 
+            get => _channelId; 
+            set => _channelId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Channel_ID;
+        private ulong _channelId;
 
         [Column("welcome_msg")]
-        public string Welcome_Message { get; set; }
+        public string WelcomeMessage { get; set; }
 
         [Column("goodbye_msg")]
-        public string Goodbye_Message { get; set; }
+        public string GoodbyeMessage { get; set; }
 
         [Required]
         [Column("has_screening")]
@@ -32,15 +36,19 @@ namespace LiveBot.DB
 
         [Required]
         [Column("role")]
-        public ulong Role_ID
-        { get => _Role_ID; set => _Role_ID = Convert.ToUInt64(value);
+        public ulong RoleId
+        { 
+            get => _roleId; 
+            set => _roleId = Convert.ToUInt64(value);
         }
 
-        private ulong _Role_ID;
+        private ulong _roleId;
         
         [Column("whitelist_role")]
         public ulong? WhiteListRole
-        { get => _whiteListRole; set => _whiteListRole = Convert.ToUInt64(value);
+        { 
+            get => _whiteListRole; 
+            set => _whiteListRole = Convert.ToUInt64(value);
         }
 
         private ulong _whiteListRole;

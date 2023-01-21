@@ -40,9 +40,9 @@ namespace LiveBot.SlashCommands
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (Warnings item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
+                foreach (Warnings item in DB.DBLists.Warnings.Where(w=>w.GuildId == ctx.Guild.Id && w.UserDiscordId == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.IsActive))
                 {
-                    result.Add(new DiscordAutoCompleteChoice($"#{item.ID_Warning} - {item.Reason}",(long)item.ID_Warning));
+                    result.Add(new DiscordAutoCompleteChoice($"#{item.IdWarning} - {item.Reason}",(long)item.IdWarning));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -68,19 +68,19 @@ namespace LiveBot.SlashCommands
             await ctx.DeferAsync(true);
             DB.Warnings newEntry = new()
             {
-                Server_ID = ctx.Guild.Id,
-                Active = false,
-                Admin_ID = ctx.User.Id,
+                GuildId = ctx.Guild.Id,
+                IsActive = false,
+                AdminDiscordId = ctx.User.Id,
                 Type = "note",
-                User_ID = user.Id,
-                Time_Created = DateTime.UtcNow,
+                UserDiscordId = user.Id,
+                TimeCreated = DateTime.UtcNow,
                 Reason = note
             };
             DB.DBLists.InsertWarnings(newEntry);
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (serverSettings?.WKB_Log != 0)
+            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+            if (serverSettings?.ModerationLogChannelId != 0)
             {
-                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
+                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
@@ -200,8 +200,8 @@ namespace LiveBot.SlashCommands
         public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
         {
             await ctx.DeferAsync(true);
-            DB.ServerSettings guildSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (guildSettings?.ModMailID == 0)
+            DB.ServerSettings guildSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+            if (guildSettings?.ModMailChannelId == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
                 return;
@@ -224,7 +224,7 @@ namespace LiveBot.SlashCommands
 
             await member.SendMessageAsync(messageBuilder);
 
-            DiscordChannel MMChannel = ctx.Guild.GetChannel(guildSettings.ModMailID);
+            DiscordChannel MMChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor

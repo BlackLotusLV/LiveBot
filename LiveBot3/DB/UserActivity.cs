@@ -8,18 +8,24 @@ namespace LiveBot.DB
     {
         [Key]
         [Column("id_user_activity")]
-        public long ID_User_Activity { get; set; }
+        public long IdUserActivity { get; set; }
 
         [Required]
         [Column("user_id")]
-        public ulong User_ID
-        { get => _User_ID; set { _User_ID = Convert.ToUInt64(value); } }
-        private ulong _User_ID;
+        public ulong UserDiscordId
+        { 
+            get => _userDiscordId; 
+            set => _userDiscordId = Convert.ToUInt64(value);
+        }
+        private ulong _userDiscordId;
         [Required]
         [Column("guild_id")]
-        public ulong Guild_ID
-        { get => _Guild_ID; set { _Guild_ID = Convert.ToUInt64(value); } }
-        private ulong _Guild_ID;
+        public ulong GuildId
+        { 
+            get => _guildId; 
+            set => _guildId = Convert.ToUInt64(value);
+        }
+        private ulong _guildId;
 
         [Required]
         [Column("points")]
@@ -27,19 +33,30 @@ namespace LiveBot.DB
 
         [Required]
         [Column("date")]
-        public DateTime Date { get =>_Date; set { _Date = DateTime.SpecifyKind(value, DateTimeKind.Utc); } }
-        private DateTime _Date;
+        public DateTime Date
+        { 
+            get =>_date; 
+            set => _date = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        }
+        private DateTime _date;
 
+        [ForeignKey("user_activity_fk")]
         [Required]
         [Column("server_ranks_id")]
-        public int Server_Ranks_ID { get; set; }
+        public int ServerRanksId { get; set; }
 
-        public UserActivity(ulong user_ID, ulong guild_ID, int points, DateTime date)
+        public UserActivity(LiveBotDbContext context, ulong userDiscordId, ulong guildId, int points, DateTime date)
         {
-            User_ID = user_ID;
-            Guild_ID = guild_ID;
+            UserDiscordId = userDiscordId;
+            GuildId = guildId;
             Points = points;
             Date = date;
+            
+            ServerRanks serverRanks = context.ServerRanks.FirstOrDefault(x => x.UserDiscordId==userDiscordId && x.GuildId==guildId);
+            if (serverRanks != null) return;
+            serverRanks = new ServerRanks(context) { UserDiscordId = this.UserDiscordId, GuildId = this.GuildId};
+            var item = context.ServerRanks.Add(serverRanks);
+            this.ServerRanksId = item.Entity.IdServerRank;
         }
     }
 }

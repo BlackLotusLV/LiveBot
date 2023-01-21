@@ -38,7 +38,7 @@ public class WhiteListButton
             return;
         }
 
-        var whiteListRole = DBLists.ServerWelcomeSettings.First(x => x.Server_ID == e.Guild.Id).WhiteListRole;
+        var whiteListRole = DBLists.ServerWelcomeSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRole;
         if (whiteListRole == null)
         {
             client.Logger.LogDebug("No role specified to be assigned, exiting.");

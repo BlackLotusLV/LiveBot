@@ -6,11 +6,11 @@
 
         public static async Task ModMailDM(DiscordClient Client, MessageCreateEventArgs e)
         {
-            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.User_ID == e.Author.Id && w.IsActive);
+            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.UserDiscordId == e.Author.Id && w.IsActive);
             if (e.Guild == null && MMEntry != null && !(e.Message.Content.StartsWith($"{Program.ConfigJson.CommandPrefix}modmail") || e.Message.Content.StartsWith($"{Program.ConfigJson.CommandPrefix}mm")))
             {
-                DiscordGuild Guild = Client.Guilds.First(w => w.Value.Id == MMEntry.Server_ID).Value;
-                DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.ID_Server == MMEntry.Server_ID).ModMailID);
+                DiscordGuild Guild = Client.Guilds.First(w => w.Value.Id == MMEntry.GuildId).Value;
+                DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.GuildId == MMEntry.GuildId).ModMailChannelId);
                 DiscordEmbedBuilder embed = new()
                 {
                     Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -19,7 +19,7 @@
                         Name = $"{e.Author.Username} ({e.Author.Id})"
                     },
                     Color = new DiscordColor(MMEntry.ColorHex),
-                    Title = $"[INBOX] #{MMEntry.ID} Mod Mail user message.",
+                    Title = $"[INBOX] #{MMEntry.ModMailId} Mod Mail user message.",
                     Description = e.Message.Content
                 };
 
@@ -34,7 +34,7 @@
                 await ModMailChannel.SendMessageAsync(embed: embed);
 
                 MMEntry.HasChatted = true;
-                MMEntry.LastMSGTime = DateTime.UtcNow;
+                MMEntry.LastMessageTime = DateTime.UtcNow;
                 DB.DBLists.UpdateModMail(MMEntry);
 
                 Client.Logger.LogInformation(CustomLogEvents.ModMail, "New Mod Mail message sent to {ChannelName}({ChannelId}) in {GuildName} from {Username}({UserId})", ModMailChannel.Name, ModMailChannel.Id, ModMailChannel.Guild.Name, e.Author.Username, e.Author.Id);
@@ -43,10 +43,10 @@
 
         public static async Task ModMailCloser()
         {
-            var TimedOutEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.IsActive && (DateTime.UtcNow - w.LastMSGTime) > TimeSpan.FromMinutes(TimeoutMinutes));
+            var TimedOutEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.IsActive && (DateTime.UtcNow - w.LastMessageTime) > TimeSpan.FromMinutes(TimeoutMinutes));
             if (TimedOutEntry != null)
             {
-                DiscordUser User = await Program.Client.GetUserAsync(TimedOutEntry.User_ID);
+                DiscordUser User = await Program.Client.GetUserAsync(TimedOutEntry.UserDiscordId);
                 await CloseModMailAsync(
                     TimedOutEntry,
                     User,
@@ -59,11 +59,11 @@
         {
             ModMail.IsActive = false;
             string DMNotif = string.Empty;
-            DiscordGuild Guild = await Program.Client.GetGuildAsync(ModMail.Server_ID);
-            DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.ID_Server == Guild.Id).ModMailID);
+            DiscordGuild Guild = await Program.Client.GetGuildAsync(ModMail.GuildId);
+            DiscordChannel ModMailChannel = Guild.GetChannel(DB.DBLists.ServerSettings.First(w => w.GuildId == Guild.Id).ModMailChannelId);
             DiscordEmbedBuilder embed = new()
             {
-                Title = $"[CLOSED] #{ModMail.ID} {ClosingText}",
+                Title = $"[CLOSED] #{ModMail.ModMailId} {ClosingText}",
                 Color = new DiscordColor(ModMail.ColorHex),
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
@@ -73,7 +73,7 @@
             };
             try
             {
-                DiscordMember member = await Guild.GetMemberAsync(ModMail.User_ID);
+                DiscordMember member = await Guild.GetMemberAsync(ModMail.UserDiscordId);
                 await member.SendMessageAsync(ClosingTextToUser);
             }
             catch
@@ -87,7 +87,7 @@
         public static async Task ModMailCloseButton(object Client, ComponentInteractionCreateEventArgs e)
         {
             if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("close")) return;
-            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.IsActive && $"{w.ID}" == e.Interaction.Data.CustomId.Replace("close", ""));
+            var MMEntry = DB.DBLists.ModMail.FirstOrDefault(w => w.IsActive && $"{w.ModMailId}" == e.Interaction.Data.CustomId.Replace("close", ""));
             DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
             if (e.Message.Embeds.Count>0)
             {
@@ -107,12 +107,12 @@
             await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
             DiscordGuild guild = await Client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace("openmodmail","")));
-            if (DB.DBLists.ServerRanks.First(w=>w.Server_ID == guild.Id && w.User_ID == e.User.Id).MM_Blocked)
+            if (DB.DBLists.ServerRanks.First(w=>w.GuildId == guild.Id && w.UserDiscordId == e.User.Id).IsModMailBlocked)
             {
                 await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
             }
-            if (DB.DBLists.ModMail.Any(w => w.User_ID == e.User.Id && w.IsActive))
+            if (DB.DBLists.ModMail.Any(w => w.UserDiscordId == e.User.Id && w.IsActive))
             {
                 await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
                 return;
@@ -122,9 +122,9 @@
             string colorID = string.Format("#{0:X6}", r.Next(0x1000000));
             DB.ModMail newEntry = new()
             {
-                Server_ID = guild.Id,
-                User_ID = e.User.Id,
-                LastMSGTime = DateTime.UtcNow,
+                GuildId = guild.Id,
+                UserDiscordId = e.User.Id,
+                LastMessageTime = DateTime.UtcNow,
                 ColorHex = colorID,
                 IsActive = true,
                 HasChatted = false
@@ -149,7 +149,7 @@
                 Description = "No subject, Mod Mail Opened with button"
             };
 
-            DiscordChannel modMailChannel = guild.GetChannel(DB.DBLists.ServerSettings.First(w=>w.ID_Server== guild.Id).ModMailID);
+            DiscordChannel modMailChannel = guild.GetChannel(DB.DBLists.ServerSettings.First(w=>w.GuildId== guild.Id).ModMailChannelId);
             await new DiscordMessageBuilder()
                 .AddComponents(CloseButton)
                 .WithEmbed(embed)

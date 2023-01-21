@@ -18,13 +18,13 @@ namespace LiveBot.Commands
             if (ctx.Guild is null)
             {
                 serverName ??= "no server!";
-                var ModMailServers = DBLists.ServerSettings.Where(w => w.ModMailID != 0);
+                var ModMailServers = DBLists.ServerSettings.Where(w => w.ModMailChannelId != 0);
                 Dictionary<DiscordGuild, string> GuildNameDict = new();
                 StringBuilder GuildNameString = new();
                 GuildNameString.AppendLine("The mod-mail is only available on certain servers, here are the server names you can use:");
                 foreach (var item in ModMailServers)
                 {
-                    DiscordGuild Guild = ctx.Client.Guilds.FirstOrDefault(w => w.Key == item.ID_Server).Value;
+                    DiscordGuild Guild = ctx.Client.Guilds.FirstOrDefault(w => w.Key == item.GuildId).Value;
                     if (Guild != null)
                     {
                         GuildNameDict.Add(Guild, Guild.Name.Replace(' ', '-').ToLower());
@@ -40,7 +40,7 @@ namespace LiveBot.Commands
                 {
                     DiscordGuild Guild = GuildNameDict.FirstOrDefault(w => w.Value.ToLower() == serverName.ToLower()).Key;
 
-                    if (DBLists.ServerRanks.FirstOrDefault(w => w.Server_ID == Guild.Id && w.User_ID == ctx.User.Id).MM_Blocked)
+                    if (DBLists.ServerRanks.FirstOrDefault(w => w.GuildId == Guild.Id && w.UserDiscordId == ctx.User.Id).IsModMailBlocked)
                     {
                         await ctx.RespondAsync("You are blocked from starting mod-mail.");
                         return;
@@ -55,15 +55,15 @@ namespace LiveBot.Commands
                         await ctx.RespondAsync("You are not in this server. If you think this is an error, please make sure you are set as online and are in fact in the server.");
                         serverCheck = false;
                     }
-                    if (serverCheck && DBLists.ModMail.FirstOrDefault(w => w.User_ID == ctx.User.Id && w.IsActive) == null)
+                    if (serverCheck && DBLists.ModMail.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id && w.IsActive) == null)
                     {
                         Random r = new();
                         string colorID = string.Format("#{0:X6}", r.Next(0x1000000));
                         DB.ModMail newEntry = new()
                         {
-                            Server_ID = Guild.Id,
-                            User_ID = ctx.User.Id,
-                            LastMSGTime = DateTime.UtcNow,
+                            GuildId = Guild.Id,
+                            UserDiscordId = ctx.User.Id,
+                            LastMessageTime = DateTime.UtcNow,
                             ColorHex = colorID,
                             IsActive = true,
                             HasChatted = false
@@ -72,7 +72,7 @@ namespace LiveBot.Commands
                         long EntryID = DBLists.InsertModMail(newEntry);
                         await ctx.RespondAsync($"**----------------------------------------------------**\n" +
                             $"Modmail entry **open** with `{serverName.ToLower()}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {Automation.ModMail.TimeoutMinutes} minutes after last message is sent.*");
-                        DiscordChannel MMChannel = Guild.GetChannel(ModMailServers.FirstOrDefault(w => w.ID_Server == Guild.Id).ModMailID);
+                        DiscordChannel MMChannel = Guild.GetChannel(ModMailServers.FirstOrDefault(w => w.GuildId == Guild.Id).ModMailChannelId);
                         DiscordEmbedBuilder ModeratorEmbed = new()
                         {
                             Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -114,7 +114,7 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            ModMail MMEntry = DBLists.ModMail.FirstOrDefault(w => w.ID == ModMailID && w.Server_ID == ctx.Guild.Id);
+            ModMail MMEntry = DBLists.ModMail.FirstOrDefault(w => w.ModMailId == ModMailID && w.GuildId == ctx.Guild.Id);
             if (MMEntry == null)
             {
                 await ctx.RespondAsync($"{ctx.User.Mention} Could not find the mod mail entry.");
@@ -130,13 +130,13 @@ namespace LiveBot.Commands
                             IconUrl = ctx.User.AvatarUrl,
                             Name = ctx.User.Username
                         },
-                        Title = $"[REPLY] #{MMEntry.ID} Mod Mail Response",
+                        Title = $"[REPLY] #{MMEntry.ModMailId} Mod Mail Response",
                         Description = $"{ctx.Member.Username} - {reply}",
                         Color = new DiscordColor(MMEntry.ColorHex)
                     };
                     try
                     {
-                        DiscordMember member = await ctx.Guild.GetMemberAsync(MMEntry.User_ID);
+                        DiscordMember member = await ctx.Guild.GetMemberAsync(MMEntry.UserDiscordId);
                         await member.SendMessageAsync($"{ctx.Member.Username} - {reply}");
                     }
                     catch (Exception e)
@@ -145,13 +145,13 @@ namespace LiveBot.Commands
                         embed.Title = $"[ERROR] {embed.Title}";
                         Console.WriteLine(e.InnerException);
                     }
-                    MMEntry.LastMSGTime = DateTime.UtcNow;
+                    MMEntry.LastMessageTime = DateTime.UtcNow;
                     DBLists.UpdateModMail(MMEntry);
 
-                    DiscordChannel MMChannel = ctx.Guild.GetChannel(DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id).ModMailID);
+                    DiscordChannel MMChannel = ctx.Guild.GetChannel(DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id).ModMailChannelId);
                     await MMChannel.SendMessageAsync(embed: embed);
 
-                    Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "An admin has responded to Mod Mail entry #{EntryId}", MMEntry.ID);
+                    Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "An admin has responded to Mod Mail entry #{EntryId}", MMEntry.ModMailId);
                 }
                 else
                 {
@@ -166,7 +166,7 @@ namespace LiveBot.Commands
         [Description("Closes the opened Mod Mail chat.")]
         public async Task Close(CommandContext ctx)
         {
-            var modMail = DBLists.ModMail.FirstOrDefault(w => w.User_ID == ctx.User.Id && w.IsActive);
+            var modMail = DBLists.ModMail.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id && w.IsActive);
             if (modMail == null)
             {
                 await ctx.RespondAsync("You don't have active Mod Mail open.");
@@ -174,7 +174,7 @@ namespace LiveBot.Commands
             else
             {
                 await Automation.ModMail.CloseModMailAsync(modMail, ctx.User, "Mod Mail closed by the user", "**Mod Mail closed!\n----------------------------------------------------**");
-                Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "Mod mail entry #{EntryId} closed by the user", modMail.ID);
+                Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "Mod mail entry #{EntryId} closed by the user", modMail.ModMailId);
             }
         }
 
@@ -186,7 +186,7 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            var modMail = DBLists.ModMail.FirstOrDefault(w => w.IsActive && w.Server_ID == ctx.Guild.Id && w.ID == ModMailID);
+            var modMail = DBLists.ModMail.FirstOrDefault(w => w.IsActive && w.GuildId == ctx.Guild.Id && w.ModMailId == ModMailID);
             if (modMail == null)
             {
                 await ctx.RespondAsync($"Could not find this Mod Mail entry, please check if everything is correct, it might be already closed.");
@@ -198,7 +198,7 @@ namespace LiveBot.Commands
                     ctx.User,
                     $" Mod Mail closed by {ctx.User.Username}",
                     $"**Mod Mail closed by {ctx.User.Username}!\n----------------------------------------------------**");
-                Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "Mod mail entry #{EntryId} closed by an admin/moderator", modMail.ID);
+                Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "Mod mail entry #{EntryId} closed by an admin/moderator", modMail.ModMailId);
             }
         }
 
@@ -211,8 +211,8 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            ServerSettings SSettings = DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (SSettings.ModMailID != 0)
+            ServerSettings SSettings = DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+            if (SSettings.ModMailChannelId != 0)
             {
                 string DMMessage = $"You are receiving a Moderator DM from {ctx.Guild.Name} Discord\n{ctx.User.Username} - {text}";
                 bool ErrorCheck = false;
@@ -226,7 +226,7 @@ namespace LiveBot.Commands
                 }
                 if (!ErrorCheck)
                 {
-                    DiscordChannel MMChannel = ctx.Guild.GetChannel(SSettings.ModMailID);
+                    DiscordChannel MMChannel = ctx.Guild.GetChannel(SSettings.ModMailChannelId);
                     DiscordEmbedBuilder embed = new()
                     {
                         Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -261,7 +261,7 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            var ModMailEntries = DBLists.ModMail.Where(w => w.Server_ID == ctx.Guild.Id && w.IsActive).ToList();
+            var ModMailEntries = DBLists.ModMail.Where(w => w.GuildId == ctx.Guild.Id && w.IsActive).ToList();
             if (ModMailEntries is null)
             {
                 await ctx.RespondAsync($"{ctx.Member.Mention}, This server does not have any active mod mail entries.");
@@ -271,7 +271,7 @@ namespace LiveBot.Commands
                 StringBuilder sb = new();
                 foreach (var entry in ModMailEntries)
                 {
-                    sb.AppendLine($"**ID:** {entry.ID}\t **User:** {entry.User_ID}\t**Has Chatted:** {entry.HasChatted}\t**Time Remaining:** {Automation.ModMail.TimeoutMinutes - (DateTime.UtcNow - entry.LastMSGTime).Minutes} Minutes");
+                    sb.AppendLine($"**ID:** {entry.ModMailId}\t **User:** {entry.UserDiscordId}\t**Has Chatted:** {entry.HasChatted}\t**Time Remaining:** {Automation.ModMail.TimeoutMinutes - (DateTime.UtcNow - entry.LastMessageTime).Minutes} Minutes");
                 }
                 DiscordEmbedBuilder embed = new()
                 {

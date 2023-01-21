@@ -104,7 +104,7 @@ namespace LiveBot
         public static async Task<Image<Rgba32>> BuildEventImage(TCHubJson.Event Event, TCHubJson.Rank Rank, DB.UbiInfo UserInfo, byte[] EventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             string locale = "en-GB";
-            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == UserInfo.Discord_Id);
+            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == UserInfo.UserDiscordId);
             if (userInfo != null)
                 locale = userInfo.Locale;
             Image<Rgba32> EventImage = Image.Load<Rgba32>(EventImageBytes);
@@ -165,12 +165,12 @@ namespace LiveBot
             {
                 ThisEventNameID = Program.TheCrewHub.Skills.Where(w => w.ID == Event.ID).Select(s => s.Text_ID).FirstOrDefault();
             }
-            TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.Profile_Id}"));
+            TCHubJson.SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Program.JSummit[0].ID}/leaderboard/{UserInfo.Platform}/{Event.ID}?profile={UserInfo.ProfileId}"));
             string
                 EventTitle = NameIdLookup(ThisEventNameID, locale),
                 ActivityResult = $"Score: {Activity.Score}",
                 VehicleInfo = string.Empty;
-            TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.Profile_Id);
+            TCHubJson.SummitLeaderboardEntries Entries = leaderboard.Entries.FirstOrDefault(w => w.Profile_ID == UserInfo.ProfileId);
             if (Event.Constraint_Text_ID.Contains("60871"))
             {
                 VehicleInfo = "Forced Vehicle";

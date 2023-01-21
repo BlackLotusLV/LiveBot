@@ -7,19 +7,19 @@
             if (e.PendingBefore == null) return;
             if (e.PendingBefore.Value && !e.PendingAfter.Value)
             {
-                var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.Server_ID == e.Guild.Id);
+                var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.GuildId == e.Guild.Id);
                 if (WelcomeSettings == null) return;
 
-                if (WelcomeSettings.Channel_ID == 0 || !WelcomeSettings.HasScreening) return;
-                DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.Channel_ID));
+                if (WelcomeSettings.ChannelId == 0 || !WelcomeSettings.HasScreening) return;
+                DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.ChannelId));
 
-                if (WelcomeSettings.Welcome_Message == null) return;
-                string msg = WelcomeSettings.Welcome_Message;
+                if (WelcomeSettings.WelcomeMessage == null) return;
+                string msg = WelcomeSettings.WelcomeMessage;
                 msg = msg.Replace("$Mention", $"{e.Member.Mention}");
                 await WelcomeChannel.SendMessageAsync(msg);
 
-                if (WelcomeSettings.Role_ID == 0) return;
-                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(WelcomeSettings.Role_ID));
+                if (WelcomeSettings.RoleId == 0) return;
+                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(WelcomeSettings.RoleId));
                 await e.Member.GrantRoleAsync(role);
             }
         }

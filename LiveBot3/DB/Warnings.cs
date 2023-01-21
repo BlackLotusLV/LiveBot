@@ -6,9 +6,26 @@ namespace LiveBot.DB
     [Table("Warnings", Schema = "livebot")]
     public class Warnings
     {
+        public Warnings(LiveBotDbContext context, ulong adminDiscordId, ulong userDiscordId, ulong guildId, string reason, bool isActive, string type)
+        {
+            Reason = reason;
+            IsActive = isActive;
+            AdminDiscordId = adminDiscordId;
+            UserDiscordId = userDiscordId;
+            GuildId = guildId;
+            Type = type;
+            
+            ServerRanks serverRanks = context.ServerRanks.FirstOrDefault(x => x.UserDiscordId==userDiscordId && x.GuildId==guildId);
+            if (serverRanks != null) return;
+            serverRanks = new ServerRanks(context) { UserDiscordId = this.UserDiscordId, GuildId = this.GuildId};
+            var item = context.ServerRanks.Add(serverRanks);
+            
+            ServerRanksId = item.Entity.IdServerRank;
+        }
+        
         [Key]
         [Column("id_warning")]
-        public int ID_Warning { get; set; }
+        public int IdWarning { get; set; }
 
         [Required]
         [Column("reason")]
@@ -16,39 +33,49 @@ namespace LiveBot.DB
 
         [Required]
         [Column("active")]
-        public bool Active { get; set; }
+        public bool IsActive { get; set; }
 
         [Required]
         [Column("time_created")]
-        public DateTime Time_Created { get; set; }
+        public DateTime TimeCreated { get; set; }
 
         [Required]
         [Column("admin_id")]
-        public ulong Admin_ID
-        { get => _Admin_ID; set { _Admin_ID = Convert.ToUInt64(value); } }
+        public ulong AdminDiscordId
+        { 
+            get => _adminDiscordId; 
+            set => _adminDiscordId = Convert.ToUInt64(value);
+        }
 
-        private ulong _Admin_ID;
+        private ulong _adminDiscordId;
 
         [Required]
         [Column("user_id")]
-        public ulong User_ID
-        { get => _User_ID; set { _User_ID = Convert.ToUInt64(value); } }
+        public ulong UserDiscordId
+        {
+            get => _userDiscordId; 
+            set => _userDiscordId = Convert.ToUInt64(value);
+        }
 
-        private ulong _User_ID;
+        private ulong _userDiscordId;
 
         [Required]
         [Column("server_id")]
-        public ulong Server_ID
-        { get => _serverId; set { _serverId = Convert.ToUInt64(value); } }
+        public ulong GuildId
+        { 
+            get => _guildId; 
+            set => _guildId = Convert.ToUInt64(value);
+        }
 
-        private ulong _serverId;
+        private ulong _guildId;
 
         [Required]
         [Column("type")]
         public string Type { get; set; }
 
+        [ForeignKey("warnings_fk")]
         [Required]
         [Column("server_ranks_id")]
-        public int Server_Ranks_ID { get; set; }
+        public int ServerRanksId { get; set; }
     }
 }

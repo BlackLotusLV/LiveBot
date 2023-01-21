@@ -15,11 +15,11 @@ namespace LiveBot.Automation
         {
             if (e.User == null || e.User.IsBot || e.User.Presence == null) return;
             DiscordGuild guild = e.User.Presence.Guild;
-            List<DB.StreamNotifications> streamNotifications = DB.DBLists.StreamNotifications.Where(w => w.Server_ID == guild.Id).ToList();
+            List<DB.StreamNotifications> streamNotifications = DB.DBLists.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
             if (streamNotifications.Count < 1) return;
             foreach (var streamNotification in streamNotifications)
             {
-                DiscordChannel channel = guild.GetChannel(streamNotification.Channel_ID);
+                DiscordChannel channel = guild.GetChannel(streamNotification.ChannelId);
                 if (!Program.ServerIdList.Contains(guild.Id)) return;
                 LiveStreamer streamer = new()
                 {

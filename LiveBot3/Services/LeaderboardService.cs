@@ -66,11 +66,11 @@ namespace LiveBot.Services
 
         public static void AddUserToLeaderboard(DiscordUser user, string locale)
         {
-            if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.ID_User == user.Id) != null) return;
+            if (DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == user.Id) != null) return;
 
             DB.Leaderboard newEntry = new()
             {
-                ID_User = user.Id,
+                UserDiscordId = user.Id,
                 Locale = locale
             };
             DB.DBLists.InsertLeaderboard(newEntry);
@@ -78,13 +78,13 @@ namespace LiveBot.Services
 
         public static void AddToServerLeaderboard(DiscordUser user, DiscordGuild guild)
         {
-            DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.User_ID == user.Id && lb.Server_ID == guild.Id);
+            DB.ServerRanks local = DB.DBLists.ServerRanks.AsParallel().FirstOrDefault(lb => lb.UserDiscordId == user.Id && lb.GuildId == guild.Id);
             if (local != null) return;
 
             DB.ServerRanks newEntry = new()
             {
-                User_ID = user.Id,
-                Server_ID = guild.Id
+                UserDiscordId = user.Id,
+                GuildId = guild.Id
             };
             DB.DBLists.InsertServerRanks(newEntry);
         }
