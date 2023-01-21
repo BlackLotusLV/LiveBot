@@ -1,0 +1,21 @@
+﻿{
+  "summit": "https://api.thecrew-hub.com/v1/data/summit",
+  "gamedata": "https://api.thecrew-hub.com/v1/data/game?fields=missions,skills,brands,models,disciplines,families",
+  "dictionary": {
+    "en-GB": "https://api.thecrew-hub.com/v1/data/locas/en.json",
+    "ja": "https://api.thecrew-hub.com/v1/data/locas/ja.json",
+    "ko": "https://api.thecrew-hub.com/v1/data/locas/ko.json",
+    "es-ES": "https://api.thecrew-hub.com/v1/data/locas/es.json",
+    "ru": "https://api.thecrew-hub.com/v1/data/locas/ru.json",
+    "pt-BR": "https://api.thecrew-hub.com/v1/data/locas/pt.json",
+    "fr": "https://api.thecrew-hub.com/v1/data/locas/fr.json",
+    "de": "https://api.thecrew-hub.com/v1/data/locas/de.json",
+    "it": "https://api.thecrew-hub.com/v1/data/locas/it.json",
+    "nl": "https://api.thecrew-hub.com/v1/data/locas/nl.json",
+    "pl": "https://api.thecrew-hub.com/v1/data/locas/pl.json",
+    "ar": "https://api.thecrew-hub.com/v1/data/locas/ar.json",
+    "zh-CN": "https://api.thecrew-hub.com/v1/data/locas/zh-cn.json",
+    "zh-TW": "https://api.thecrew-hub.com/v1/data/locas/zh-tw.json"
+  },
+  "news": "https://public-ubiservices.ubi.com/v1/spaces/news?spaceId=99d80e18-42a9-4cf3-b79b-63e7edba4e62&placement=Live&lang=en-US"
+}

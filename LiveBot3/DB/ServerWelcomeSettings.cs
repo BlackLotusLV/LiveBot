@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("Server_Welcome_Settings", Schema = "livebot")]
-    internal class ServerWelcomeSettings
+    public class ServerWelcomeSettings
     {
         [Key]
         [Column("server_id")]

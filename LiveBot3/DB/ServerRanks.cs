@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("Server_Ranks", Schema = "livebot")]
-    internal class ServerRanks
+    public class ServerRanks
     {
         [Key]
         [Column("id_server_rank")]

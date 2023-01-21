@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("Mod_Mail", Schema = "livebot")]
-    internal class ModMail
+    public class ModMail
     {
         [Key]
         [Column("id_modmail")]

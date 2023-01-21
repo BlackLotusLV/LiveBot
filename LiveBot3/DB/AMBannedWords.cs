@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("AM_Banned_Words", Schema = "livebot")]
-    internal class AMBannedWords
+    public class AMBannedWords
     {
         [Key]
         [Column("id_banned_word")]
