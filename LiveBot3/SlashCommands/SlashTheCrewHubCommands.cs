@@ -1,4 +1,5 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using System.Diagnostics;
+using DSharpPlus.SlashCommands;
 using LiveBot.Json;
 using Newtonsoft.Json;
 using SixLabors.Fonts;
@@ -323,6 +324,7 @@ namespace LiveBot.SlashCommands
         [SlashCommand("Top-Summit", "Shows the summit board with all the world record scores.")]
         public async Task TopSummit(InteractionContext ctx, [Option("platform", "Which platform leaderboard you want to see")] Platforms platform = Platforms.pc)
         {
+            Stopwatch sw = Stopwatch.StartNew();
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             await HubMethods.UpdateHubInfo();
 
@@ -403,6 +405,7 @@ namespace LiveBot.SlashCommands
             msgBuilder.AddFile(upFile);
             msgBuilder.AddMention(new UserMention());
             await ctx.FollowUpAsync(msgBuilder);
+            Console.WriteLine(sw.Elapsed);
         }
 
         private sealed class RewardsOptions : IAutocompleteProvider

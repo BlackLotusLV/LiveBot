@@ -2,6 +2,7 @@
 using DSharpPlus.CommandsNext.Attributes;
 using System.Globalization;
 using System.Net.Http;
+using LiveBot.DB;
 
 namespace LiveBot.Commands
 {

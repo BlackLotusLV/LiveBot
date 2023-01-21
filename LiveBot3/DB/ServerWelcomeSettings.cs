@@ -33,8 +33,16 @@ namespace LiveBot.DB
         [Required]
         [Column("role")]
         public ulong Role_ID
-        { get => _Role_ID; set { _Role_ID = Convert.ToUInt64(value); } }
+        { get => _Role_ID; set => _Role_ID = Convert.ToUInt64(value);
+        }
 
         private ulong _Role_ID;
+        
+        [Column("whitelist_role")]
+        public ulong? WhiteListRole
+        { get => _whiteListRole; set => _whiteListRole = Convert.ToUInt64(value);
+        }
+
+        private ulong _whiteListRole;
     }
 }

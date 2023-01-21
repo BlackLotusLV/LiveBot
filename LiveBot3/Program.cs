@@ -19,7 +19,7 @@ namespace LiveBot
         public SlashCommandsExtension Slash { get; private set; }
         public CommandsNextExtension Commands { get; private set; }
         public static readonly DateTime Start = DateTime.UtcNow;
-        public const string BotVersion = $"20221228_B";
+        public const string BotVersion = $"20230119_D";
         public static bool TestBuild { get; set; } = true;
         // TC Hub
 
@@ -174,6 +174,8 @@ namespace LiveBot
                 Client.MessageCreated += userActivityTracker.Add_Points;
 
                 Client.ComponentInteractionCreated += Roles.Button_Roles;
+                
+                Client.ComponentInteractionCreated += WhiteListButton.Activate;
 
                 Client.GuildMemberAdded += MemberFlow.Welcome_Member;
                 Client.GuildMemberRemoved += MemberFlow.Say_Goodbye;
