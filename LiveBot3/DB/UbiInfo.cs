@@ -6,11 +6,12 @@ namespace LiveBot.DB
     [Table("Ubi_Info", Schema = "livebot")]
     public class UbiInfo
     {
-        public UbiInfo(LiveBotDbContext context)
+        public UbiInfo(LiveBotDbContext context, ulong userDiscordId)
         {
+            UserDiscordId = userDiscordId;
             Leaderboard leaderboard = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == this.UserDiscordId);
             if (leaderboard != null) return;
-            leaderboard = new Leaderboard(context) { UserDiscordId = this.UserDiscordId };
+            leaderboard = new Leaderboard(context, UserDiscordId) { UserDiscordId = this.UserDiscordId };
             context.Leaderboard.Add(leaderboard);
         }
         

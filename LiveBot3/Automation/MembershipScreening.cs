@@ -1,25 +1,34 @@
-﻿namespace LiveBot.Automation
+﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
+
+namespace LiveBot.Automation
 {
-    internal static class MembershipScreening
+    internal class MembershipScreening
     {
-        public static async Task AcceptRules(object Client, GuildMemberUpdateEventArgs e)
+        private readonly LiveBotDbContext _dbContext;
+
+        MembershipScreening(LiveBotDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+        public async Task AcceptRules(DiscordClient client, GuildMemberUpdateEventArgs e)
         {
             if (e.PendingBefore == null) return;
-            if (e.PendingBefore.Value && !e.PendingAfter.Value)
+            if (e.PendingBefore.Value && e.PendingAfter.Value)
             {
-                var WelcomeSettings = DB.DBLists.ServerWelcomeSettings.FirstOrDefault(w => w.GuildId == e.Guild.Id);
-                if (WelcomeSettings == null) return;
+                ServerWelcomeSettings welcomeSettings = await _dbContext.ServerWelcomeSettings.FirstOrDefaultAsync(w => w.GuildId == e.Guild.Id);
+                if (welcomeSettings == null) return;
 
-                if (WelcomeSettings.ChannelId == 0 || !WelcomeSettings.HasScreening) return;
-                DiscordChannel WelcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(WelcomeSettings.ChannelId));
+                if (welcomeSettings.ChannelId == 0 || !welcomeSettings.HasScreening) return;
+                DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(welcomeSettings.ChannelId));
 
-                if (WelcomeSettings.WelcomeMessage == null) return;
-                string msg = WelcomeSettings.WelcomeMessage;
+                if (welcomeSettings.WelcomeMessage == null) return;
+                string msg = welcomeSettings.WelcomeMessage;
                 msg = msg.Replace("$Mention", $"{e.Member.Mention}");
-                await WelcomeChannel.SendMessageAsync(msg);
+                await welcomeChannel.SendMessageAsync(msg);
 
-                if (WelcomeSettings.RoleId == 0) return;
-                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(WelcomeSettings.RoleId));
+                if (welcomeSettings.RoleId == 0) return;
+                DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(welcomeSettings.RoleId));
                 await e.Member.GrantRoleAsync(role);
             }
         }

@@ -6,50 +6,55 @@ using System.Text;
 using System.Threading.Tasks;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation
 {
     internal class UserActivityTracker
     {
         private readonly ILeaderboardService _leaderboardService;
+        private readonly LiveBotDbContext _dbContext;
 
-        public UserActivityTracker(ILeaderboardService leaderboardService)
+        public UserActivityTracker(ILeaderboardService leaderboardService, LiveBotDbContext dbContext)
         {
             _leaderboardService = leaderboardService;
+            _dbContext = dbContext;
         }
         private static List<Cooldowns> CoolDowns { get; set; } = new List<Cooldowns>();
 
-        public async Task Add_Points(object Client, MessageCreateEventArgs e)
+        public async Task Add_Points(DiscordClient client, MessageCreateEventArgs e)
         {
             if (e.Guild == null || e.Author.IsBot) return;
 
-            Cooldowns cooldowns = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
-            if (cooldowns != null && cooldowns.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
+            Cooldowns coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
+            if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
 
-            if (DBLists.Leaderboard.FirstOrDefault(w=>w.UserDiscordId==e.Author.Id)==null)
+            if (await _dbContext.Leaderboard.FirstOrDefaultAsync(w=>w.UserDiscordId==e.Author.Id)==null)
             {
-                _leaderboardService.QueueLeaderboardItem(e.Author,e.Guild);
+                _leaderboardService.AddToQueue(new LeaderboardService.LeaderboardItem(e.Author,e.Guild));
                 return;
             }
-            UserActivity userActivity = DBLists.UserActivity.FirstOrDefault(w => w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id && w.Date == DateTime.UtcNow.Date);
+            UserActivity userActivity = _dbContext.UserActivity.FirstOrDefault(w => w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id && w.Date == DateTime.UtcNow.Date);
             if (userActivity == null)
             {
-                DBLists.InsertUserActivity(new(e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
+                await _dbContext.UserActivity.AddAsync(new UserActivity(_dbContext, e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
+                await _dbContext.SaveChangesAsync();
                 return;
             }
             userActivity.Points += new Random().Next(25, 50);
-            DBLists.UpdateUserActivity(userActivity);
+            _dbContext.UserActivity.Update(userActivity);
+            await _dbContext.SaveChangesAsync();
 
-            CoolDowns.Remove(cooldowns);
+            CoolDowns.Remove(coolDown);
             CoolDowns.Add(new Cooldowns(e.Author, e.Guild, DateTime.UtcNow));
 
-            long userPoints = DBLists.UserActivity
+            long userPoints = await _dbContext.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id)
-                .Sum(w => w.Points);
-            var rankRole = DBLists.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id).ToList();
-            var rankRoleUnder = DBLists.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
+                .SumAsync(w => w.Points);
+            var rankRole = _dbContext.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id).ToList();
+            var rankRoleUnder = _dbContext.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
 
-            DiscordMember member = e.Author as DiscordMember;
+            var member = e.Author as DiscordMember;
             if (rankRoleUnder.Count != 0  && !member.Roles.Any(w=>w.Id == rankRoleUnder[0].RoleId))
             {
                 if (member.Roles.Any(w=>rankRole.Any(x=>x.RoleId==w.Id)))
@@ -66,7 +71,7 @@ namespace LiveBot.Automation
             }
         }
 
-        sealed private class Cooldowns
+        private sealed class Cooldowns
         {
             public DiscordUser User { get; set; }
             public DiscordGuild Guild { get; set; }

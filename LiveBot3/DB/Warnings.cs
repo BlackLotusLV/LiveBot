@@ -17,7 +17,7 @@ namespace LiveBot.DB
             
             ServerRanks serverRanks = context.ServerRanks.FirstOrDefault(x => x.UserDiscordId==userDiscordId && x.GuildId==guildId);
             if (serverRanks != null) return;
-            serverRanks = new ServerRanks(context) { UserDiscordId = this.UserDiscordId, GuildId = this.GuildId};
+            serverRanks = new ServerRanks(context, UserDiscordId, GuildId);
             var item = context.ServerRanks.Add(serverRanks);
             
             ServerRanksId = item.Entity.IdServerRank;

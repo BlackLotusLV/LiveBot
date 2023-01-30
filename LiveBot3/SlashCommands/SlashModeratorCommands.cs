@@ -3,6 +3,8 @@ using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.SlashCommands
 {
@@ -12,10 +14,12 @@ namespace LiveBot.SlashCommands
     internal class SlashModeratorCommands : ApplicationCommandModule
     {
         private readonly IWarningService _warningService;
+        private readonly LiveBotDbContext _databaseContext;
 
-        public SlashModeratorCommands(IWarningService warningService)
+        public SlashModeratorCommands(IWarningService warningService,LiveBotDbContext databaseContext)
         {
             _warningService = warningService;
+            _databaseContext = databaseContext;
         }
         [SlashCommand("warn", "Warn a user.")]
         public async Task Warning(InteractionContext ctx,
@@ -23,24 +27,25 @@ namespace LiveBot.SlashCommands
             [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            _warningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
+            _warningService.AddToQueue(new WarningItem(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx));
         }
 
-        [SlashCommand("unwarn", "Removes a warning from the user")]
+        [SlashCommand("remove-warning", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
-            [Autocomplete(typeof(UnwarnOptions))]
+            [Autocomplete(typeof(RemoveWarningOptions))]
             [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long warningId = -1)
         {
             await ctx.DeferAsync(true);
             await _warningService.RemoveWarningAsync(user, ctx, (int)warningId);
         }
-        private sealed class UnwarnOptions : IAutocompleteProvider
+        private sealed class RemoveWarningOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (Warnings item in DB.DBLists.Warnings.Where(w=>w.GuildId == ctx.Guild.Id && w.UserDiscordId == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.IsActive))
+                foreach (Warnings item in databaseContext.Warnings.Where(w=>w.GuildId == ctx.Guild.Id && w.UserDiscordId == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.IsActive))
                 {
                     result.Add(new DiscordAutoCompleteChoice($"#{item.IdWarning} - {item.Reason}",(long)item.IdWarning));
                 }
@@ -57,7 +62,7 @@ namespace LiveBot.SlashCommands
             {
                 MessageCount = 100;
             }
-            IReadOnlyList<DiscordMessage> messageList = await ctx.Channel.GetMessagesAsync((int)MessageCount);
+            var messageList = await ctx.Channel.GetMessagesAsync((int)MessageCount);
             await ctx.Channel.DeleteMessagesAsync(messageList);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
         }
@@ -66,24 +71,18 @@ namespace LiveBot.SlashCommands
         public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note", "Contents of the note.")] string note)
         {
             await ctx.DeferAsync(true);
-            DB.Warnings newEntry = new()
-            {
-                GuildId = ctx.Guild.Id,
-                IsActive = false,
-                AdminDiscordId = ctx.User.Id,
-                Type = "note",
-                UserDiscordId = user.Id,
-                TimeCreated = DateTime.UtcNow,
-                Reason = note
-            };
-            DB.DBLists.InsertWarnings(newEntry);
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
-            if (serverSettings?.ModerationLogChannelId != 0)
+
+            await _databaseContext.Warnings.AddAsync(new Warnings(_databaseContext,ctx.User.Id,user.Id,ctx.Guild.Id,note,false,"note"));
+            await _databaseContext.SaveChangesAsync();
+            
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
+            
+            ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
+            if (serverSettings != null)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
         }
 
         [SlashCommand("Infractions", "Shows the infractions of the user")]
@@ -102,16 +101,16 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashCommand("FAQ", "Creates a new FAQ message")]
-        public async Task FAQ(InteractionContext ctx)
+        public async Task Faq(InteractionContext ctx)
         {
-            string customID = $"FAQ-{ctx.User.Id}";
-            var modal = new DiscordInteractionResponseBuilder().WithTitle("New FAQ entry").WithCustomId(customID)
+            var customId = $"FAQ-{ctx.User.Id}";
+            DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder().WithTitle("New FAQ entry").WithCustomId(customId)
                 .AddComponents(new TextInputComponent("Question", "Question", null, null, true, TextInputStyle.Paragraph))
                 .AddComponents(new TextInputComponent("Answer", "Answer", "Answer to the question", null, true, TextInputStyle.Paragraph));
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
-            var interactivity = ctx.Client.GetInteractivity();
-            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customId, ctx.User);
             if (!response.TimedOut)
             {
                 await new DiscordMessageBuilder()
@@ -122,9 +121,9 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashCommand("FAQ-Edit", "Edits an existing FAQ message, using the message ID")]
-        public async Task FAQEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageID)
+        public async Task FaqEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageId)
         {
-            DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageID));
+            DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageId));
             string ogMessage = message.Content.Replace("*", string.Empty);
             string question = ogMessage.Substring(ogMessage.IndexOf(":") + 1, ogMessage.Length - (ogMessage[ogMessage.IndexOf("\n")..].Length + 2)).TrimStart();
             string answer = ogMessage[(ogMessage.IndexOf("\n") + 4)..].TrimStart();
@@ -200,7 +199,7 @@ namespace LiveBot.SlashCommands
         public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
         {
             await ctx.DeferAsync(true);
-            DB.ServerSettings guildSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
+            ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
             if (guildSettings?.ModMailChannelId == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
@@ -217,14 +216,14 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The user is not in the server, can't message."));
                 return;
             }
-            string DMMessage = $"You are receiving a Moderator DM from **{ctx.Guild.Name}** Discord\n{ctx.User.Username} - {message}";
+            string dmMessage = $"You are receiving a Moderator DM from **{ctx.Guild.Name}** Discord\n{ctx.User.Username} - {message}";
             DiscordMessageBuilder messageBuilder = new();
             messageBuilder.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"openmodmail{ctx.Guild.Id}", "Open Mod Mail"));
-            messageBuilder.WithContent(DMMessage);
+            messageBuilder.WithContent(dmMessage);
 
             await member.SendMessageAsync(messageBuilder);
 
-            DiscordChannel MMChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId);
+            DiscordChannel modMailChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -233,10 +232,10 @@ namespace LiveBot.SlashCommands
                     Name = member.Username
                 },
                 Title = $"[MOD DM] Moderator DM to {member.Username}",
-                Description = DMMessage
+                Description = dmMessage
             };
-            await MMChannel.SendMessageAsync(embed: embed);
-            Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "A Dirrect message was sent to {Username}({UserId}) from {User2Name}({User2Id}) through Mod Mail system.", member.Username, member.Id, ctx.Member.Username, ctx.Member.Id);
+            await modMailChannel.SendMessageAsync(embed: embed);
+            ctx.Client.Logger.LogInformation(CustomLogEvents.ModMail, "A Direct message was sent to {Username}({UserId}) from {User2Name}({User2Id}) through Mod Mail system.", member.Username, member.Id, ctx.Member.Username, ctx.Member.Id);
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }

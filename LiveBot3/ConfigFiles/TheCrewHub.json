@@ -1,6 +1,6 @@
 ﻿{
   "summit": "https://api.thecrew-hub.com/v1/data/summit",
-  "gamedata": "https://api.thecrew-hub.com/v1/data/game?fields=missions,skills,brands,models,disciplines,families",
+  "game-data": "https://api.thecrew-hub.com/v1/data/game?fields=missions,skills,brands,models,disciplines,families",
   "dictionary": {
     "en-GB": "https://api.thecrew-hub.com/v1/data/locas/en.json",
     "ja": "https://api.thecrew-hub.com/v1/data/locas/ja.json",

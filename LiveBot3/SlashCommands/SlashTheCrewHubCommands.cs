@@ -10,33 +10,45 @@ using SixLabors.ImageSharp.Processing;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using LiveBot.DB;
+using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("Hub", "Commands in relation to the TheCrew-Hub leaderboards.")]
     public partial class SlashTheCrewHubCommands : ApplicationCommandModule
     {
+        private readonly ITheCrewHubService _theCrewHubService;
+        private readonly LiveBotDbContext _dbContext;
+        SlashTheCrewHubCommands(ITheCrewHubService theCrewHubService, LiveBotDbContext dbContext)
+        {
+            _theCrewHubService = theCrewHubService;
+            _dbContext = dbContext;
+        }
+        
         [SlashCommand("Summit", "Shows the tiers and current cut offs for the ongoing summit.")]
         public async Task Summit(InteractionContext ctx)
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
             string PCJson = string.Empty, XBJson = string.Empty, PSJson = string.Empty, StadiaJson = string.Empty;
-            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summit.png";
+            string imageLoc = $"{Path.GetTempPath()}{ctx.User.Id}-summit.png";
             float outlineSize = 0.7f;
             byte[] SummitLogo;
             int[,] TierCutoff = new int[,] { { 4000, 8000, 15000 }, { 11000, 21000, 41000 }, { 2100, 4200, 8500 }, { 100, 200, 400 } };
-            List<TCHubJson.Summit> JSummit = Program.JSummit;
+            var JSummit = _theCrewHubService.Summit;
 
             int platforms = 4;
 
             using (HttpClient wc = new())
             {
-                PCJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/pc/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
-                XBJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/x1/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
-                PSJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/ps4/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
+                PCJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/pc/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
+                XBJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/x1/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
+                PSJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/ps4/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
                 try
                 {
-                    StadiaJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/stadia/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
+                    StadiaJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/stadia/profile/a92d844e-9c57-4b8c-a249-108ef42d4500");
                 }
                 catch (Exception)
                 {
@@ -45,35 +57,35 @@ namespace LiveBot.SlashCommands
 
                 try
                 {
-                    SummitLogo = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[0].Cover_Small}");
+                    SummitLogo = await wc.GetByteArrayAsync($"https://www.thecrew-hub.com/gen/assets/summits/{JSummit[0].CoverSmall}");
                 }
                 catch (WebException e)
                 {
-                    Program.Client.Logger.LogError(CustomLogEvents.CommandError, "Summit logo download failed, substituting image.\n{ExceptionMessage}", e.Message);
+                    ctx.Client.Logger.LogError(CustomLogEvents.CommandError, "Summit logo download failed, substituting image.\n{ExceptionMessage}", e.Message);
                     SummitLogo = File.ReadAllBytes("Assets/Summit/summit_small");
                 }
             }
-            TCHubJson.Rank[] Events = Array.Empty<TCHubJson.Rank>();
+            Rank[] events = Array.Empty<Rank>();
             if (platforms == 4)
             {
-                Events = new TCHubJson.Rank[4] { JsonConvert.DeserializeObject<TCHubJson.Rank>(PCJson), JsonConvert.DeserializeObject<TCHubJson.Rank>(PSJson), JsonConvert.DeserializeObject<TCHubJson.Rank>(XBJson), JsonConvert.DeserializeObject<TCHubJson.Rank>(StadiaJson) };
+                events = new Rank[4] { JsonConvert.DeserializeObject<Rank>(PCJson), JsonConvert.DeserializeObject<Rank>(PSJson), JsonConvert.DeserializeObject<Rank>(XBJson), JsonConvert.DeserializeObject<Rank>(StadiaJson) };
             }
             else
             {
-                Events = new TCHubJson.Rank[3] { JsonConvert.DeserializeObject<TCHubJson.Rank>(PCJson), JsonConvert.DeserializeObject<TCHubJson.Rank>(PSJson), JsonConvert.DeserializeObject<TCHubJson.Rank>(XBJson) };
+                events = new Rank[3] { JsonConvert.DeserializeObject<Rank>(PCJson), JsonConvert.DeserializeObject<Rank>(PSJson), JsonConvert.DeserializeObject<Rank>(XBJson) };
             }
             string[,] pts = new string[platforms, 4];
-            for (int i = 0; i < Events.Length; i++)
+            for (int i = 0; i < events.Length; i++)
             {
-                for (int j = 0; j < Events[i].Tier_entries.Length; j++)
+                for (int j = 0; j < events[i].TierEntries.Length; j++)
                 {
-                    if (Events[i].Tier_entries[j].Points == 4294967295)
+                    if (events[i].TierEntries[j].Points == 4294967295)
                     {
                         pts[i, j] = "-";
                     }
                     else
                     {
-                        pts[i, j] = Events[i].Tier_entries[j].Points.ToString();
+                        pts[i, j] = events[i].TierEntries[j].Points.ToString();
                     }
                 }
             }
@@ -85,7 +97,7 @@ namespace LiveBot.SlashCommands
             using (Image<Rgba32> BaseImg = new(300 * platforms, 643))
             {
                 Image<Rgba32>[] PlatformImg = new Image<Rgba32>[4] { PCImg, PSImg, XBImg, StadiaImg };
-                Parallel.For(0, Events.Length, (i, state) =>
+                Parallel.For(0, events.Length, (i, state) =>
                 {
                     using Image<Rgba32> TierImg = Image.Load<Rgba32>("Assets/Summit/SummitBase.png");
                     using Image<Rgba32> SummitImg = Image.Load<Rgba32>(SummitLogo);
@@ -101,7 +113,7 @@ namespace LiveBot.SlashCommands
                     {
                         TierImg.Mutate(ctx => ctx
                             .DrawText(
-                                new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 17))
+                                new TextOptions(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 17))
                                 {
                                     Origin = new PointF(295, 340 + (j * 70)),
                                     HorizontalAlignment = HorizontalAlignment.Right,
@@ -118,7 +130,7 @@ namespace LiveBot.SlashCommands
                     );
                     FooterImg.Mutate(ctx => ctx
                     .Fill(Color.Black)
-                    .DrawText(new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {Events[i].Player_Count}", TextColour)
+                    .DrawText(new TextOptions(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {events[i].PlayerCount}", TextColour)
                     );
                     BaseImg.Mutate(ctx => ctx
                         .DrawImage(SummitImg, SummitLocation, 1)
@@ -130,7 +142,7 @@ namespace LiveBot.SlashCommands
                     {
                         BaseImg.Mutate(ctx => ctx
                         .DrawText(
-                            new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 30))
+                            new TextOptions(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 30))
                             {
                                 Origin = new PointF(80 + (300 * i), 575 - (j * 70))
                             },
@@ -145,7 +157,7 @@ namespace LiveBot.SlashCommands
             using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             DiscordFollowupMessageBuilder msgBuilder = new()
             {
-                Content = $"Summit tier lists.\n *Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>)*"
+                Content = $"Summit tier lists.\n *Summit ends on <t:{JSummit[0].EndDate}>(<t:{JSummit[0].EndDate}:R>)*"
             };
             msgBuilder.AddFile(upFile);
             msgBuilder.AddMention(new UserMention());
@@ -156,8 +168,9 @@ namespace LiveBot.SlashCommands
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
+                foreach (var item in databaseContext.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
                 {
                     switch (item.Platform)
                     {
@@ -191,19 +204,19 @@ namespace LiveBot.SlashCommands
             string OutMessage = string.Empty;
             string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-mysummit.png";
 
-            bool SendImage = false;
+            bool sendImage = false;
 
             string search = string.Empty;
 
-            List<DB.UbiInfo> UbiInfoList = DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.User.Id).ToList();
-            DB.UbiInfo UbiInfo = new();
-            if (UbiInfoList.Count == 0)
+            var ubiInfoList = await _dbContext.UbiInfo.Where(w => w.UserDiscordId == ctx.User.Id).ToListAsync();
+            UbiInfo UbiInfo;
+            if (ubiInfoList.Count == 0)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "Could not find any profile data, please link your ubisoft account with Live bot." });
                 return;
             }
-            UbiInfo = UbiInfoList[0];
-            if (UbiInfoList.Count > 1)
+            UbiInfo = ubiInfoList[0];
+            if (ubiInfoList.Count > 1)
             {
                 search = platform switch
                 {
@@ -212,49 +225,49 @@ namespace LiveBot.SlashCommands
                     "stadia" => platform,
                     _ => "pc",
                 };
-                if (UbiInfoList.Count(w => w.Platform.Equals(search)) == 1)
+                if (ubiInfoList.Count(w => w.Platform.Equals(search)) == 1)
                 {
-                    UbiInfo = UbiInfoList.FirstOrDefault(w => w.Platform == search);
+                    UbiInfo = ubiInfoList.FirstOrDefault(w => w.Platform == search);
                 }
             }
             string SJson;
-            List<TCHubJson.Summit> JSummit = Program.JSummit;
+            Summit[] jSummit = _theCrewHubService.Summit;
             using (HttpClient wc = new())
             {
-                SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{UbiInfo.Platform}/profile/{UbiInfo.ProfileId}");
+                SJson = await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{jSummit[0].Id}/score/{UbiInfo.Platform}/profile/{UbiInfo.ProfileId}");
             }
-            TCHubJson.Rank Events = JsonConvert.DeserializeObject<TCHubJson.Rank>(SJson);
+            Rank Events = JsonConvert.DeserializeObject<Rank>(SJson);
 
             if (Events.Points != 0)
             {
                 int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-                var AllignTopLeft12 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 12.5f))
+                var AllignTopLeft12 = new TextOptions(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 12.5f))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
-                    FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
+                    FallbackFontFamilies = new[] { _theCrewHubService.FontCollection.Get("Noto Sans Mono CJK JP Bold"), _theCrewHubService.FontCollection.Get("Noto Sans Arabic") }
                 };
-                var AllignTopLeft15 = new TextOptions(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 15))
+                var AllignTopLeft15 = new TextOptions(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15))
                 {
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
-                    FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
+                    FallbackFontFamilies = new[] { _theCrewHubService.FontCollection.Get("Noto Sans Mono CJK JP Bold"), _theCrewHubService.FontCollection.Get("Noto Sans Arabic") }
                 };
 
                 Image<Rgba32> BaseImage = new(1127, 765);
 
-                await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, token) =>
+                await Parallel.ForEachAsync(jSummit[0].Events, new ParallelOptions(), async (Event, token) =>
                 {
-                    int i = JSummit[0].Events.Select((element, index) => new { element, index })
+                    int i = jSummit[0].Events.Select((element, index) => new { element, index })
                            .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
-                    Image image = await HubMethods.BuildEventImage(
-                            Event,
-                            Events,
-                            UbiInfo,
-                            Event.Image_Byte,
-                            i == 7,
-                            i == 8);
-                    BaseImage.Mutate(ctx => ctx
+                    Image image = await _theCrewHubService.BuildEventImageAsync(
+                        Event,
+                        Events,
+                        UbiInfo,
+                        Event.ImageByte,
+                        i == 7,
+                        i == 8);
+                    BaseImage.Mutate(imageProcessingContext => imageProcessingContext
                     .DrawImage(
                         image,
                         new Point(WidthHeight[i, 0], WidthHeight[i, 1]),
@@ -266,21 +279,21 @@ namespace LiveBot.SlashCommands
                     TierBar.Mutate(ctx => ctx.DrawImage(new Image<Rgba32>(new Configuration(), TierBar.Width, TierBar.Height, backgroundColor: Color.Black), new Point(0, 0), 0.35f));
                     int[] TierXPos = new int[4] { 845, 563, 281, 0 };
                     bool[] Tier = new bool[] { false, false, false, false };
-                    Parallel.For(0, Events.Tier_entries.Length, (i, state) =>
+                    Parallel.For(0, Events.TierEntries.Length, (i, state) =>
                     {
-                        if (Events.Tier_entries[i].Points == 4294967295)
+                        if (Events.TierEntries[i].Points == 4294967295)
                         {
                             Tier[i] = true;
                         }
                         else
                         {
-                            if (Events.Tier_entries[i].Points <= Events.Points)
+                            if (Events.TierEntries[i].Points <= Events.Points)
                             {
                                 Tier[i] = true;
                             }
 
                             TierBar.Mutate(ctx => ctx
-                            .DrawText(new TextOptions(AllignTopLeft12) { Origin = new PointF(TierXPos[i] + 5, 15) }, $"Points Needed: {Events.Tier_entries[i].Points}", Color.White)
+                            .DrawText(new TextOptions(AllignTopLeft12) { Origin = new PointF(TierXPos[i] + 5, 15) }, $"Points Needed: {Events.TierEntries[i].Points}", Color.White)
                             );
                         }
                     });
@@ -295,15 +308,15 @@ namespace LiveBot.SlashCommands
                 }
                 BaseImage.Save(imageLoc);
 
-                OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UbiInfo.Platform == "x1" ? "Xbox" : UbiInfo.Platform == "ps4" ? "PlayStation" : UbiInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub*";
-                SendImage = true;
+                OutMessage = $"{ctx.User.Mention}, Here are your summit event stats for {(UbiInfo.Platform == "x1" ? "Xbox" : UbiInfo.Platform == "ps4" ? "PlayStation" : UbiInfo.Platform == "stadia" ? "Stadia" : "PC")}.\n*Summit ends on <t:{jSummit[0].EndDate}>(<t:{jSummit[0].EndDate}:R>). Scoreboard powered by The Crew Hub*";
+                sendImage = true;
             }
             else
             {
                 OutMessage = $"{ctx.User.Mention}, You have not completed any summit event!";
             }
 
-            if (SendImage)
+            if (sendImage)
             {
                 using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
 
@@ -355,7 +368,7 @@ namespace LiveBot.SlashCommands
                     break;
             }
 
-            List<TCHubJson.Summit> JSummit = Program.JSummit;
+            Summit[] JSummit = _theCrewHubService.Summit;
 
             int[,] WidthHeight = new int[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
 
@@ -366,19 +379,19 @@ namespace LiveBot.SlashCommands
                 using HttpClient wc = new();
                 int i = JSummit[0].Events.Select((element, index) => new { element, index })
                        .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
-                TCHubJson.SummitLeaderboard Activity = JsonConvert.DeserializeObject<TCHubJson.SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/leaderboard/{search}/{Event.ID}?page_size=1", CancellationToken.None));
-                TCHubJson.Rank Rank = null;
+                SummitLeaderboard Activity = JsonConvert.DeserializeObject<SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/leaderboard/{search}/{Event.Id}?page_size=1", CancellationToken.None));
+                Rank Rank = null;
                 DB.UbiInfo ubiInfo = null;
                 if (Activity.Entries.Length != 0)
                 {
-                    Rank = JsonConvert.DeserializeObject<TCHubJson.Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].ID}/score/{search}/profile/{Activity.Entries[0].Profile_ID}", CancellationToken.None));
-                    ubiInfo = new DB.UbiInfo { Platform = search, ProfileId = Activity.Entries[0].Profile_ID };
+                    Rank = JsonConvert.DeserializeObject<Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/{search}/profile/{Activity.Entries[0].ProfileId}", CancellationToken.None));
+                    ubiInfo = new DB.UbiInfo { Platform = search, ProfileId = Activity.Entries[0].ProfileId };
                 }
-                Image image = await HubMethods.BuildEventImage(
+                Image image = await _theCrewHubService.BuildEventImageAsync(
                         Event,
                         Rank,
                         ubiInfo,
-                        Event.Image_Byte,
+                        Event.ImageByte,
                         i == 7,
                         i == 8);
                 BaseImage.Mutate(ctx => ctx
@@ -395,7 +408,7 @@ namespace LiveBot.SlashCommands
                 TotalPoints += 100000;
             }
             BaseImage.Save(imageLoc);
-            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].End_Date}>(<t:{JSummit[0].End_Date}:R>). Scoreboard powered by The Crew Hub*";
+            OutMessage = $"{ctx.User.Mention}, Here are the top summit scores for {(search == "x1" ? "Xbox" : search == "ps4" ? "PlayStation" : search == "stadia" ? "Stadia" : "PC")}. Total event points: **{TotalPoints}**\n*Summit ends on <t:{JSummit[0].EndDate}>(<t:{JSummit[0].EndDate}:R>). Scoreboard powered by The Crew Hub*";
 
             using var upFile = new FileStream(imageLoc, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
             var msgBuilder = new DiscordFollowupMessageBuilder
@@ -412,15 +425,17 @@ namespace LiveBot.SlashCommands
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
+                var hub = ctx.Services.GetService<ITheCrewHubService>();
                 string locale = "en-GB";
-                DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
+                DB.Leaderboard userInfo = databaseContext.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
                 if (userInfo != null)
                     locale = userInfo.Locale;
                 List<DiscordAutoCompleteChoice> result = new();
                 for (int i = 0; i < 4; i++)
                 {
-                    if (Program.JSummit[i].Text_ID != "55475")
-                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIdLookup(Program.JSummit[i].Text_ID, locale), i));
+                    if (hub.Summit[i].TextId != "55475")
+                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIdLookup(hub.Summit[i].TextId, locale), i));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -436,7 +451,7 @@ namespace LiveBot.SlashCommands
             [Autocomplete(typeof(RewardsOptions))][Maximum(3)][Minimum(0)][Option("Summit", "Which summit to see the rewards for.")] long weeknumber = 0)
         {
             string locale = "en-GB";
-            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
+            DB.Leaderboard userInfo =await _dbContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
             if (userInfo != null)
                 locale = userInfo.Locale;
             Week Week = (Week)weeknumber;
@@ -447,7 +462,7 @@ namespace LiveBot.SlashCommands
 
             string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summitrewards.png";
             int RewardWidth = 412;
-            TCHubJson.Reward[] Rewards = Program.JSummit[(int)Week].Rewards;
+            Reward[] Rewards = _theCrewHubService.Summit[(int)Week].Rewards;
             using (Image<Rgba32> RewardsImage = new(4 * RewardWidth, 328))
             {
                 Parallel.For(0, Rewards.Length, (i, state) =>
@@ -501,21 +516,21 @@ namespace LiveBot.SlashCommands
                                 DisciplineForPart = Image.Load<Rgba32>($"Assets/Affix/unknown.png");
                             }
                             StringBuilder sb = new();
-                            if (Rewards[i].Subtitle_Text_ID!="")
+                            if (Rewards[i].SubtitleTextId!="")
                             {
-                                sb.Append($"{HubMethods.NameIdLookup(Rewards[i].Subtitle_Text_ID, locale)} ");
+                                sb.Append($"{HubMethods.NameIdLookup(Rewards[i].SubtitleTextId, locale)} ");
                             }
-                            sb.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
+                            sb.Append(HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale));
                             RewardTitle =sb.ToString();
 
                             isParts = true;
                             break;
 
                         case "vanity":
-                            RewardTitle = HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale);
+                            RewardTitle = HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale);
                             if (RewardTitle is null)
                             {
-                                if (Rewards[i].Img_Path.Contains("emote"))
+                                if (Rewards[i].ImgPath.Contains("emote"))
                                 {
                                     RewardTitle = "Emote";
                                 }
@@ -527,7 +542,7 @@ namespace LiveBot.SlashCommands
                             break;
 
                         case "generic":
-                            RewardTitle = Rewards[i].Debug_Title;
+                            RewardTitle = Rewards[i].DebugTitle;
                             break;
 
                         case "currency":
@@ -538,7 +553,7 @@ namespace LiveBot.SlashCommands
                             }
                             else
                             {
-                                currencySB.Append(HubMethods.NameIdLookup(Rewards[i].Title_Text_ID, locale));
+                                currencySB.Append(HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale));
                             }
                             currencySB.Append($"- {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}");
                             RewardTitle = currencySB.ToString();
@@ -561,11 +576,11 @@ namespace LiveBot.SlashCommands
                     TopBar.Mutate(ctx => ctx.
                     Fill(RewardColours[i])
                     );
-                    TextOptions TextOptions = new(new Font(Program.Fonts.Get("HurmeGeometricSans4 Black"), 25))
+                    TextOptions TextOptions = new(new Font(_theCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 25))
                     {
                         WrappingLength = RewardWidth,
                         Origin = new PointF(((4 - Rewards[i].Level) * RewardWidth) + 5, 15),
-                        FallbackFontFamilies = new[] { Program.Fonts.Get("Noto Sans Mono CJK JP Bold"), Program.Fonts.Get("Noto Sans Arabic") }
+                        FallbackFontFamilies = new[] { _theCrewHubService.FontCollection.Get("Noto Sans Mono CJK JP Bold"), _theCrewHubService.FontCollection.Get("Noto Sans Arabic") }
                     };
                     RewardsImage.Mutate(ctx => ctx
                     .DrawImage(RewardImage, new Point((4 - Rewards[i].Level) * RewardWidth, 0), 1)
@@ -607,8 +622,6 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "The link you provided does not contain your Ubisoft Guid. Please check the tutorial again of how to get the right link" });
                 return;
             }
-
-#pragma warning disable CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
             string search = platform switch
             {
                 Platforms.pc => "pc",
@@ -616,8 +629,7 @@ namespace LiveBot.SlashCommands
                 Platforms.x1 => "x1",
                 Platforms.stadia => "stadia"
             };
-#pragma warning restore CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
-            DB.UbiInfo info = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Platform == search && w.ProfileId == link);
+            DB.UbiInfo info =await _dbContext.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId == link);
             if (info != null)
             {
                 if (info.UserDiscordId != ctx.User.Id)
@@ -629,14 +641,14 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
-            DB.UbiInfo newEntry = new()
+            DB.UbiInfo newEntry = new(_dbContext,ctx.User.Id)
             {
-                UserDiscordId = ctx.User.Id,
                 ProfileId = link,
                 Platform = search
             };
 
-            DB.DBLists.InsertUbiInfo(newEntry);
+            await _dbContext.UbiInfo.AddAsync(newEntry);
+            await _dbContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = $"Your Discord account has been linked with {link} account ID on {search} platform." });
         }
 
@@ -644,13 +656,15 @@ namespace LiveBot.SlashCommands
         public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))][Option("Account", "The account to unlink")] long ID)
         {
             await ctx.DeferAsync(true);
-            DB.UbiInfo entry = DB.DBLists.UbiInfo.FirstOrDefault(w => w.Id == ID);
+            DB.UbiInfo entry = await _dbContext.UbiInfo.FirstOrDefaultAsync(w => w.Id == ID);
             if (entry == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find a listing with this ID, please make sure you select from provided items in the list"));
                 return;
             }
-            DB.DBLists.DeleteUbiInfo(entry);
+
+            _dbContext.UbiInfo.Remove(entry);
+            await _dbContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.ProfileId}** - **{entry.Platform}** from your Discord account"));
         }
 
@@ -658,8 +672,9 @@ namespace LiveBot.SlashCommands
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in DB.DBLists.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
+                foreach (var item in databaseContext.UbiInfo.Where(w => w.UserDiscordId == ctx.Member.Id))
                 {
                     result.Add(new DiscordAutoCompleteChoice($"{item.Platform} - {item.ProfileId}", (long)item.Id));
                 }
@@ -671,16 +686,18 @@ namespace LiveBot.SlashCommands
         public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))][Option("Locale","Localisation")] string locale)
         {
             await ctx.DeferAsync(true);
-            DB.Leaderboard userInfo = DB.DBLists.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
+            DB.Leaderboard userInfo = await _dbContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
             if (userInfo==null)
             {
-                DB.DBLists.InsertLeaderboard(new DB.Leaderboard { UserDiscordId = ctx.User.Id, Locale = locale });
+                await _dbContext.Leaderboard.AddAsync(new Leaderboard(_dbContext, ctx.User.Id) { Locale = locale });
+                await _dbContext.SaveChangesAsync();
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
                 return;
             }
 
             userInfo.Locale = locale;
-            DB.DBLists.UpdateLeaderboard(userInfo);
+            _dbContext.Leaderboard.Update(userInfo);
+            await _dbContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
         }
         private sealed class LocaleOptions : IAutocompleteProvider

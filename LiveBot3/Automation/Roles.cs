@@ -1,14 +1,22 @@
 ﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation
 {
-    internal static class Roles
+    internal class Roles
     {
-        public static async Task Button_Roles(object client, ComponentInteractionCreateEventArgs e)
+        private readonly LiveBotDbContext _dbContext;
+        public Roles(LiveBotDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+        public async Task Button_Roles(object client, ComponentInteractionCreateEventArgs e)
         {
             if (e.Interaction is { Type: InteractionType.Component, User.IsBot: false } && e.Interaction.Guild != null)
             {
-                List<ButtonRoles> buttonRoleInfo = DBLists.ButtonRoles.Where(w => w.Server_ID == e.Interaction.GuildId && w.Channel_ID == e.Interaction.ChannelId && e.Interaction.Guild.Roles.Any(f => f.Value.Id == Convert.ToUInt64(w.Button_ID))).ToList();
+                var buttonRoleInfo = await _dbContext.ButtonRoles
+                    .Where(w => w.Server_ID == e.Interaction.GuildId && w.Channel_ID == e.Interaction.ChannelId && e.Interaction.Guild.Roles.Any(f => f.Value.Id == Convert.ToUInt64(w.Button_ID)))
+                    .ToListAsync();
                 if (buttonRoleInfo.Count > 0 && buttonRoleInfo[0].Channel_ID == e.Interaction.Channel.Id)
                 {
                     DiscordInteractionResponseBuilder response = new()

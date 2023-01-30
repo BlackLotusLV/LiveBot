@@ -6,7 +6,7 @@ namespace LiveBot.SlashCommands
     [SlashCommandGroup("Admin","Administrator commands.", false)]
     [SlashRequireGuild]
     [SlashRequireBotPermissions(Permissions.ManageGuild)]
-    internal class SlashAdministratorCommands : ApplicationCommandModule
+    internal abstract class SlashAdministratorCommands : ApplicationCommandModule
     {
         [SlashCommand("Say","Bot says a something")]
         public async Task Say(InteractionContext ctx, [Option("Message", "The message what the bot should say.")] string message, [Option("Channel", "Channel where to send the message")] DiscordChannel channel = null)
@@ -23,25 +23,25 @@ namespace LiveBot.SlashCommands
         [SlashCommand("Button-Message", "Creates a button message")]
         public async Task ButtonMessage(InteractionContext ctx, [Choice("One", 1)][Choice("Two", 2)][Choice("Three", 3)][Choice("Four", 4)][Option("Button-Count","How many buttons to have")] long count)
         {
-            string customID = $"Button-Creator-{ctx.User.Id}";
-            var modal = new DiscordInteractionResponseBuilder().WithTitle("Button Message Editor").WithCustomId(customID)
+            var customId = $"Button-Creator-{ctx.User.Id}";
+            DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder().WithTitle("Button Message Editor").WithCustomId(customId)
                 .AddComponents(new TextInputComponent("Base Message", "base", null, null, true, TextInputStyle.Paragraph));
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 
-                modal.AddComponents(new TextInputComponent($"Button {i + 1} ", $"button{i + 1}-info","id|Label|emojiID", null, true, TextInputStyle.Short));
+                modal.AddComponents(new TextInputComponent($"Button {i + 1} ", $"button{i + 1}-info","id|Label|emojiID"));
             }
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
-            var interactivity = ctx.Client.GetInteractivity();
-            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customId, ctx.User);
+            var buttons = new DiscordButtonComponent[count];
             if (!response.TimedOut)
             {
-                DiscordButtonComponent[] buttons = new DiscordButtonComponent[count];
-                for (int i = 0; i < count; i++)
+                for (var i = 0; i < count; i++)
                 {
                     string[] buttonInfo = response.Result.Values[$"button{i + 1}-info"].Split('|');
-                    buttons[i] = new DiscordButtonComponent(ButtonStyle.Primary,buttonInfo[0], buttonInfo[1],false, UInt64.TryParse(buttonInfo[2], out ulong emojiID) ? new DiscordComponentEmoji(emojiID) : null);
+                    buttons[i] = new DiscordButtonComponent(ButtonStyle.Primary,buttonInfo[0], buttonInfo[1],false, UInt64.TryParse(buttonInfo[2], out ulong emojiId) ? new DiscordComponentEmoji(emojiId) : null);
                 }
 
                 DiscordMessageBuilder message = new()

@@ -4,14 +4,17 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LiveBot.DB
 {
     [Table("Leaderboard", Schema = "livebot")]
-    public class Leaderboard
+    public sealed class Leaderboard
     {
-        public Leaderboard(LiveBotDbContext context)
+        public Leaderboard(LiveBotDbContext context, ulong userDiscordId)
         {
-            Leaderboard leaderboard = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == this.UserDiscordId);
-            if (leaderboard != null) return;
-            leaderboard = new Leaderboard(context) { UserDiscordId = this.ParentUserDiscordId };
-            context.Leaderboard.Add(leaderboard);
+            UserDiscordId = userDiscordId;
+            if (ParentUserDiscordId==0)return;
+            Leaderboard entry = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == ParentUserDiscordId);
+            if (entry != null) return;
+            entry = new Leaderboard(context, ParentUserDiscordId);
+            context.Leaderboard.Add(entry);
+            context.SaveChanges();
         }
         [Key]
         [Column("id_user")]
@@ -44,8 +47,8 @@ namespace LiveBot.DB
         }
         private ulong _parentUserDiscordId;
         
-        public virtual ICollection<UbiInfo> UbiInfo { get; set; }
-        public virtual ICollection<Leaderboard> Child { get; set; }
-        public virtual ICollection<ServerRanks> ServerRanks { get; set; }
+        public ICollection<UbiInfo> UbiInfo { get; set; }
+        public ICollection<Leaderboard> Child { get; set; }
+        public ICollection<ServerRanks> ServerRanks { get; set; }
     }
 }

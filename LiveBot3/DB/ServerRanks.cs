@@ -6,13 +6,15 @@ namespace LiveBot.DB
     [Table("Server_Ranks", Schema = "livebot")]
     public class ServerRanks
     {
-        public ServerRanks(LiveBotDbContext context)
+        public ServerRanks(LiveBotDbContext context, ulong userDiscordId,ulong guildId)
         {
+            UserDiscordId = userDiscordId;
+            GuildId = guildId;
             Leaderboard leaderboard = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == this.UserDiscordId);
             ServerSettings serverSettings = context.ServerSettings.FirstOrDefault(x => x.GuildId == this.GuildId);
             if (leaderboard == null)
             {
-                leaderboard = new Leaderboard(context) { UserDiscordId = this.UserDiscordId };
+                leaderboard = new Leaderboard(context, UserDiscordId);
                 context.Leaderboard.Add(leaderboard);
             }
 

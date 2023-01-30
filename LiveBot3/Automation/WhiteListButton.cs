@@ -1,17 +1,23 @@
 ﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 public class WhiteListButton
 {
-    public static async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
+    private readonly LiveBotDbContext _dbContext;
+    public WhiteListButton(LiveBotDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+    public async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
         if (e.Interaction.Data.CustomId != "Activate") return;
         DiscordInteractionResponseBuilder responseBuilder = new()
         {
             IsEphemeral = true
         };
-        if (DBLists.WhiteList.Any(x=>x.DiscordId==e.User.Id))
+        if (await _dbContext.WhiteList.AnyAsync(x=>x.DiscordId==e.User.Id))
         {
             responseBuilder.WithContent("You are already verified.");
             await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
@@ -20,7 +26,7 @@ public class WhiteListButton
         
         var member = (DiscordMember)e.User;
         
-        Whitelist entry = DBLists.WhiteList.FirstOrDefault(x => x.Username == member.Username || x.Username == member.Nickname);
+        Whitelist entry = await _dbContext.WhiteList.FirstOrDefaultAsync(x => x.Username == member.Username || x.Username == member.Nickname);
         
         if (entry == null)
         {
@@ -38,7 +44,7 @@ public class WhiteListButton
             return;
         }
 
-        var whiteListRole = DBLists.ServerWelcomeSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRole;
+        ulong? whiteListRole = _dbContext.ServerWelcomeSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRole;
         if (whiteListRole == null)
         {
             client.Logger.LogDebug("No role specified to be assigned, exiting.");
@@ -50,7 +56,8 @@ public class WhiteListButton
             await member.GrantRoleAsync(role);
 
         entry.DiscordId = member.Id;
-        DBLists.UpdateWhteList(entry);
+        _dbContext.Update(entry);
+        await _dbContext.SaveChangesAsync();
         responseBuilder.WithContent("You have verified successfully!");
         await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
     }

@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using SixLabors.Fonts;
+using Microsoft.Extensions.Http;
 
 namespace LiveBot;
 
@@ -56,8 +57,22 @@ internal sealed class Program
         
         ServiceProvider serviceProvider = new ServiceCollection()
             .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString))
+            .AddHttpClient()
+            .AddTransient<ITheCrewHubService,TheCrewHubService>()
+            .AddTransient<ITheCrewHubService>()
+            .AddSingleton<IWarningService,WarningService>()
+            .AddSingleton<IStreamNotificationService,StreamNotificationService>()
+            .AddSingleton<ILeaderboardService,LeaderboardService>()
+            .AddSingleton<IModMailService,ModMailService>()
+            .AddLogging()
             .BuildServiceProvider();
         _provider = serviceProvider;
+
+        var warningService = serviceProvider.GetService<IWarningService>();
+        var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
+        var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
+        var modMailService = serviceProvider.GetService<IModMailService>();
+        var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
 
         DiscordConfiguration discordConfig = new()
         {
@@ -83,7 +98,7 @@ internal sealed class Program
         DiscordClient discordClient = new(discordConfig);
         CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
-
+        
         discordClient.Ready += Ready;
         discordClient.GuildAvailable += GuildAvailable;
         discordClient.ClientErrored += ClientErrored;
@@ -96,8 +111,23 @@ internal sealed class Program
 
         slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
         slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
+        
+        leaderboardService.StartService();
+        warningService.StartService();
+        streamNotificationService.StartService();
+        await theCrewHubService.StartServiceAsync();
+
+        Timer timer = new(state => streamNotificationService.StreamListCleanup());
+        timer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
+        
 
         var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
+        var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(serviceProvider);
+        var liveStream = ActivatorUtilities.CreateInstance<LiveStream>(serviceProvider);
+        var userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(serviceProvider);
+        var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
+        var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
+        var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
 
         if (!testBuild)
         {
@@ -105,36 +135,34 @@ internal sealed class Program
             
             discordClient.PresenceUpdated += liveStream.Stream_Notification;
 
-            discordClient.GuildMemberAdded += autoMod.Add_To_Leaderboards;
-            discordClient.MessageCreated += AutoMod.Media_Only_Filter;
-            discordClient.MessageCreated += autoMod.Banned_Words;
+            discordClient.MessageCreated += autoMod.Media_Only_Filter;
             discordClient.MessageCreated += autoMod.Spam_Protection;
             discordClient.MessageCreated += autoMod.Link_Spam_Protection;
             discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
-            discordClient.MessageDeleted += AutoMod.Delete_Log;
-            discordClient.MessagesBulkDeleted += AutoMod.Bulk_Delete_Log;
-            discordClient.GuildMemberAdded += AutoMod.User_Join_Log;
-            discordClient.GuildMemberRemoved += AutoMod.User_Leave_Log;
-            discordClient.GuildMemberRemoved += AutoMod.User_Kicked_Log;
-            discordClient.GuildBanAdded += AutoMod.User_Banned_Log;
-            discordClient.GuildBanRemoved += AutoMod.User_Unbanned_Log;
-            discordClient.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
-            discordClient.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
+            discordClient.MessageDeleted += autoMod.Delete_Log;
+            discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
+            discordClient.GuildMemberAdded += autoMod.User_Join_Log;
+            discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
+            discordClient.GuildMemberRemoved += autoMod.User_Kicked_Log;
+            discordClient.GuildBanAdded += autoMod.User_Banned_Log;
+            discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
+            discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
+            discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
 
             discordClient.MessageCreated += userActivityTracker.Add_Points;
 
-            discordClient.ComponentInteractionCreated += Roles.Button_Roles;
+            discordClient.ComponentInteractionCreated += roles.Button_Roles;
             
-            discordClient.ComponentInteractionCreated += WhiteListButton.Activate;
+            discordClient.ComponentInteractionCreated += whiteListButton.Activate;
 
             discordClient.GuildMemberAdded += memberFlow.Welcome_Member;
             discordClient.GuildMemberRemoved += memberFlow.Say_Goodbye;
 
-            discordClient.GuildMemberUpdated += MembershipScreening.AcceptRules;
+            discordClient.GuildMemberUpdated += membershipScreening.AcceptRules;
 
-            discordClient.MessageCreated += Automation.ModMail.ModMailDM;
-            discordClient.ComponentInteractionCreated += Automation.ModMail.ModMailCloseButton;
-            discordClient.ComponentInteractionCreated += Automation.ModMail.ModMailDMOpenButton;
+            discordClient.MessageCreated += modMailService.ProcessModMailDm;
+            discordClient.ComponentInteractionCreated += modMailService.CloseButton;
+            discordClient.ComponentInteractionCreated += modMailService.OpenButton;
 
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();

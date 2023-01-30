@@ -1,14 +1,18 @@
 ﻿using LiveBot.DB;
+using LiveBot.Services;
 
 namespace LiveBot.Automation
 {
     internal  class MemberFlow
     {
         private readonly LiveBotDbContext _databaseContext;
+        private readonly IModMailService _modMailService;
 
-        public MemberFlow(LiveBotDbContext databaseContext)
+        public MemberFlow(LiveBotDbContext databaseContext, IModMailService modMailService)
         {
             _databaseContext = databaseContext;
+            _modMailService = modMailService;
+
         }
         public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
         {
@@ -43,7 +47,7 @@ namespace LiveBot.Automation
             DB.ModMail modMailEntry = _databaseContext.ModMail.FirstOrDefault(w => w.UserDiscordId == e.Member.Id && w.GuildId == e.Guild.Id && w.IsActive);
             if (modMailEntry != null)
             {
-                await ModMail.CloseModMailAsync(modMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
+                await _modMailService.CloseModMailAsync(client,modMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");
             }
         }
     }
