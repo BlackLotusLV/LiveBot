@@ -28,7 +28,6 @@ public class ModMailService : IModMailService
         if (e.Guild == null && mmEntry != null)
         {
             DiscordGuild guild = client.Guilds.First(w => w.Value.Id == mmEntry.GuildId).Value;
-            DiscordChannel modMailChannel = guild.GetChannel(_dbContext.ServerSettings.First(w => w.GuildId == mmEntry.GuildId).ModMailChannelId);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -49,15 +48,21 @@ public class ModMailService : IModMailService
                 }
             }
 
-            await modMailChannel.SendMessageAsync(embed: embed);
-
             mmEntry.HasChatted = true;
             mmEntry.LastMessageTime = DateTime.UtcNow;
 
             _dbContext.ModMail.Update(mmEntry);
             await _dbContext.SaveChangesAsync();
 
-            client.Logger.LogInformation(CustomLogEvents.ModMail, "New Mod Mail message sent to {ChannelName}({ChannelId}) in {GuildName} from {Username}({UserId})", modMailChannel.Name, modMailChannel.Id, modMailChannel.Guild.Name, e.Author.Username, e.Author.Id);
+
+            ulong? modMailChannelId = _dbContext.ServerSettings.First(w => w.GuildId == mmEntry.GuildId).ModMailChannelId;
+            if (modMailChannelId != null)
+            {
+                DiscordChannel modMailChannel = guild.GetChannel(modMailChannelId.Value);
+                await modMailChannel.SendMessageAsync(embed: embed);
+
+                client.Logger.LogInformation(CustomLogEvents.ModMail, "New Mod Mail message sent to {ChannelName}({ChannelId}) in {GuildName} from {Username}({UserId})", modMailChannel.Name, modMailChannel.Id, modMailChannel.Guild.Name, e.Author.Username, e.Author.Id);
+            }
         }
     }
 
@@ -66,7 +71,7 @@ public class ModMailService : IModMailService
         modMail.IsActive = false;
         string notificationMessage = string.Empty;
         DiscordGuild guild = await client.GetGuildAsync(modMail.GuildId);
-        DiscordChannel modMailChannel = guild.GetChannel(_dbContext.ServerSettings.First(w => w.GuildId == guild.Id).ModMailChannelId);
+        DiscordChannel modMailChannel = guild.GetChannel(_dbContext.ServerSettings.First(w => w.GuildId == guild.Id).ModMailChannelId.Value);
         DiscordEmbedBuilder embed = new()
         {
             Title = $"[CLOSED] #{modMail.ModMailId} {closingText}",
@@ -157,10 +162,14 @@ public class ModMailService : IModMailService
                 Description = "No subject, Mod Mail Opened with button"
             };
 
-            DiscordChannel modMailChannel = guild.GetChannel(_dbContext.ServerSettings.First(w=>w.GuildId== guild.Id).ModMailChannelId);
-            await new DiscordMessageBuilder()
-                .AddComponents(closeButton)
-                .WithEmbed(embed)
-                .SendAsync(modMailChannel);
+            ulong? modMailChannelId = _dbContext.ServerSettings.First(w=>w.GuildId== guild.Id).ModMailChannelId;
+            if (modMailChannelId != null)
+            {
+                DiscordChannel modMailChannel = guild.GetChannel(modMailChannelId.Value);
+                await new DiscordMessageBuilder()
+                    .AddComponents(closeButton)
+                    .WithEmbed(embed)
+                    .SendAsync(modMailChannel);
+            }
     }
 }

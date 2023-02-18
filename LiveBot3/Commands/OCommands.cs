@@ -49,57 +49,6 @@ namespace LiveBot.Commands
             await ctx.Message.DeleteAsync();
         }
 
-        [Command("update")]
-        public async Task Update(CommandContext ctx, [Description("Which database to update. (All will update all db)")] string db = "default")
-        {
-            await ctx.TriggerTypingAsync();
-            string msgcontent;
-            switch (db.ToLower())
-            {
-                case "all":
-                    DB.DBLists.LoadAllLists();
-                    msgcontent = "All lists updated";
-                    break;
-
-                case "vehicle":
-                case "vehicles":
-                    DB.DBLists.LoadVehicleList();
-                    msgcontent = "Vehicle list updated";
-                    break;
-
-                case "server":
-                    DB.DBLists.LoadServerSettings();
-                    msgcontent = "Server settings list updated";
-                    break;
-
-                case "bannedw":
-                case "banword":
-                case "bword":
-                    DB.DBLists.LoadBannedWords();
-                    msgcontent = "Banned Words list updated";
-                    break;
-
-                default:
-                    msgcontent = "Couldn't find this table. Nothing was updated\n" +
-                        "all - updates all tables\n" +
-                        "vehicle - updates the **vehicle list**\n" +
-                        "server - updates Server Settings\n" +
-                        "bannedw - Update banned words list";
-                    break;
-            }
-            DiscordMessage msg = await ctx.RespondAsync(msgcontent);
-            await Task.Delay(10000);
-            await msg.DeleteAsync();
-        }
-
-        [Command("updatehub")]
-        public async Task UpdateHub(CommandContext ctx)
-        {
-            await HubMethods.UpdateHubInfo(true);
-            DiscordMessage msg = await ctx.RespondAsync("TCHub info has been force updated.");
-            await Task.Delay(10000).ContinueWith(f => msg.DeleteAsync());
-        }
-
         [Command("stopbot")]
         public async Task StopBot(CommandContext ctx)
         {
@@ -111,7 +60,7 @@ namespace LiveBot.Commands
         public async Task GetGuilds(CommandContext ctx)
         {
             StringBuilder sb = new();
-            foreach (var guild in Program.Client.Guilds.Values)
+            foreach (var guild in ctx.Client.Guilds.Values)
             {
                 sb.AppendLine($"{guild.Name} ({guild.Id})");
             }

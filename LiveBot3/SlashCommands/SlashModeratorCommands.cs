@@ -89,15 +89,17 @@ namespace LiveBot.SlashCommands
         public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
         {
             await ctx.DeferAsync();
+            DiscordEmbed embed = await _warningService.GetUserWarningsAsync(ctx.Guild, user, true);
             await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
+                new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
         [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions", false)]
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, ctx.TargetMember, true)));
+            DiscordEmbed embed = await _warningService.GetUserWarningsAsync(ctx.Guild, ctx.TargetMember, true);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
         [SlashCommand("FAQ", "Creates a new FAQ message")]
@@ -200,7 +202,7 @@ namespace LiveBot.SlashCommands
         {
             await ctx.DeferAsync(true);
             ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
-            if (guildSettings?.ModMailChannelId == 0)
+            if (guildSettings?.ModMailChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
                 return;
@@ -223,7 +225,7 @@ namespace LiveBot.SlashCommands
 
             await member.SendMessageAsync(messageBuilder);
 
-            DiscordChannel modMailChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId);
+            DiscordChannel modMailChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor

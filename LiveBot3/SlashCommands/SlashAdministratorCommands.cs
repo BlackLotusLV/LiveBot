@@ -1,13 +1,20 @@
 ﻿using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
+using LiveBot.Services;
 
 namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("Admin","Administrator commands.", false)]
     [SlashRequireGuild]
     [SlashRequireBotPermissions(Permissions.ManageGuild)]
-    internal abstract class SlashAdministratorCommands : ApplicationCommandModule
+    internal class SlashAdministratorCommands : ApplicationCommandModule
     {
+        private readonly ITheCrewHubService _theCrewHubService;
+
+        public SlashAdministratorCommands(ITheCrewHubService theCrewHubService)
+        {
+            _theCrewHubService = theCrewHubService;
+        }
         [SlashCommand("Say","Bot says a something")]
         public async Task Say(InteractionContext ctx, [Option("Message", "The message what the bot should say.")] string message, [Option("Channel", "Channel where to send the message")] DiscordChannel channel = null)
         {
@@ -18,6 +25,15 @@ namespace LiveBot.SlashCommands
             }
             await channel.SendMessageAsync(message);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message has been sent"));
+        }
+
+        [SlashCommand("update-hub", "Force updates the crew hub cache")]
+        public async Task UpdateHub(InteractionContext ctx)
+        {
+            await ctx.DeferAsync((true));
+            await _theCrewHubService.GetSummitDataAsync(true);
+            await _theCrewHubService.GetGameDataAsync();
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Hub info updated"));
         }
 
         [SlashCommand("Button-Message", "Creates a button message")]

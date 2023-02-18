@@ -4,6 +4,7 @@ using LiveBot.DB;
 using LiveBot.Json;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -24,6 +25,7 @@ public interface ITheCrewHubService
     byte[,][] RewardsImagesBytes { get; }
     Dictionary<string, Dictionary<string, string>> Locales { get; }
     Task<ITheCrewHubService> GetSummitDataAsync(bool isForced = false);
+    string DictionaryLookup(string id, string locale = "en-GB");
     Task GetGameDataAsync(bool isForced = false);
     FontCollection FontCollection { get; set; }
 
@@ -33,7 +35,7 @@ public interface ITheCrewHubService
 public class TheCrewHubService : ITheCrewHubService
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger _logger;
+    //private readonly ILogger _logger;
     private readonly LiveBotDbContext _dbContext;
     public Summit[] Summit { get; set; }
     public Mission[] Missions { get; set; }
@@ -47,10 +49,10 @@ public class TheCrewHubService : ITheCrewHubService
     public FontCollection FontCollection { get; set; } = new();
     
 
-    public TheCrewHubService(HttpClient httpClient,LiveBotDbContext dbContext, ILogger logger)
+    public TheCrewHubService(HttpClient httpClient,LiveBotDbContext dbContext)
     {
         _httpClient = httpClient;
-        _logger = logger;
+        //_logger = logger;
         _dbContext = dbContext;
     }
 
@@ -69,16 +71,17 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            _logger.LogError(e,"Error while downloading game data from hub.");
+            //_logger.LogError(e,"Error while downloading game data from hub.");
             return;
         }
 
-        Skills = JsonConvert.DeserializeObject<Skill[]>(json);
-        Models = JsonConvert.DeserializeObject<Model[]>(json);
-        Missions = JsonConvert.DeserializeObject<Mission[]>(json);
-        Brands = JsonConvert.DeserializeObject<Brand[]>(json);
-        Disciplines = JsonConvert.DeserializeObject<Discipline[]>(json);
-        Families = JsonConvert.DeserializeObject<Family[]>(json);
+        JObject jsonObject = JObject.Parse(json);
+        Skills = jsonObject["skills"].ToObject<Skill[]>();
+        Models = jsonObject["models"].ToObject<Model[]>();
+        Missions  = jsonObject["missions"].ToObject<Mission[]>();
+        Brands  = jsonObject["brands"].ToObject<Brand[]>();
+        Disciplines  = jsonObject["disciplines"].ToObject<Discipline[]>();
+        Families  = jsonObject["families"].ToObject<Family[]>();
     }
 
     public async Task<ITheCrewHubService> GetSummitDataAsync(bool isForced = false)
@@ -91,7 +94,7 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            _logger.LogError(e, "Error while getting summit data");
+            //_logger.LogError(e, "Error while getting summit data");
             return this;
         }
         
@@ -119,7 +122,7 @@ public class TheCrewHubService : ITheCrewHubService
                 }
             }
         }
-        _logger.LogInformation("The Crew Hub information downloaded");
+        //_logger.LogInformation("The Crew Hub information downloaded");
         return this;
     }
 

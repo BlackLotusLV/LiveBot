@@ -48,10 +48,10 @@ namespace LiveBot.Automation
             DiscordUser author = msg.Author;
             ServerSettings guildSettings = _databaseContext.ServerSettings.FirstOrDefault(x => x.GuildId == e.Guild.Id);
 
-            if (guildSettings == null || guildSettings.DeleteLogChannelId == 0) return;
+            if (guildSettings == null || guildSettings.DeleteLogChannelId == null) return;
             bool hasAttachment = e.Message.Attachments.Count > 0;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.GuildId).Value;
-            DiscordChannel deleteLogChannel = guild.GetChannel(guildSettings.DeleteLogChannelId);
+            DiscordChannel deleteLogChannel = guild.GetChannel(guildSettings.DeleteLogChannelId.Value);
             if (author != null && !author.IsBot)
             {
                 string convertedDeleteMessage = msg.Content;
@@ -105,9 +105,9 @@ namespace LiveBot.Automation
         public async Task Bulk_Delete_Log(DiscordClient client, MessageBulkDeleteEventArgs e)
         {
             ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
-            if (guildSettings == null || guildSettings.DeleteLogChannelId == 0) return;
+            if (guildSettings == null || guildSettings.DeleteLogChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.GuildId).Value;
-            DiscordChannel deleteLog = guild.GetChannel(guildSettings.DeleteLogChannelId);
+            DiscordChannel deleteLog = guild.GetChannel(guildSettings.DeleteLogChannelId.Value);
             StringBuilder sb = new();
             foreach (DiscordMessage message in e.Messages.Reverse())
             {
@@ -153,8 +153,8 @@ namespace LiveBot.Automation
             ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
             
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.GuildId).Value;
-            if (guildSettings == null || guildSettings.UserTrafficChannelId == 0) return;
-            DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId);
+            if (guildSettings == null || guildSettings.UserTrafficChannelId == null) return;
+            DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
                 Title = $"📥{e.Member.Username}({e.Member.Id}) has joined the server",
@@ -171,9 +171,9 @@ namespace LiveBot.Automation
         public async Task User_Leave_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
             ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
-            if (guildSettings == null || guildSettings.UserTrafficChannelId == 0) return;
+            if (guildSettings == null || guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.GuildId).Value;
-            DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId);
+            DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
                 Title = $"📤{e.Member.Username}({e.Member.Id}) has left the server",
@@ -193,10 +193,10 @@ namespace LiveBot.Automation
             DateTimeOffset beforeTime = time.AddSeconds(-5);
             DateTimeOffset afterTime = time.AddSeconds(10);
             ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
-            if (guildSettings == null || guildSettings.ModerationLogChannelId == 0) return;
+            if (guildSettings == null || guildSettings.ModerationLogChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.GuildId).Value;
             var logs = await guild.GetAuditLogsAsync(5, action_type: AuditLogActionType.Kick);
-            DiscordChannel wkbLog = guild.GetChannel(guildSettings.ModerationLogChannelId);
+            DiscordChannel wkbLog = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
             if (logs.Count == 0) return;
             if (logs[0].CreationTimestamp >= beforeTime && logs[0].CreationTimestamp <= afterTime)
             {
@@ -225,7 +225,7 @@ namespace LiveBot.Automation
             {
                 var wkbSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == e.Guild.Id);
                 DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == wkbSettings.GuildId).Value;
-                if (wkbSettings.ModerationLogChannelId != 0)
+                if (wkbSettings.ModerationLogChannelId != null)
                 {
                     int timesRun = 0;
                     Console.WriteLine("--Ban triggered--");
@@ -239,7 +239,7 @@ namespace LiveBot.Automation
                         timesRun++;
                         Console.WriteLine($"--Trying check again {timesRun}. {(banEntry == null ? "Empty" : "Found")}");
                     }
-                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId);
+                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId.Value);
                     if (banEntry != null)
                     {
                         Console.WriteLine("Ban reason search succeeded");
@@ -277,11 +277,11 @@ namespace LiveBot.Automation
             {
                 var wkbSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
                 DiscordGuild guild = await client.GetGuildAsync(wkbSettings.GuildId);
-                if (wkbSettings.ModerationLogChannelId != 0)
+                if (wkbSettings.ModerationLogChannelId != null)
                 {
                     await Task.Delay(1000);
                     var logs = await guild.GetAuditLogsAsync(1, action_type: AuditLogActionType.Unban);
-                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId);
+                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId.Value);
                     await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", CustomMethod.ModLogType.Unban);
                 }
             });
@@ -293,7 +293,7 @@ namespace LiveBot.Automation
             if (e.Author.IsBot || e.Guild == null) return;
             ServerSettings serverSettings = _databaseContext.ServerSettings.FirstOrDefault(w => w.GuildId == e.Guild.Id);
 
-            if (serverSettings == null || serverSettings.ModerationLogChannelId == 0 || serverSettings.SpamExceptionChannels.Any(id => id == e.Channel.Id)) return;
+            if (serverSettings == null || serverSettings.ModerationLogChannelId == null || serverSettings.SpamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
@@ -323,7 +323,7 @@ namespace LiveBot.Automation
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
             ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
-            if (e.Author.IsBot || serverSettings == null || serverSettings.ModerationLogChannelId == 0 || !serverSettings.HasLinkProtection) return;
+            if (e.Author.IsBot || serverSettings == null || serverSettings.ModerationLogChannelId == null || !serverSettings.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (!CustomMethod.CheckIfMemberAdmin(member) && (e.Message.Content.Contains("discordapp.com/invite/") || e.Message.Content.Contains("discord.gg/")) && !invites.Any(w => e.Message.Content.Contains($"/{w.Code}")))
@@ -342,7 +342,7 @@ namespace LiveBot.Automation
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (
                     serverSettings != null &&
-                    serverSettings.ModerationLogChannelId != 0 &&
+                    serverSettings.ModerationLogChannelId != null &&
                     serverSettings.HasEveryoneProtection &&
                     !member.Permissions.HasPermission(Permissions.MentionEveryone) &&
                     e.Message.Content.Contains("@everyone") &&
@@ -370,8 +370,8 @@ namespace LiveBot.Automation
         {
             DB.ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == e.Guild.Id);
 
-            if (serverSettings.VoiceActivityLogChannelId == 0) return;
-            DiscordChannel vcActivityLogChannel = e.Guild.GetChannel(serverSettings.VoiceActivityLogChannelId);
+            if (serverSettings.VoiceActivityLogChannelId == null) return;
+            DiscordChannel vcActivityLogChannel = e.Guild.GetChannel(serverSettings.VoiceActivityLogChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -414,10 +414,10 @@ namespace LiveBot.Automation
         {
             if (e.Member.IsBot) return;
             ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstAsync(w => w.GuildId == e.Guild.Id);
-            if (serverSettings.ModerationLogChannelId == 0) return;
+            if (serverSettings.ModerationLogChannelId == null) return;
 
             if (e.CommunicationDisabledUntilBefore == e.CommunicationDisabledUntilAfter) return;
-            DiscordChannel userTimedOutLogChannel = e.Guild.GetChannel(serverSettings.ModerationLogChannelId);
+            DiscordChannel userTimedOutLogChannel = e.Guild.GetChannel(serverSettings.ModerationLogChannelId.Value);
 
             DateTimeOffset dto = e.Member.CommunicationDisabledUntil.GetValueOrDefault();
             if (e.CommunicationDisabledUntilAfter != null && e.CommunicationDisabledUntilBefore == null)

@@ -16,81 +16,107 @@ namespace LiveBot.DB
 
         private ulong _guildId;
 
-        [Required, Column("delete_log")]
-        public ulong DeleteLogChannelId
+        [Column("delete_log")]
+        public ulong? DeleteLogChannelId
         { 
             get => _deleteLogChannelId; 
-            set => _deleteLogChannelId = Convert.ToUInt64(value);
+            set => _deleteLogChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong _deleteLogChannelId;
+        private ulong? _deleteLogChannelId;
 
-        [Required, Column("user_traffic")]
-        public ulong UserTrafficChannelId
+        [Column("user_traffic")]
+        public ulong? UserTrafficChannelId
         { 
             get => _userTrafficChannelId; 
-            set => _userTrafficChannelId = Convert.ToUInt64(value);
+            set => _userTrafficChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong _userTrafficChannelId;
+        private ulong? _userTrafficChannelId;
 
-        [Required, Column("wkb_log")]
-        public ulong ModerationLogChannelId
+        [Column("wkb_log")]
+        public ulong? ModerationLogChannelId
         { 
             get => _moderationLogChannelId; 
-            set => _moderationLogChannelId = Convert.ToUInt64(value);
+            set => _moderationLogChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong _moderationLogChannelId;
+        private ulong? _moderationLogChannelId;
 
-        [Required, Column("spam_exception")]
-        public ulong[] SpamExceptionChannels
-        { 
-            get => _spamExceptionChannels;
-            set => _spamExceptionChannels = value.Select(Convert.ToUInt64).ToArray();
+        [Column("mod_mail")]
+        public ulong? ModMailChannelId
+        { get => _modMailChannelId; set => _modMailChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong[] _spamExceptionChannels;
-
-        [Required, Column("mod_mail")]
-        public ulong ModMailChannelId
-        { get => _modMailChannelId; set => _modMailChannelId = Convert.ToUInt64(value);
-        }
-
-        private ulong _modMailChannelId;
+        private ulong? _modMailChannelId;
 
         [Required, Column("has_link_protection")]
         public bool HasLinkProtection { get; set; }
 
-        [Required, Column("voice_activity_log")]
-        public ulong VoiceActivityLogChannelId
+        [Column("voice_activity_log")]
+        public ulong? VoiceActivityLogChannelId
         { 
             get => _voiceActivityLogChannelId;
-            set => _voiceActivityLogChannelId = Convert.ToUInt64(value);
+            set => _voiceActivityLogChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong _voiceActivityLogChannelId;
+        private ulong? _voiceActivityLogChannelId;
 
-        [Required, Column("event_log")]
-        public ulong EventLogChannelId
+        [Column("event_log")]
+        public ulong? EventLogChannelId
         { 
             get => _eventLogChannelId; 
-            set => _eventLogChannelId = Convert.ToUInt64(value);
+            set => _eventLogChannelId = value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
 
-        private ulong _eventLogChannelId;
+        private ulong? _eventLogChannelId;
 
         [Required, Column("has_everyone_protection")]
         public bool HasEveryoneProtection { get; set; }
 
         [Required, Column("mod_mail_enabled")]
         public bool ModMailEnabled { get; set; } = false;
+
+        [Column("welcome_channel")]
+        public ulong? WelcomeChannelId
+        {
+            get => _welcomeChannelId;
+            set => _welcomeChannelId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
+        }
+        private ulong? _welcomeChannelId;
         
-        public virtual ServerWelcomeSettings WelcomeSettings { get; set; }
+        [Column("welcome_msg")]
+        public string WelcomeMessage { get; set; }
+
+        [Column("goodbye_msg")]
+        public string GoodbyeMessage { get; set; }
+
+        [Required]
+        [Column("has_screening")]
+        public bool HasScreening { get; set; }
+        
+        [Column("join_role")]
+        public ulong? RoleId
+        {
+            get => _roleId; 
+            set => _roleId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
+        }
+
+        private ulong? _roleId;
+        
+        [Column("whitelist_role")]
+        public ulong? WhiteListRoleId
+        { 
+            get => _whiteListRoleId; 
+            set => _whiteListRoleId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
+        }
+        private ulong? _whiteListRoleId;
+        
         public virtual ICollection<ServerRanks> ServerRanks { get; set; }
         public virtual ICollection<RankRoles> RankRoles { get; set; }
         public virtual ICollection<ButtonRoles> ButtonRoles { get; set; }
         public virtual ICollection<RoleTagSettings> RoleTagSettings { get; set; }
         public virtual ICollection<StreamNotifications> StreamNotifications { get; set; }
+        public virtual ICollection<SpamIgnoreChannels> SpamIgnoreChannels { get; set; }
     }
 }

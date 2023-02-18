@@ -101,37 +101,6 @@ namespace LiveBot.Commands
                 .SendAsync(ctx.Channel);
         }
 
-        [Command("useigc")]
-        [Cooldown(1, 10, CooldownBucketType.Channel)]
-        public async Task UseIGC(CommandContext ctx, params DiscordMember[] username)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            string content;
-            if (username.Length == 0)
-            {
-                content = CustomMethod.GetCommandOutput(ctx, "useigc", null, ctx.Member);
-            }
-            else if (username.Length == 1)
-            {
-                content = CustomMethod.GetCommandOutput(ctx, "useigc", null, username[0]);
-            }
-            else
-            {
-                StringBuilder sb = new();
-                foreach (DiscordMember member in username)
-                {
-                    sb.Append($"{member.Mention},");
-                }
-                sb.Append(DB.DBLists.BotOutputList.FirstOrDefault(w => w.Command.Equals("useigc") && w.Language.Equals("gb")).Command_Text);
-                content = sb.ToString();
-            }
-            await new DiscordMessageBuilder()
-                .WithContent(content)
-                .WithAllowedMention(new UserMention())
-                .SendAsync(ctx.Channel);
-        }
-
         [Command("lfc")]
         [Cooldown(1, 10, CooldownBucketType.Channel)]
         [Description("Informs the user of using the LFC channels, or to get the platform role if they don't have it.")]
@@ -354,144 +323,6 @@ namespace LiveBot.Commands
             }
         }
 
-        [Command("rvehicle")]
-        [Aliases("rv")]
-        [Description("Gives a random vehicle from a discipline. Street race gives both a bike and a car")]
-        public async Task RandomVehicle(CommandContext ctx, DiscordEmoji discipline = null)
-        {
-            string disciplinename;
-            if (discipline == null)
-            {
-                disciplinename = "Street Race";
-            }
-            else
-            {
-                disciplinename = (discipline.Id) switch
-                {
-                    449686964757594123 => "Power Boat",
-                    449686964925628426 => "Alpha Grand Prix",
-                    449686964669513729 => "Air Race",
-                    449686965135212574 => "Touring Car",
-                    517383831398121473 => "Demolition Derby",
-                    449686964497547295 => "Monster Truck",
-                    449686964891811840 => "Aerobatics",
-                    449686964950794240 => "Jetsprint",
-                    481392539728084994 => "Hovercraft",
-                    449686964967309312 => "Rally Raid",
-                    449686964791410690 => "Rally Cross",
-                    449686964623638530 => "Moto Cross",
-                    449688867088367646 => "Hyper Car",
-                    449688867251945493 => "Drag Race",
-                    449688866870525963 => "Drift",
-                    449688867164127232 => "Street Race",
-                    _ => "Street Race"
-                };
-            }
-
-            List<DB.VehicleList> VehicleList = DB.DBLists.VehicleList;
-            List<DB.DisciplineList> DisciplineList = DB.DBLists.DisciplineList.Where(w => w.Discipline_Name == disciplinename).ToList();
-            Random r = new();
-            int row = 0;
-            List<DB.VehicleList> SelectedVehicles = new();
-            DiscordMessageBuilder MsgBuilder = null;
-            DiscordMessage ChoiceMsg = null;
-
-            if (disciplinename == "Street Race")
-            {
-                DiscordButtonComponent carButton = new(ButtonStyle.Primary, "CarButton", "Car", false, new DiscordComponentEmoji("🏎"));
-                DiscordButtonComponent bikeButton = new(ButtonStyle.Primary, "BikeButton", "Bike", false, new DiscordComponentEmoji("🏍"));
-                MsgBuilder = new DiscordMessageBuilder()
-                    .WithContent($"{ctx.Member.Mention} **Select vehicle type!**")
-                    .AddComponents(carButton, bikeButton);
-
-                ChoiceMsg = await MsgBuilder.SendAsync(ctx.Channel);
-
-                var Result = await ChoiceMsg.WaitForButtonAsync(ctx.User, TimeSpan.FromSeconds(30));
-
-                if (Result.TimedOut)
-                {
-                    await ctx.RespondAsync($"{ctx.Member.Mention} You didn't select vehicle type in time.");
-                    return;
-                }
-                else if (Result.Result.Id == "CarButton")
-                {
-                    SelectedVehicles = (from vl in VehicleList
-                                        join dl in DisciplineList on vl.Discipline equals dl.ID_Discipline
-                                        where dl.Discipline_Name == disciplinename
-                                        where vl.Type == "car"
-                                        select vl).ToList();
-                    await Result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
-                }
-                else if (Result.Result.Id == "BikeButton")
-                {
-                    SelectedVehicles = (from vl in VehicleList
-                                        join dl in DisciplineList on vl.Discipline equals dl.ID_Discipline
-                                        where dl.Discipline_Name == disciplinename
-                                        where vl.Type == "bike"
-                                        select vl).ToList();
-                    await Result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
-                }
-            }
-            else
-            {
-                SelectedVehicles = (from vl in VehicleList
-                                    join dl in DisciplineList on vl.Discipline equals dl.ID_Discipline
-                                    where dl.Discipline_Name == disciplinename
-                                    select vl).ToList();
-            }
-
-            if (SelectedVehicles.Count(c => c.IsSelected is true) == SelectedVehicles.Count)
-            {
-                DB.DBLists.UpdateVehicleList(SelectedVehicles.Select(s => { s.IsSelected = false; return s; }).ToArray());
-            }
-
-            SelectedVehicles = (from sv in SelectedVehicles
-                                where sv.IsSelected is false
-                                select sv).ToList();
-            row = r.Next(SelectedVehicles.Count);
-
-            DB.DBLists.UpdateVehicleList(SelectedVehicles.Where(w => w.ID_Vehicle.Equals(SelectedVehicles[row].ID_Vehicle)).Select(s => { s.IsSelected = true; return s; }).ToArray());
-
-            DiscordColor embedColour = SelectedVehicles[row].VehicleTier switch
-            {
-                "S+" => new DiscordColor(0xe02eff),
-                "S " => new DiscordColor(0x00ffff),
-                "A " => new DiscordColor(0x00ff77),
-                "B " => new DiscordColor(0x6fff00),
-                "C " => new DiscordColor(0xf2ff00),
-                "D " => new DiscordColor(0xff9500),
-                "E " => new DiscordColor(0xff0000),
-                "F " => new DiscordColor(0x5c1500),
-                "F-" => new DiscordColor(0x37005c),
-                _ => new DiscordColor(0xffffff)
-            };
-
-            DiscordEmbedBuilder embed = new()
-            {
-                Color = embedColour,
-                Title = $"{SelectedVehicles[row].Brand} | {SelectedVehicles[row].Model} | {SelectedVehicles[row].Year} ({SelectedVehicles[row].Type})"
-            };
-            embed.AddField("Brand", $"{SelectedVehicles[row].Brand}", true);
-            embed.AddField("Model", $"{SelectedVehicles[row].Model}", true);
-            embed.AddField("Year", $"{SelectedVehicles[row].Year}", true);
-            embed.AddField("Type", $"{SelectedVehicles[row].Type}", false);
-            embed.AddField("Vehicle Tier", $"{SelectedVehicles[row].VehicleTier}", true);
-            embed.AddField("Crew Credits only?", $"{(SelectedVehicles[row].IsCCOnly ? "✅" : "❌")}", true);
-            embed.AddField("Summit exclusive?", $"{(SelectedVehicles[row].IsSummitVehicle ? "✅" : "❌")}", true);
-            embed.AddField("MP exclusive?", $"{(SelectedVehicles[row].IsMotorPassExclusive ? "✅" : "❌")}", true);
-            if (MsgBuilder != null)
-            {
-                MsgBuilder.ClearComponents();
-                MsgBuilder.AddEmbed(embed);
-                MsgBuilder.WithContent($"*({SelectedVehicles.Count - 1} vehicles left in current rotation)*");
-                await ChoiceMsg.ModifyAsync(MsgBuilder);
-            }
-            else
-            {
-                await ctx.RespondAsync($"*({SelectedVehicles.Count - 1} vehicles left in current rotation)*", embed);
-            }
-        }
-
         [Command("status")]
         [Description("The Crew 2 Server status.")]
         [Cooldown(1, 120, CooldownBucketType.User)]
@@ -509,26 +340,6 @@ namespace LiveBot.Commands
             else
             {
                 await ctx.RespondAsync("The Crew 2 Server is Offline");
-            }
-        }
-
-        [Command("mywarnings")]
-        [RequireGuild]
-        [Description("Shows your warning, kick and ban history.")]
-        public async Task MyWarnings(CommandContext ctx)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            try
-            {
-                await ctx.Member.SendMessageAsync(embed: CustomMethod.GetUserWarnings(ctx.Guild, ctx.User));
-            }
-            catch
-            {
-                await new DiscordMessageBuilder()
-                    .WithContent($"{ctx.Member.Mention}, Could not contact you through DMs.")
-                    .WithAllowedMention(new UserMention())
-                    .SendAsync(ctx.Channel);
             }
         }
     }

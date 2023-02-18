@@ -22,7 +22,7 @@ namespace LiveBot.SlashCommands
     {
         private readonly ITheCrewHubService _theCrewHubService;
         private readonly LiveBotDbContext _dbContext;
-        SlashTheCrewHubCommands(ITheCrewHubService theCrewHubService, LiveBotDbContext dbContext)
+        public SlashTheCrewHubCommands(ITheCrewHubService theCrewHubService, LiveBotDbContext dbContext)
         {
             _theCrewHubService = theCrewHubService;
             _dbContext = dbContext;
@@ -199,10 +199,10 @@ namespace LiveBot.SlashCommands
         public async Task MySummit(InteractionContext ctx, [Autocomplete(typeof(PlatformOptions))][Option("platform", "Which platform leaderboard you want to see")] string platform = "pc")
         {
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
-            await HubMethods.UpdateHubInfo();
+            await _theCrewHubService.GetSummitDataAsync();
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-mysummit.png";
+            string imageLoc = $"{Path.GetTempPath()}{ctx.User.Id}-mysummit.png";
 
             bool sendImage = false;
 
@@ -339,12 +339,12 @@ namespace LiveBot.SlashCommands
         {
             Stopwatch sw = Stopwatch.StartNew();
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
-            await HubMethods.UpdateHubInfo();
+            await _theCrewHubService.GetSummitDataAsync();
 
             int TotalPoints = 0;
 
             string OutMessage = string.Empty;
-            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-topsummit.png";
+            string imageLoc = $"{Path.GetTempPath()}{ctx.User.Id}-topsummit.png";
             string search = string.Empty;
 
             bool alleventscompleted = true;
@@ -361,10 +361,6 @@ namespace LiveBot.SlashCommands
 
                 case Platforms.ps4:
                     search = "ps4";
-                    break;
-
-                case Platforms.stadia:
-                    search = "stadia";
                     break;
             }
 
@@ -385,7 +381,7 @@ namespace LiveBot.SlashCommands
                 if (Activity.Entries.Length != 0)
                 {
                     Rank = JsonConvert.DeserializeObject<Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/{search}/profile/{Activity.Entries[0].ProfileId}", CancellationToken.None));
-                    ubiInfo = new DB.UbiInfo { Platform = search, ProfileId = Activity.Entries[0].ProfileId };
+                    ubiInfo = new DB.UbiInfo(_dbContext,ctx.User.Id) { Platform = search, ProfileId = Activity.Entries[0].ProfileId };
                 }
                 Image image = await _theCrewHubService.BuildEventImageAsync(
                         Event,
@@ -435,15 +431,15 @@ namespace LiveBot.SlashCommands
                 for (int i = 0; i < 4; i++)
                 {
                     if (hub.Summit[i].TextId != "55475")
-                        result.Add(new DiscordAutoCompleteChoice(HubMethods.NameIdLookup(hub.Summit[i].TextId, locale), i));
+                        result.Add(new DiscordAutoCompleteChoice(hub.DictionaryLookup(hub.Summit[i].TextId, locale), i));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
         }
         [GeneratedRegex("\\w{0,}_")]
-        private static partial Regex MatchAffixRegex();
+        private partial Regex MatchAffixRegex();
         [GeneratedRegex("((<(\\w||[/=\"'#\\ ]){0,}>)||(&#\\d{0,}; )){0,}")]
-        private static partial Regex MatchRewardRegex();
+        private partial Regex MatchRewardRegex();
 
         [SlashCommand("Rewards", "Summit rewards for selected date")]
         public async Task Rewards(
@@ -456,11 +452,11 @@ namespace LiveBot.SlashCommands
                 locale = userInfo.Locale;
             Week Week = (Week)weeknumber;
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder(new DiscordMessageBuilder { Content = "Gathering data and building image." }));
-            await HubMethods.UpdateHubInfo();
+            await _theCrewHubService.GetSummitDataAsync();
 
             Color[] RewardColours = new Color[] { Rgba32.ParseHex("#0060A9"), Rgba32.ParseHex("#D5A45F"), Rgba32.ParseHex("#C2C2C2"), Rgba32.ParseHex("#B07C4D") };
 
-            string imageLoc = $"{Program.TmpLoc}{ctx.User.Id}-summitrewards.png";
+            string imageLoc = $"{Path.GetTempPath()}{ctx.User.Id}-summitrewards.png";
             int RewardWidth = 412;
             Reward[] Rewards = _theCrewHubService.Summit[(int)Week].Rewards;
             using (Image<Rgba32> RewardsImage = new(4 * RewardWidth, 328))
@@ -518,16 +514,16 @@ namespace LiveBot.SlashCommands
                             StringBuilder sb = new();
                             if (Rewards[i].SubtitleTextId!="")
                             {
-                                sb.Append($"{HubMethods.NameIdLookup(Rewards[i].SubtitleTextId, locale)} ");
+                                sb.Append($"{_theCrewHubService.DictionaryLookup(Rewards[i].SubtitleTextId, locale)} ");
                             }
-                            sb.Append(HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale));
+                            sb.Append(_theCrewHubService.DictionaryLookup(Rewards[i].TitleTextId, locale));
                             RewardTitle =sb.ToString();
 
                             isParts = true;
                             break;
 
                         case "vanity":
-                            RewardTitle = HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale);
+                            RewardTitle = _theCrewHubService.DictionaryLookup(Rewards[i].TitleTextId, locale);
                             if (RewardTitle is null)
                             {
                                 if (Rewards[i].ImgPath.Contains("emote"))
@@ -549,18 +545,18 @@ namespace LiveBot.SlashCommands
                             StringBuilder currencySB = new();
                             if (Rewards[i].Extra.FirstOrDefault(w=>w.Key.Equals("currency_type")).Value.Equals("parts"))
                             {
-                                currencySB.Append(HubMethods.NameIdLookup("55508", locale));
+                                currencySB.Append(_theCrewHubService.DictionaryLookup("55508", locale));
                             }
                             else
                             {
-                                currencySB.Append(HubMethods.NameIdLookup(Rewards[i].TitleTextId, locale));
+                                currencySB.Append(_theCrewHubService.DictionaryLookup(Rewards[i].TitleTextId, locale));
                             }
                             currencySB.Append($"- {Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("currency_amount")).Value}");
                             RewardTitle = currencySB.ToString();
                             break;
 
                         case "vehicle":
-                            RewardTitle = $"{HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {HubMethods.NameIdLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
+                            RewardTitle = $"{_theCrewHubService.DictionaryLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("brand_text_id")).Value, locale)} - {_theCrewHubService.DictionaryLookup(Rewards[i].Extra.FirstOrDefault(w => w.Key.Equals("model_text_id")).Value, locale)}";
                             break;
 
                         default:
@@ -571,7 +567,7 @@ namespace LiveBot.SlashCommands
 
                     RewardTitle = MatchRewardRegex().Replace(RewardTitle, string.Empty).ToUpper();
 
-                    using Image<Rgba32> RewardImage = Image.Load<Rgba32>(HubMethods.RewardsImageBitArr[(int)Week, i]);
+                    using Image<Rgba32> RewardImage = Image.Load<Rgba32>(_theCrewHubService.RewardsImagesBytes[(int)Week,i]);
                     using Image<Rgba32> TopBar = new(RewardImage.Width, 20);
                     TopBar.Mutate(ctx => ctx.
                     Fill(RewardColours[i])
@@ -627,7 +623,7 @@ namespace LiveBot.SlashCommands
                 Platforms.pc => "pc",
                 Platforms.ps4 => "ps4",
                 Platforms.x1 => "x1",
-                Platforms.stadia => "stadia"
+                _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, null)
             };
             DB.UbiInfo info =await _dbContext.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId == link);
             if (info != null)
@@ -704,8 +700,9 @@ namespace LiveBot.SlashCommands
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var hub = ctx.Services.GetService<ITheCrewHubService>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (var item in HubMethods.TCHubLocales.Keys)
+                foreach (string item in hub.Locales.Keys)
                 {
                     string locale = item switch
                     {
@@ -755,10 +752,7 @@ namespace LiveBot.SlashCommands
             ps4,
 
             [ChoiceName("Xbox")]
-            x1,
-
-            [ChoiceName("Stadia")]
-            stadia,
+            x1
         }
     }
 }

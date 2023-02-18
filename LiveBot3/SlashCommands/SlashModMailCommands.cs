@@ -7,12 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace LiveBot.SlashCommands
 {
     [SlashCommandGroup("ModMail","Moderator commands for mod mail",false)]
-    internal abstract class SlashModMailCommands : ApplicationCommandModule
+    internal class SlashModMailCommands : ApplicationCommandModule
     {
         private readonly LiveBotDbContext _databaseContext;
         private readonly IModMailService _modMailService;
 
-        SlashModMailCommands(LiveBotDbContext databaseContext, IModMailService modMailService)
+        public SlashModMailCommands(LiveBotDbContext databaseContext, IModMailService modMailService)
         {
             _databaseContext = databaseContext;
             _modMailService = modMailService;
@@ -55,12 +55,19 @@ namespace LiveBot.SlashCommands
                 .Where(x => x.ModMailId == entry.ModMailId)
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.LastMessageTime, x => DateTime.UtcNow));
 
-            DiscordChannel mmChannel = ctx.Guild.GetChannel(_databaseContext.ServerSettings.First(w => w.GuildId == ctx.Guild.Id).ModMailChannelId);
-            await mmChannel.SendMessageAsync(embed: embed);
+            if (_databaseContext.ServerSettings.First(x=>x.GuildId==ctx.Guild.Id).ModMailChannelId.HasValue)
+            {
+                ulong channelId = _databaseContext.ServerSettings.First(w => w.GuildId == ctx.Guild.Id).ModMailChannelId.Value;
+                DiscordChannel mmChannel = ctx.Guild.GetChannel(channelId);
+                await mmChannel.SendMessageAsync(embed: embed);
+                ctx.Client.Logger.LogInformation(CustomLogEvents.ModMail, "An admin has responded to Mod Mail entry #{EntryId}", entry.ModMailId);
 
-            ctx.Client.Logger.LogInformation(CustomLogEvents.ModMail, "An admin has responded to Mod Mail entry #{EntryId}", entry.ModMailId);
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod mail #{id} reply sent"));
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod mail #{id} reply sent"));
+            }
+            else
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed).WithContent("Mod mail channel not specified in server settings, sending reply here"));
+            }
         }
 
         sealed class ActiveModMailOption : IAutocompleteProvider

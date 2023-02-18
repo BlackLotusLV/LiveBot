@@ -7,12 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.SlashCommands
 {
-    internal abstract class SlashCommands : ApplicationCommandModule
+    internal class SlashCommands : ApplicationCommandModule
     {
         private readonly LiveBotDbContext _databaseContext;
         private readonly IModMailService _modMailService;
 
-        private SlashCommands(LiveBotDbContext databaseContext, IModMailService modMailService)
+        public SlashCommands(LiveBotDbContext databaseContext, IModMailService modMailService)
         {
             _databaseContext = databaseContext;
             _modMailService = modMailService;
@@ -60,7 +60,7 @@ namespace LiveBot.SlashCommands
             }
             ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
 
-            if (serverSettings == null || serverSettings.ModMailChannelId == 0)
+            if (serverSettings == null || serverSettings.ModMailChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been set up in this server. Can't open ModMail."));
                 return;
@@ -100,7 +100,7 @@ namespace LiveBot.SlashCommands
                 Description = subject
             };
 
-            DiscordChannel modMailChannel = ctx.Guild.GetChannel(serverSettings.ModMailChannelId);
+            DiscordChannel modMailChannel = ctx.Guild.GetChannel(serverSettings.ModMailChannelId.Value);
             await new DiscordMessageBuilder()
                 .AddComponents(closeButton)
                 .WithEmbed(embed)
@@ -233,21 +233,21 @@ namespace LiveBot.SlashCommands
             } while (!end);
         }
 
-        private static async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
+        private async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
         {
-            var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
-            var activityList = await databaseContext.UserActivity
-                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == ctx.Guild.Id)
-                .GroupBy(w => w.UserDiscordId, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
-                .OrderByDescending(w => w.Points.Sum())
+            var activityList = await _databaseContext.UserActivity
+                .Where(x => x.Date > DateTime.UtcNow.AddDays(-30) && x.GuildId == ctx.Guild.Id)
+                .GroupBy(x => x.UserDiscordId)
+                .Select(g => new { UserID = g.Key, Points = g.Sum(x => x.Points) })
+                .OrderByDescending(x => x.Points)
                 .ToListAsync();
             StringBuilder stringBuilder = new();
             stringBuilder.AppendLine("```csharp\n📋 Rank | Username");
             for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(activityList[i].UserID);
-                Leaderboard userInfo = await databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == user.Id);
-                stringBuilder.Append($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{activityList[i].Points.Sum()}");
+                Leaderboard userInfo = await _databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == user.Id);
+                stringBuilder.Append($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{activityList[i].Points}");
                 if (userInfo!=null)
                 {
                     stringBuilder.AppendLine($"\t\t🍪:{userInfo.CookiesTaken}/{userInfo.CookiesGiven}");
@@ -263,8 +263,8 @@ namespace LiveBot.SlashCommands
             {
                 rank++;
                 if (item.UserID != ctx.User.Id) continue;
-                Leaderboard userInfo = await databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
-                personalScore.Append($"⭐Rank: {rank}\t Points: {item.Points.Sum()}");
+                Leaderboard userInfo = await _databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
+                personalScore.Append($"⭐Rank: {rank}\t Points: {item.Points}");
                 if (userInfo == null) continue;
                 personalScore.AppendLine($"\t🍪:{userInfo.CookiesTaken}/{userInfo.CookiesGiven}");
                 break;

@@ -17,7 +17,7 @@ public class LiveBotDbContext : DbContext
     public DbSet<BotOutputList> BotOutputList { get; set; }
     public DbSet<ModMail> ModMail { get; set; }
     public DbSet<RoleTagSettings> RoleTagSettings { get; set; }
-    public DbSet<ServerWelcomeSettings> ServerWelcomeSettings { get; set; }
+    public DbSet<SpamIgnoreChannels> SpamIgnoreChannels { get; set; }
     public DbSet<ButtonRoles> ButtonRoles { get; set; }
     public DbSet<UbiInfo> UbiInfo { get; set; }
     public DbSet<UserActivity> UserActivity { get; set; }

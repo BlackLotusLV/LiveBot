@@ -3,5 +3,6 @@ LiveBot3/obj/*
 Config.json
 .vs/*
 Database.json
+DevDatabase.json
 DevBot.json
 ProdBot.json

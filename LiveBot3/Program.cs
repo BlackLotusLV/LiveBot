@@ -30,12 +30,14 @@ internal sealed class Program
         var botCredentialsLink = "ConfigFiles/DevBot.Json";
         var logLevel = LogLevel.Debug;
         var testBuild = true;
+        var databaseConnectionString = "ConfigFiles/DevDatabase.json";
         
         if (args.Any(x=>x.Contains("live")))
         {
             botCredentialsLink = "ConfigFiles/ProdBot.Json";
             logLevel = LogLevel.Information;
             testBuild = false;
+            databaseConnectionString = "ConfigFiles/Database.json";
         }
 
         Bot liveBotSettings;
@@ -47,10 +49,10 @@ internal sealed class Program
             liveBotSettings = JsonConvert.DeserializeObject<Bot>(credentialsString);
         }
 
-        using (StreamReader sr  = new(File.OpenRead("ConfigFiles/Database.json")))
+        using (StreamReader sr  = new(File.OpenRead(databaseConnectionString)))
         {
             string databaseString = await sr.ReadToEndAsync();
-            var database = JsonConvert.DeserializeObject<Database>(databaseString);
+            var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
             dbConnectionString = $"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database}; Port={database.Port}";
         }
         
@@ -59,12 +61,10 @@ internal sealed class Program
             .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString))
             .AddHttpClient()
             .AddTransient<ITheCrewHubService,TheCrewHubService>()
-            .AddTransient<ITheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
             .AddSingleton<IStreamNotificationService,StreamNotificationService>()
             .AddSingleton<ILeaderboardService,LeaderboardService>()
             .AddSingleton<IModMailService,ModMailService>()
-            .AddLogging()
             .BuildServiceProvider();
         _provider = serviceProvider;
 
@@ -73,7 +73,6 @@ internal sealed class Program
         var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
         var modMailService = serviceProvider.GetService<IModMailService>();
         var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
-
         DiscordConfiguration discordConfig = new()
         {
             Token = liveBotSettings.Token,
@@ -111,15 +110,12 @@ internal sealed class Program
 
         slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
         slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
-        
         leaderboardService.StartService();
         warningService.StartService();
         streamNotificationService.StartService();
         await theCrewHubService.StartServiceAsync();
-
         Timer timer = new(state => streamNotificationService.StreamListCleanup());
         timer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
-        
 
         var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
         var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(serviceProvider);
@@ -128,7 +124,6 @@ internal sealed class Program
         var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
-
         if (!testBuild)
         {
             discordClient.Logger.LogInformation("Running live version");
@@ -191,17 +186,13 @@ internal sealed class Program
 
     private async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
-        await using var dbContext = _provider.GetService<LiveBotDbContext>();
+        var dbContext = _provider.GetService<LiveBotDbContext>();
         ServerSettings entry = await dbContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
         if (entry==null)
         {
             ServerSettings newEntry = new()
             {
-                GuildId = e.Guild.Id,
-                DeleteLogChannelId = 0,
-                UserTrafficChannelId = 0,
-                ModerationLogChannelId = 0,
-                SpamExceptionChannels = new ulong[] { 0 }
+                GuildId = e.Guild.Id
             };
             await dbContext.ServerSettings.AddAsync(newEntry);
             await dbContext.SaveChangesAsync();

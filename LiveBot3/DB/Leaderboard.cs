@@ -9,10 +9,10 @@ namespace LiveBot.DB
         public Leaderboard(LiveBotDbContext context, ulong userDiscordId)
         {
             UserDiscordId = userDiscordId;
-            if (ParentUserDiscordId==0)return;
+            if (ParentUserDiscordId==null)return;
             Leaderboard entry = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == ParentUserDiscordId);
             if (entry != null) return;
-            entry = new Leaderboard(context, ParentUserDiscordId);
+            entry = new Leaderboard(context, ParentUserDiscordId.Value);
             context.Leaderboard.Add(entry);
             context.SaveChanges();
         }
@@ -40,12 +40,12 @@ namespace LiveBot.DB
 
         [ForeignKey("parent_fk")]
         [Column("parent_user_id")]
-        public ulong ParentUserDiscordId
+        public ulong? ParentUserDiscordId
         {
             get => _parentUserDiscordId;
-            set => _parentUserDiscordId = Convert.ToUInt64(value);
+            set => _parentUserDiscordId =  value.HasValue ? Convert.ToUInt64(value) :default(ulong?);
         }
-        private ulong _parentUserDiscordId;
+        private ulong? _parentUserDiscordId;
         
         public ICollection<UbiInfo> UbiInfo { get; set; }
         public ICollection<Leaderboard> Child { get; set; }

@@ -44,7 +44,7 @@ public class WhiteListButton
             return;
         }
 
-        ulong? whiteListRole = _dbContext.ServerWelcomeSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRole;
+        ulong? whiteListRole = _dbContext.ServerSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRoleId;
         if (whiteListRole == null)
         {
             client.Logger.LogDebug("No role specified to be assigned, exiting.");

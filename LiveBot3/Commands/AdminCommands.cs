@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
+using LiveBot.DB;
 using LiveBot.Services;
 
 namespace LiveBot.Commands
@@ -11,18 +12,12 @@ namespace LiveBot.Commands
     public class AdminCommands : BaseCommandModule
     {
         private readonly IWarningService _warningService;
+        private readonly LiveBotDbContext _liveBotDbContext;
 
-        public AdminCommands(IWarningService warningService)
+        public AdminCommands(IWarningService warningService, LiveBotDbContext liveBotDbContext)
         {
             _warningService = warningService;
-        }
-        [Command("uptime")] //uptime command
-        [Aliases("live")]
-        public async Task Uptime(CommandContext ctx)
-        {
-            DateTime current = DateTime.UtcNow;
-            TimeSpan time = current - Program.Start;
-            await ctx.Message.RespondAsync($"{time.Days} Days {time.Hours}:{time.Minutes}.{time.Seconds}");
+            _liveBotDbContext = liveBotDbContext;
         }
 
         [Command("say")]
@@ -31,31 +26,6 @@ namespace LiveBot.Commands
         {
             await ctx.Message.DeleteAsync();
             await channel.SendMessageAsync(word);
-        }
-
-        [Command("warn")]
-        [Description("Warns a user")]
-        [RequireGuild]
-        [Cooldown(1, 5, CooldownBucketType.Guild)]
-        public async Task Warning(CommandContext ctx, DiscordUser username, [RemainingText] string reason = "Reason not specified")
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            _warningService.QueueWarning(username, ctx.Member, ctx.Guild, ctx.Channel, reason, false);
-        }
-
-        [Command("getkicks")]
-        [Description("Shows user warning, kick and ban history")]
-        [RequireGuild]
-        public async Task GetKicks(CommandContext ctx, DiscordUser User)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            await new DiscordMessageBuilder()
-                .WithContent($"{ctx.User.Mention}")
-                .WithEmbed(CustomMethod.GetUserWarnings(ctx.Guild, User, true))
-                .WithAllowedMention(new UserMention())
-                .SendAsync(ctx.Channel);
         }
 
         [Command("vote")]
@@ -168,7 +138,7 @@ namespace LiveBot.Commands
             StringBuilder sb = new();
             int i = 0;
             sb.AppendLine("```csharp\n\t\tUsername");
-            foreach (var item in DB.DBLists.Warnings.Where(w => w.GuildId == ctx.Guild.Id).GroupBy(w => w.AdminDiscordId)
+            foreach (var item in _liveBotDbContext.Warnings.Where(w => w.GuildId == ctx.Guild.Id).GroupBy(w => w.AdminDiscordId)
                 .Select(s => new
                 {
                     Admin_ID = s.Key,
@@ -179,7 +149,7 @@ namespace LiveBot.Commands
                 .OrderByDescending(o => o.WCount))
             {
                 i++;
-                DiscordUser user = await Program.Client.GetUserAsync(Convert.ToUInt64(item.Admin_ID));
+                DiscordUser user = await ctx.Client.GetUserAsync(Convert.ToUInt64(item.Admin_ID));
                 sb.AppendLine($"[{i}]\t# {user.Username}\n\tWarnings Issued {item.WCount}\t\tKicks Issued {item.KCount}\t\tBans Issued {item.BCount}");
             }
             sb.AppendLine("```");
@@ -200,118 +170,6 @@ namespace LiveBot.Commands
             await ctx.Channel.DeleteMessagesAsync(await ctx.Channel.GetMessagesBeforeAsync(ctx.Message.Id, MessageCount));
             DiscordMessage info = await ctx.RespondAsync($"{MessageCount} messages deleted");
             await Task.Delay(5000).ContinueWith(t => info.DeleteAsync());
-        }
-
-        [Command("banword")]
-        [Description("Adds a word to banned word list")]
-        [RequireGuild]
-        public async Task BanWord(CommandContext ctx,
-            [Description("The word that is banned")] string BannedWord,
-            [Description("What the user will be warned with when using such word")][RemainingText] string warning)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            string info = "";
-            DB.DBLists.LoadBannedWords();
-            var duplicate = (from bw in DB.DBLists.AMBannedWords
-                             where bw.Server_ID == ctx.Guild.Id
-                             where bw.Word == BannedWord
-                             select bw).FirstOrDefault();
-            if (duplicate is null)
-            {
-                DB.AMBannedWords newEntry = new()
-                {
-                    Word = BannedWord,
-                    Offense = warning,
-                    Server_ID = ctx.Guild.Id
-                };
-                DB.DBLists.InsertBannedWords(newEntry);
-                info = $"The word `{BannedWord}` has been added to the list. They will be warned with `{warning}`";
-                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
-                if (ss != null && ss.ModerationLogChannelId != 0)
-                {
-                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.ModerationLogChannelId), ctx.User, $"**[Banned Word Pattern Added]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{BannedWord}```**", CustomMethod.ModLogType.Info);
-                }
-            }
-            else
-            {
-                info = $"The word `{BannedWord}` is already in the database for this server.";
-            }
-            DiscordMessage msg = await ctx.RespondAsync(info);
-            await Task.Delay(5000).ContinueWith(t => msg.DeleteAsync());
-        }
-
-        [Command("unbanword")]
-        [Description("Removes a word from the banned word list")]
-        [RequireGuild]
-        public async Task UnbanWord(CommandContext ctx,
-            [Description("The word you want to be removed from the list.")] string word)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            string info = "";
-            DB.DBLists.LoadBannedWords();
-            var DBEntry = (from bw in DB.DBLists.AMBannedWords
-                           where bw.Server_ID == ctx.Guild.Id
-                           where bw.Word == word
-                           select bw).FirstOrDefault();
-            if (DBEntry != null)
-            {
-                var context = new DB.AMBannedWordsContext();
-                context.Remove(DBEntry);
-                context.SaveChanges();
-                info = $"The word `{word}` has been removed from the list.";
-                var ss = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
-                if (ss != null && ss.ModerationLogChannelId != 0)
-                {
-                    await CustomMethod.SendModLogAsync(ctx.Guild.GetChannel(ss.ModerationLogChannelId), ctx.User, $"**[Banned Word Pattern Removed]**\n**By:**{ctx.User.Mention}\n**Pattern:** ```{word}```", CustomMethod.ModLogType.Info);
-                }
-            }
-            else
-            {
-                info = $"The word `{word}` is not listed for this server.";
-            }
-            DiscordMessage msg = await ctx.RespondAsync(info);
-            await Task.Delay(5000).ContinueWith(t => msg.DeleteAsync());
-        }
-
-        [Command("cmdupdate")]
-        [Description("Changes the text output of a command")]
-        public async Task CMDUpdated(CommandContext ctx,
-            [Description("The name of the command you want to change the output of")] string command,
-            [Description("Language tag (e.g. english is gb)")] string language,
-            [Description("Text you want the bot to output for this command")][RemainingText] string BotResponse)
-        {
-            await ctx.TriggerTypingAsync();
-            await ctx.Message.DeleteAsync();
-            var BotOutputEntry = DB.DBLists.BotOutputList.FirstOrDefault(w => w.Command.Equals(command) && w.Language.Equals(language));
-            if (BotOutputEntry is null)
-            {
-                await new DiscordMessageBuilder()
-                    .WithContent($"{ctx.Member.Mention}, This combination of command and language tag does not exist in the databse.")
-                    .WithAllowedMention(new UserMention())
-                    .SendAsync(ctx.Channel);
-            }
-            else
-            {
-                string completion_response = $"The response for `/{command}` was changed\n**From:** `{BotOutputEntry.Command_Text}`\n**To:** `{BotResponse}`";
-                BotOutputEntry.Command_Text = BotResponse;
-                DB.DBLists.UpdateBotOutputList(BotOutputEntry);
-                DB.DBLists.LoadBotOutputList();
-                DiscordMessage OutMSG = await ctx.RespondAsync(completion_response);
-                await Task.Delay(10000).ContinueWith(t => OutMSG.DeleteAsync());
-            }
-        }
-
-        [Command("ban")]
-        [RequirePermissions(Permissions.BanMembers)]
-        public async Task Ban(CommandContext ctx, DiscordUser User, [RemainingText] string reason)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-            await ctx.Guild.BanMemberAsync(User.Id, 0, reason);
-            DiscordMessage msg = await ctx.RespondAsync("User has been banned.");
-            await Task.Delay(10000).ContinueWith(t => msg.DeleteAsync());
         }
 
         [Command("lookup")]
@@ -336,37 +194,6 @@ namespace LiveBot.Commands
             {
                 await ctx.RespondAsync("Could not find a user by this ID");
             }
-        }
-
-        [Command("addnote")]
-        public async Task AddNote(CommandContext ctx, DiscordUser user, [RemainingText] string note)
-        {
-            await ctx.Message.DeleteAsync();
-            await ctx.TriggerTypingAsync();
-
-            DB.Warnings newEntry = new()
-            {
-                GuildId = ctx.Guild.Id,
-                IsActive = false,
-                AdminDiscordId = ctx.Message.Author.Id,
-                Type = "note",
-                UserDiscordId = user.Id,
-                TimeCreated = DateTime.UtcNow,
-                Reason = note
-            };
-            DB.DBLists.InsertWarnings(newEntry);
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.GuildId == ctx.Guild.Id);
-            if (serverSettings.ModerationLogChannelId != 0)
-            {
-                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
-                await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
-            }
-
-            DiscordMessage response = await new DiscordMessageBuilder()
-                .WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})")
-                .WithAllowedMention(new UserMention())
-                .SendAsync(ctx.Channel);
-            await Task.Delay(10000).ContinueWith(t => response.DeleteAsync());
         }
     }
 }

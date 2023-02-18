@@ -11,11 +11,14 @@ namespace LiveBot.Services
         public void StopService();
         public void AddToQueue(WarningItem value);
         public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
+        Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild Guild, DiscordUser User, bool AdminCommand = false);
     }
 
     public class WarningService : BaseQueueService<WarningItem>, IWarningService
     {
-        public WarningService(ILogger<WarningService> logger, LiveBotDbContext databaseContext) : base(logger, databaseContext) { }
+        public WarningService(LiveBotDbContext databaseContext) : base(databaseContext)
+        {
+        }
 
         private protected override async Task ProcessQueueAsync()
         {
@@ -36,7 +39,7 @@ namespace LiveBot.Services
 
                 var modInfo = "";
                 bool kick = false, ban = false;
-                if (serverSettings == null || serverSettings.ModerationLogChannelId == 0)
+                if (serverSettings == null || serverSettings.ModerationLogChannelId == null)
                 {
                     if (warningItem.InteractionContext == null)
                     {
@@ -132,55 +135,145 @@ namespace LiveBot.Services
         }
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
-    {
-        ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(f => ctx.Guild.Id == f.GuildId);
-        var infractions = await _databaseContext.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserDiscordId && w.Type == "warning" && w.IsActive).ToListAsync();
-        int infractionLevel = infractions.Count;
-
-        if (infractionLevel == 0)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This user does not have any infractions that are active, did you provide the correct user?"));
-            return;
-        }
+            ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(f => ctx.Guild.Id == f.GuildId);
+            var infractions = await _databaseContext.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserDiscordId && w.Type == "warning" && w.IsActive).ToListAsync();
+            int infractionLevel = infractions.Count;
 
-        StringBuilder modMessageBuilder = new();
-        DiscordMember member = null;
-        if (serverSettings == null || serverSettings.ModerationLogChannelId == 0)
+            if (infractionLevel == 0)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This user does not have any infractions that are active, did you provide the correct user?"));
+                return;
+            }
+
+            StringBuilder modMessageBuilder = new();
+            DiscordMember member = null;
+            if (serverSettings == null || serverSettings.ModerationLogChannelId == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
+                return;
+            }
+
+            try
+            {
+                member = await ctx.Guild.GetMemberAsync(user.Id);
+            }
+            catch (Exception)
+            {
+                modMessageBuilder.AppendLine($"{user.Mention} is no longer in the server.");
+            }
+
+            DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
+            Warnings entry = infractions.FirstOrDefault(f => f.IsActive && f.IdWarning == warningId);
+            entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.IdWarning).First();
+            entry.IsActive = false;
+
+            _databaseContext.Warnings.Update(entry);
+            await _databaseContext.SaveChangesAsync();
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.IdWarning} deactivated for {user.Username}({user.Id})"));
+
+            var description = $"{ctx.User.Mention} deactivated infraction #{entry.IdWarning} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
+            try
+            {
+                if (member != null) await member.SendMessageAsync($"Your infraction level in **{ctx.Guild.Name}** has been lowered to {infractionLevel - 1} by {ctx.User.Mention}");
+            }
+            catch
+            {
+                modMessageBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
+            }
+
+            await CustomMethod.SendModLogAsync(modLog, user, description, CustomMethod.ModLogType.Unwarn, modMessageBuilder.ToString());
+        }
+        public async Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild Guild, DiscordUser User, bool AdminCommand = false)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
-            return;
-        }
+            int kcount = 0,
+                bcount = 0,
+                wlevel = 0,
+                wcount = 0,
+                splitcount = 1;
+            StringBuilder Reason = new();
+            var UserStats = await _databaseContext.ServerRanks.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
+            if (UserStats == null)
+            {
+                await _databaseContext.ServerRanks.AddAsync(new ServerRanks(_databaseContext, User.Id, Guild.Id));
+                await _databaseContext.SaveChangesAsync();
+                UserStats = await _databaseContext.ServerRanks.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
+            }
+            kcount = UserStats.KickCount;
+            bcount = UserStats.BanCount;
+            var WarningsList = await _databaseContext.Warnings.Where(w => w.UserDiscordId == User.Id && w.GuildId == Guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
+            if (!AdminCommand)
+            {
+                WarningsList.RemoveAll(w => w.Type == "note");
+            }
+            wlevel = WarningsList.Count(w => w.Type == "warning" && w.IsActive);
+            wcount = WarningsList.Count(w => w.Type == "warning");
+            foreach (var item in WarningsList)
+            {
+                switch (item.Type)
+                {
+                    case "ban":
+                        Reason.Append("[🔨]");
+                        break;
 
-        try
-        {
-            member = await ctx.Guild.GetMemberAsync(user.Id);
-        }
-        catch (Exception)
-        {
-            modMessageBuilder.AppendLine($"{user.Mention} is no longer in the server.");
-        }
+                    case "kick":
+                        Reason.Append("[🥾]");
+                        break;
 
-        DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
-        Warnings entry = infractions.FirstOrDefault(f => f.IsActive && f.IdWarning == warningId);
-        entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.IdWarning).First();
-        entry.IsActive = false;
+                    case "note":
+                        Reason.Append("[❔]");
+                        break;
 
-        _databaseContext.Warnings.Update(entry);
-        await _databaseContext.SaveChangesAsync();
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.IdWarning} deactivated for {user.Username}({user.Id})"));
+                    default: // warning
+                        if (item.IsActive)
+                        {
+                            Reason.Append("[✅] ");
+                        }
+                        else
+                        {
+                            Reason.Append("[❌] ");
+                        }
+                        break;
+                }
+                string addedInfraction = $"**ID:**{item.IdWarning}\t**By:** <@{item.AdminDiscordId}>\t**Date:** <t:{(int)(item.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
 
-        var description = $"{ctx.User.Mention} deactivated infraction #{entry.IdWarning} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
-        try
-        {
-            if (member != null) await member.SendMessageAsync($"Your infraction level in **{ctx.Guild.Name}** has been lowered to {infractionLevel - 1} by {ctx.User.Mention}");
+                if (Reason.Length + addedInfraction.Length > 1023 * splitcount)
+                {
+                    Reason.Append("~split~");
+                    splitcount++;
+                }
+                Reason.AppendLine(addedInfraction);
+            }
+            if (WarningsList.Count == 0)
+            {
+                Reason.AppendLine("User has no warnings.");
+            }
+            DiscordEmbedBuilder embed = new()
+            {
+                Color = new DiscordColor(0xFF6600),
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    Name = $"{User.Username}({User.Id})",
+                    IconUrl = User.AvatarUrl
+                },
+                Description = $"",
+                Title = "Infraction Count",
+                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
+                {
+                    Url = User.AvatarUrl
+                }
+            };
+            embed.AddField("Warning level: ", $"{wlevel}", true);
+            embed.AddField("Times warned: ", $"{wcount}", true);
+            embed.AddField("Times kicked: ", $"{kcount}", true);
+            embed.AddField("Times banned: ", $"{bcount}", true);
+            string[] SplitReason = Reason.ToString().Split("~split~");
+            for (int i = 0; i < SplitReason.Length; i++)
+            {
+                embed.AddField($"Infraction({i + 1}/{SplitReason.Length})", SplitReason[i], false);
+            }
+            return embed;
         }
-        catch
-        {
-            modMessageBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
-        }
-
-        await CustomMethod.SendModLogAsync(modLog, user, description, CustomMethod.ModLogType.Unwarn, modMessageBuilder.ToString());
-    }
     }
 
     public class WarningItem

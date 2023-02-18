@@ -8,9 +8,9 @@ namespace LiveBot.Services
         void StopService();
         void AddToQueue(LeaderboardService.LeaderboardItem value);
     }
-    public abstract class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
+    public class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
     {
-        LeaderboardService(ILogger logger,LiveBotDbContext dbContext) : base(logger,dbContext){}
+        public LeaderboardService(LiveBotDbContext dbContext) : base(dbContext){}
 
         private protected override async Task ProcessQueueAsync()
         {

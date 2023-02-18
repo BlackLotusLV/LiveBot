@@ -2,7 +2,7 @@
 
 namespace LiveBot.Json;
 
-public interface Database
+public class DatabaseJson
 {
     [JsonProperty("host")]
     public string Host { get; set; }

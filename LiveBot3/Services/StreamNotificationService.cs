@@ -10,9 +10,9 @@ namespace LiveBot.Services
         void AddToQueue(StreamNotificationItem value);
         void StreamListCleanup();
     }
-    public abstract class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
+    public class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
     {
-        protected StreamNotificationService(ILogger logger, LiveBotDbContext databaseContext) :base (logger,databaseContext){}
+        public StreamNotificationService(LiveBotDbContext databaseContext) :base (databaseContext){}
         
 
         public static List<LiveStreamer> LiveStreamerList { get; set; } = new();
@@ -69,13 +69,13 @@ namespace LiveBot.Services
             {
                 foreach (LiveStreamer item in LiveStreamerList.Where(item => item.Time.AddHours(StreamCheckDelay) < DateTime.UtcNow && item.User.Presence.Activity.ActivityType != ActivityType.Streaming))
                 {
-                    _logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
+                    //_logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
                     LiveStreamerList.Remove(item);
                 }
             }
             catch (Exception)
             {
-                _logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
+                //_logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
             }
         }
     }

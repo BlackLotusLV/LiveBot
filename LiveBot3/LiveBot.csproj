@@ -12,13 +12,28 @@
 
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
+    <None Update="ConfigFiles\Database.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ConfigFiles\DevBot.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ConfigFiles\DevDatabase.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ConfigFiles\ProdBot.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ConfigFiles\TheCrewHub.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01258" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.4.0-nightly-01258" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="4.4.0-nightly-01258" />
-    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.4.0-nightly-01258" />
+    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01309" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.4.0-nightly-01309" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.4.0-nightly-01309" />
+    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.4.0-nightly-01309" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
     <PackageReference Include="Npgsql" Version="7.0.1" />
