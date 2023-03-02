@@ -45,9 +45,9 @@ namespace LiveBot.SlashCommands
             {
                 var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (Warnings item in databaseContext.Warnings.Where(w=>w.GuildId == ctx.Guild.Id && w.UserDiscordId == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.IsActive))
+                foreach (Infraction item in databaseContext.Warnings.Where(w=>w.GuildId == ctx.Guild.Id && w.UserId == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.IsActive))
                 {
-                    result.Add(new DiscordAutoCompleteChoice($"#{item.IdWarning} - {item.Reason}",(long)item.IdWarning));
+                    result.Add(new DiscordAutoCompleteChoice($"#{item.Id} - {item.Reason}",(long)item.Id));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -72,15 +72,15 @@ namespace LiveBot.SlashCommands
         {
             await ctx.DeferAsync(true);
 
-            await _databaseContext.Warnings.AddAsync(new Warnings(_databaseContext,ctx.User.Id,user.Id,ctx.Guild.Id,note,false,"note"));
+            //await _databaseContext.Warnings.AddAsync(new Infraction(_databaseContext,ctx.User.Id,user.Id,ctx.Guild.Id,note,false,"note"));
             await _databaseContext.SaveChangesAsync();
             
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
             
-            ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
-            if (serverSettings != null)
+            Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
+            if (guild != null)
             {
-                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
+                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
         }
@@ -201,7 +201,7 @@ namespace LiveBot.SlashCommands
         public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
         {
             await ctx.DeferAsync(true);
-            ServerSettings guildSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
+            Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
             if (guildSettings?.ModMailChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));

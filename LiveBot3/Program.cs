@@ -93,10 +93,12 @@ internal sealed class Program
         {
             Services = serviceProvider
         };
+        InteractivityConfiguration interactivityConfiguration = new() { };
 
         DiscordClient discordClient = new(discordConfig);
         CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
+        InteractivityExtension interactivityExtension = discordClient.UseInteractivity(interactivityConfiguration);
         
         discordClient.Ready += Ready;
         discordClient.GuildAvailable += GuildAvailable;
@@ -187,14 +189,14 @@ internal sealed class Program
     private async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
         var dbContext = _provider.GetService<LiveBotDbContext>();
-        ServerSettings entry = await dbContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == e.Guild.Id);
+        Guild entry = await dbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
         if (entry==null)
         {
-            ServerSettings newEntry = new()
+            Guild newEntry = new()
             {
-                GuildId = e.Guild.Id
+                Id = e.Guild.Id
             };
-            await dbContext.ServerSettings.AddAsync(newEntry);
+            await dbContext.Guilds.AddAsync(newEntry);
             await dbContext.SaveChangesAsync();
         }
 

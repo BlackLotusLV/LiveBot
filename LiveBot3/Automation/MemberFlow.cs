@@ -16,30 +16,30 @@ namespace LiveBot.Automation
         }
         public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            ServerSettings serverSettings = _databaseContext.ServerSettings.FirstOrDefault(x => x.GuildId == e.Guild.Id);
-            if (serverSettings==null || serverSettings.WelcomeChannelId==null || serverSettings.HasScreening) return;
-            DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(serverSettings.WelcomeChannelId));
+            Guild guild = _databaseContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
+            if (guild==null || guild.WelcomeChannelId==null || guild.HasScreening) return;
+            DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
 
-            if (serverSettings.WelcomeMessage == null) return;
-            string msg = serverSettings.WelcomeMessage;
+            if (guild.WelcomeMessage == null) return;
+            string msg = guild.WelcomeMessage;
             msg = msg.Replace("$Mention", $"{e.Member.Mention}");
             await welcomeChannel.SendMessageAsync(msg);
 
-            if (serverSettings.RoleId==null) return;
-            DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(serverSettings.RoleId));
+            if (guild.RoleId==null) return;
+            DiscordRole role = e.Guild.GetRole(Convert.ToUInt64(guild.RoleId));
             await e.Member.GrantRoleAsync(role);
         }
 
         public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            ServerSettings serverSettings = _databaseContext.ServerSettings.FirstOrDefault(x => x.GuildId == e.Guild.Id);
-            bool pendingCheck = serverSettings != null && !(serverSettings.HasScreening && e.Member.IsPending == true);
-            if (serverSettings != null && serverSettings.WelcomeChannelId != null && pendingCheck)
+            Guild guild = _databaseContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
+            bool pendingCheck = guild != null && !(guild.HasScreening && e.Member.IsPending == true);
+            if (guild != null && guild.WelcomeChannelId != null && pendingCheck)
             {
-                DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(serverSettings.WelcomeChannelId));
-                if (serverSettings.GoodbyeMessage != null)
+                DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
+                if (guild.GoodbyeMessage != null)
                 {
-                    string msg = serverSettings.GoodbyeMessage;
+                    string msg = guild.GoodbyeMessage;
                     msg = msg.Replace("$Username", $"{e.Member.Username}");
                     await welcomeChannel.SendMessageAsync(msg);
                 }

@@ -3,14 +3,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LiveBot.DB
 {
-    [Table("Stream_Notification", Schema = "livebot")]
     public class StreamNotifications
     {
-        [Key]
-        [Column("stream_notification_id")]
-        public int StreamNotificationId { get; set; }
-
-        [Required,Column("server_id"),ForeignKey("Stream_Notification_server_id_fkey")]
+        public int Id { get; set; }
         public ulong GuildId
         { 
             get => _guildId; 
@@ -18,11 +13,7 @@ namespace LiveBot.DB
         }
 
         private ulong _guildId;
-
-        [Column("games")]
         public string[] Games { get; set; }
-
-        [Column("roles_id")]
         public ulong[] RoleIds
         { 
             get => _roleIds; 
@@ -30,9 +21,6 @@ namespace LiveBot.DB
         }
 
         private ulong[] _roleIds;
-
-        [Required]
-        [Column("channel_id")]
         public ulong ChannelId
         { 
             get => _channelId;
@@ -40,5 +28,6 @@ namespace LiveBot.DB
         }
 
         private ulong _channelId;
+        public Guild Guild { get; set; }
     }
 }

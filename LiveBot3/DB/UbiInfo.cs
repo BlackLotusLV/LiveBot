@@ -3,25 +3,17 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LiveBot.DB
 {
-    [Table("Ubi_Info", Schema = "livebot")]
     public class UbiInfo
     {
         public UbiInfo(LiveBotDbContext context, ulong userDiscordId)
         {
             UserDiscordId = userDiscordId;
-            Leaderboard leaderboard = context.Leaderboard.FirstOrDefault(x => x.UserDiscordId == this.UserDiscordId);
-            if (leaderboard != null) return;
-            leaderboard = new Leaderboard(context, UserDiscordId) { UserDiscordId = this.UserDiscordId };
-            context.Leaderboard.Add(leaderboard);
+            User user = context.Users.FirstOrDefault(x => x.DiscordId == this.UserDiscordId);
+            if (user != null) return;
+            user = new User(context, UserDiscordId) { DiscordId = this.UserDiscordId };
+            context.Users.Add(user);
         }
-        
-        [Key]
-        [Column("id")]
         public int Id { get; set; }
-
-        [ForeignKey("ubi_info_fk")]
-        [Required]
-        [Column("discord_id")]
         public ulong UserDiscordId
         {
             get => _userDiscordId; 
@@ -29,12 +21,9 @@ namespace LiveBot.DB
         }
 
         private readonly ulong _userDiscordId;
-        [Required]
-        [Column("profile_id")]
         public string ProfileId { get; set; }
-
-        [Required]
-        [Column("platform")]
         public string Platform { get; set; }
+        
+        public User User { get; set; }
     }
 }

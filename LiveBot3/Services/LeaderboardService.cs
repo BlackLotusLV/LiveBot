@@ -16,7 +16,7 @@ namespace LiveBot.Services
         {
             foreach (LeaderboardItem value in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                await _databaseContext.ServerRanks.AddAsync(new ServerRanks(_databaseContext, value.User.Id, value.Guild.Id));
+                await _databaseContext.GuildUsers.AddAsync(new GuildUser(_databaseContext, value.User.Id, value.Guild.Id));
                 await _databaseContext.SaveChangesAsync();
             }
         }

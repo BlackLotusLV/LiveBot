@@ -15,9 +15,9 @@ namespace LiveBot.Automation
             if (e.Interaction is { Type: InteractionType.Component, User.IsBot: false } && e.Interaction.Guild != null)
             {
                 var buttonRoleInfo = await _dbContext.ButtonRoles
-                    .Where(w => w.Server_ID == e.Interaction.GuildId && w.Channel_ID == e.Interaction.ChannelId && e.Interaction.Guild.Roles.Any(f => f.Value.Id == Convert.ToUInt64(w.Button_ID)))
+                    .Where(w => w.GuildId == e.Interaction.GuildId && w.ChannelId == e.Interaction.ChannelId && e.Interaction.Guild.Roles.Any(f => f.Value.Id == Convert.ToUInt64(w.ButtonId)))
                     .ToListAsync();
-                if (buttonRoleInfo.Count > 0 && buttonRoleInfo[0].Channel_ID == e.Interaction.Channel.Id)
+                if (buttonRoleInfo.Count > 0 && buttonRoleInfo[0].ChannelId == e.Interaction.Channel.Id)
                 {
                     DiscordInteractionResponseBuilder response = new()
                     {

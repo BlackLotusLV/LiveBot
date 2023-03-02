@@ -30,11 +30,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01309" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.4.0-nightly-01309" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="4.4.0-nightly-01309" />
-    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.4.0-nightly-01309" />
+    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01362" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.4.0-nightly-01362" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.4.0-nightly-01362" />
+    <PackageReference Include="DSharpPlus.SlashCommands" Version="4.4.0-nightly-01362" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
     <PackageReference Include="Npgsql" Version="7.0.1" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.1" />

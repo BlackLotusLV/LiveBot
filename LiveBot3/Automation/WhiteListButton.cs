@@ -12,6 +12,7 @@ public class WhiteListButton
     }
     public async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
+        /*
         if (e.Interaction.Data.CustomId != "Activate") return;
         DiscordInteractionResponseBuilder responseBuilder = new()
         {
@@ -44,7 +45,7 @@ public class WhiteListButton
             return;
         }
 
-        ulong? whiteListRole = _dbContext.ServerSettings.First(x => x.GuildId == e.Guild.Id).WhiteListRoleId;
+        ulong? whiteListRole = _dbContext.Guilds.First(x => x.Id == e.Guild.Id).WhiteListRoleId;
         if (whiteListRole == null)
         {
             client.Logger.LogDebug("No role specified to be assigned, exiting.");
@@ -60,5 +61,6 @@ public class WhiteListButton
         await _dbContext.SaveChangesAsync();
         responseBuilder.WithContent("You have verified successfully!");
         await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
+        //*/
     }
 }

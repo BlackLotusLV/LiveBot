@@ -24,7 +24,7 @@ namespace LiveBot.Services
         {
             foreach (WarningItem warningItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(x => x.GuildId == warningItem.Guild.Id);
+                Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == warningItem.Guild.Id);
 
                 DiscordMember member = null;
                 try
@@ -39,7 +39,7 @@ namespace LiveBot.Services
 
                 var modInfo = "";
                 bool kick = false, ban = false;
-                if (serverSettings == null || serverSettings.ModerationLogChannelId == null)
+                if (guild == null || guild.ModerationLogChannelId == null)
                 {
                     if (warningItem.InteractionContext == null)
                     {
@@ -53,14 +53,14 @@ namespace LiveBot.Services
                     return;
                 }
 
-                DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
+                DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
 
-                Warnings newWarning = new(_databaseContext, warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
-                await _databaseContext.AddAsync(newWarning);
+                //Infraction newInfraction = new(_databaseContext, warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
+                //await _databaseContext.AddAsync(newInfraction);
                 await _databaseContext.SaveChangesAsync();
 
-                int warningCount = await _databaseContext.Warnings.CountAsync(w => w.UserDiscordId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
-                int infractionLevel = await _databaseContext.Warnings.CountAsync(w => w.UserDiscordId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
+                int warningCount = await _databaseContext.Warnings.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
+                int infractionLevel = await _databaseContext.Warnings.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
 
                 DiscordEmbedBuilder embedToUser = new()
                 {
@@ -136,8 +136,8 @@ namespace LiveBot.Services
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
         {
-            ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(f => ctx.Guild.Id == f.GuildId);
-            var infractions = await _databaseContext.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserDiscordId && w.Type == "warning" && w.IsActive).ToListAsync();
+            Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(f => ctx.Guild.Id == f.Id);
+            var infractions = await _databaseContext.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserId && w.Type == "warning" && w.IsActive).ToListAsync();
             int infractionLevel = infractions.Count;
 
             if (infractionLevel == 0)
@@ -148,7 +148,7 @@ namespace LiveBot.Services
 
             StringBuilder modMessageBuilder = new();
             DiscordMember member = null;
-            if (serverSettings == null || serverSettings.ModerationLogChannelId == null)
+            if (guild == null || guild.ModerationLogChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
                 return;
@@ -163,16 +163,16 @@ namespace LiveBot.Services
                 modMessageBuilder.AppendLine($"{user.Mention} is no longer in the server.");
             }
 
-            DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.ModerationLogChannelId));
-            Warnings entry = infractions.FirstOrDefault(f => f.IsActive && f.IdWarning == warningId);
-            entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.IdWarning).First();
+            DiscordChannel modLog = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
+            Infraction entry = infractions.FirstOrDefault(f => f.IsActive && f.Id == warningId);
+            entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.Id).First();
             entry.IsActive = false;
 
             _databaseContext.Warnings.Update(entry);
             await _databaseContext.SaveChangesAsync();
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.IdWarning} deactivated for {user.Username}({user.Id})"));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.Id} deactivated for {user.Username}({user.Id})"));
 
-            var description = $"{ctx.User.Mention} deactivated infraction #{entry.IdWarning} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
+            var description = $"{ctx.User.Mention} deactivated infraction #{entry.Id} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
             try
             {
                 if (member != null) await member.SendMessageAsync($"Your infraction level in **{ctx.Guild.Name}** has been lowered to {infractionLevel - 1} by {ctx.User.Mention}");
@@ -192,16 +192,16 @@ namespace LiveBot.Services
                 wcount = 0,
                 splitcount = 1;
             StringBuilder Reason = new();
-            var UserStats = await _databaseContext.ServerRanks.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
+            var UserStats = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
             if (UserStats == null)
             {
-                await _databaseContext.ServerRanks.AddAsync(new ServerRanks(_databaseContext, User.Id, Guild.Id));
+                await _databaseContext.GuildUsers.AddAsync(new GuildUser(_databaseContext, User.Id, Guild.Id));
                 await _databaseContext.SaveChangesAsync();
-                UserStats = await _databaseContext.ServerRanks.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
+                UserStats = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
             }
             kcount = UserStats.KickCount;
             bcount = UserStats.BanCount;
-            var WarningsList = await _databaseContext.Warnings.Where(w => w.UserDiscordId == User.Id && w.GuildId == Guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
+            var WarningsList = await _databaseContext.Warnings.Where(w => w.UserId == User.Id && w.GuildId == Guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
             if (!AdminCommand)
             {
                 WarningsList.RemoveAll(w => w.Type == "note");
@@ -235,7 +235,7 @@ namespace LiveBot.Services
                         }
                         break;
                 }
-                string addedInfraction = $"**ID:**{item.IdWarning}\t**By:** <@{item.AdminDiscordId}>\t**Date:** <t:{(int)(item.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
+                string addedInfraction = $"**ID:**{item.Id}\t**By:** <@{item.AdminDiscordId}>\t**Date:** <t:{(int)(item.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
 
                 if (Reason.Length + addedInfraction.Length > 1023 * splitcount)
                 {

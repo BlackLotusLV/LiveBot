@@ -134,36 +134,6 @@ namespace LiveBot
             return false;
         }
 
-        public static string GetCommandOutput(CommandContext ctx, string command, string language, DiscordMember member)
-        {
-            var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
-            language ??= (ctx.Channel.Id) switch
-                {
-                    (150283740172517376) => "gb",
-                    (249586001167515650) => "de",
-                    (253231012492869632) => "fr",
-                    (410790788738580480) => "nl",
-                    (410835311602565121) => "se",
-                    (363977914196295681) => "ru",
-                    (423845614686699521) => "lv",
-                    (585529567708446731) => "es",
-                    (741656080051863662) => "jp",
-                    _ => "gb"
-                };
-            member ??= ctx.Member;
-
-            var OutputEntry = databaseContext.BotOutputList.FirstOrDefault(w => w.Command.Equals(command) && w.Language.Equals(language));
-            if (OutputEntry is null)
-            {
-                OutputEntry = databaseContext.BotOutputList.FirstOrDefault(w => w.Command.Equals(command) && w.Language.Equals("gb"));
-                if (OutputEntry is null)
-                {
-                    return $"{ctx.Member.Mention}, Command output not found. Contact an admin.";
-                }
-            }
-            return $"{member.Mention}, {OutputEntry.Command_Text}";
-        }
-
         
 
         public enum ModLogType

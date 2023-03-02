@@ -424,7 +424,7 @@ namespace LiveBot.SlashCommands
                 var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 var hub = ctx.Services.GetService<ITheCrewHubService>();
                 string locale = "en-GB";
-                DB.Leaderboard userInfo = databaseContext.Leaderboard.FirstOrDefault(w => w.UserDiscordId == ctx.User.Id);
+                DB.User userInfo = databaseContext.Users.FirstOrDefault(w => w.DiscordId == ctx.User.Id);
                 if (userInfo != null)
                     locale = userInfo.Locale;
                 List<DiscordAutoCompleteChoice> result = new();
@@ -447,7 +447,7 @@ namespace LiveBot.SlashCommands
             [Autocomplete(typeof(RewardsOptions))][Maximum(3)][Minimum(0)][Option("Summit", "Which summit to see the rewards for.")] long weeknumber = 0)
         {
             string locale = "en-GB";
-            DB.Leaderboard userInfo =await _dbContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
+            DB.User userInfo =await _dbContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
             if (userInfo != null)
                 locale = userInfo.Locale;
             Week Week = (Week)weeknumber;
@@ -682,17 +682,17 @@ namespace LiveBot.SlashCommands
         public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))][Option("Locale","Localisation")] string locale)
         {
             await ctx.DeferAsync(true);
-            DB.Leaderboard userInfo = await _dbContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
+            DB.User userInfo = await _dbContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
             if (userInfo==null)
             {
-                await _dbContext.Leaderboard.AddAsync(new Leaderboard(_dbContext, ctx.User.Id) { Locale = locale });
+                await _dbContext.Users.AddAsync(new User(_dbContext, ctx.User.Id) { Locale = locale });
                 await _dbContext.SaveChangesAsync();
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
                 return;
             }
 
             userInfo.Locale = locale;
-            _dbContext.Leaderboard.Update(userInfo);
+            _dbContext.Users.Update(userInfo);
             await _dbContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
         }

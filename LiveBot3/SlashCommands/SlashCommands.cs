@@ -9,20 +9,12 @@ namespace LiveBot.SlashCommands
 {
     internal class SlashCommands : ApplicationCommandModule
     {
-        private readonly LiveBotDbContext _databaseContext;
-        private readonly IModMailService _modMailService;
-
-        public SlashCommands(LiveBotDbContext databaseContext, IModMailService modMailService)
-        {
-            _databaseContext = databaseContext;
-            _modMailService = modMailService;
-        }
+        public IModMailService ModMailService { private get; set; }
+        public LiveBotDbContext DatabaseContext { private get; set; }
         
         [SlashCommand("LiveBot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
         {
-            DateTime current = DateTime.UtcNow;
-            //TimeSpan time = current - Program.Start;
             const string changelog = "[FIX] Summit leaderboard text formatter fix";
             DiscordUser user = ctx.Client.CurrentUser;
             DiscordEmbedBuilder embed = new()
@@ -34,7 +26,6 @@ namespace LiveBot.SlashCommands
                 }
             };
             embed.AddField("Version:", "test", true);
-            //embed.AddField("Uptime:", $"{time.Days} Days {time.Hours}:{time.Minutes}.{time.Seconds}", true);
 
             embed.AddField("Programmed in:", "C#", true);
             embed.AddField("Programmed by:", "<@86725763428028416>", true);
@@ -52,21 +43,27 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command requires to be executed in the server you wish to contact."));
                 return;
             }
-            ServerRanks userRanks = await _databaseContext.ServerRanks.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id && w.UserDiscordId == ctx.User.Id);
+
+            Console.WriteLine(1);
+            GuildUser userRanks = await DatabaseContext.GuildUsers.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id && w.UserDiscordId == ctx.User.Id);
+            Console.WriteLine(3);
             if (userRanks == null || userRanks.IsModMailBlocked)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
             }
-            ServerSettings serverSettings = await _databaseContext.ServerSettings.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id);
 
-            if (serverSettings == null || serverSettings.ModMailChannelId == null)
+            Console.WriteLine(2);
+            Guild guild = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
+            Console.WriteLine(4);
+
+            if (guild == null || guild.ModMailChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been set up in this server. Can't open ModMail."));
                 return;
             }
 
-            if (await _databaseContext.ModMail.AnyAsync(w => w.UserDiscordId == ctx.User.Id && w.IsActive))
+            if (await DatabaseContext.ModMail.AnyAsync(w => w.UserDiscordId == ctx.User.Id && w.IsActive))
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
                 return;
@@ -74,18 +71,18 @@ namespace LiveBot.SlashCommands
 
             Random r = new();
             var colorId = $"#{r.Next(0x1000000):X6}";
-            ModMail newEntry = new(_databaseContext,ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
+            ModMail newEntry = new(DatabaseContext,ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
 
-            await _databaseContext.ModMail.AddAsync(newEntry);
-            await _databaseContext.SaveChangesAsync();
+            await DatabaseContext.ModMail.AddAsync(newEntry);
+            await DatabaseContext.SaveChangesAsync();
 
-            long entryId = newEntry.ModMailId;
+            string entryId = $"{ctx.User.Id}-{ctx.Guild.Id}";
             DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"close{entryId}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{entryId} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
             await ctx.Member.SendMessageAsync(new DiscordMessageBuilder().AddComponents(closeButton).WithContent($"**----------------------------------------------------**\n" +
-                            $"Mod mail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {_modMailService.TimeoutMinutes} minutes after last message is sent.*\n" +
+                            $"Mod mail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {ModMailService.TimeoutMinutes} minutes after last message is sent.*\n" +
                             $"**Subject: {subject}**"));
 
             DiscordEmbedBuilder embed = new()
@@ -100,7 +97,7 @@ namespace LiveBot.SlashCommands
                 Description = subject
             };
 
-            DiscordChannel modMailChannel = ctx.Guild.GetChannel(serverSettings.ModMailChannelId.Value);
+            DiscordChannel modMailChannel = ctx.Guild.GetChannel(guild.ModMailChannelId.Value);
             await new DiscordMessageBuilder()
                 .AddComponents(closeButton)
                 .WithEmbed(embed)
@@ -112,7 +109,7 @@ namespace LiveBot.SlashCommands
         public async Task RoleTag(InteractionContext ctx, [Autocomplete(typeof(RoleTagOptions))][Option("Role", "Which role to tag")] long id)
         {
             await ctx.DeferAsync(true);
-            RoleTagSettings roleTagSettings = await _databaseContext.RoleTagSettings.FirstOrDefaultAsync(w => w.Id == id);
+            RoleTagSettings roleTagSettings = await DatabaseContext.RoleTagSettings.FindAsync(id);
             if (roleTagSettings == null || roleTagSettings.GuildId != ctx.Guild.Id || roleTagSettings.ChannelId != ctx.Channel.Id)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The role you tried to select does not exist or can't be tagged in this channel."));
@@ -134,8 +131,8 @@ namespace LiveBot.SlashCommands
             await ctx.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent("Role Tagged"));
             roleTagSettings.LastTimeUsed = DateTime.UtcNow;
             
-            _databaseContext.RoleTagSettings.Update(roleTagSettings);
-            await _databaseContext.SaveChangesAsync();
+            DatabaseContext.RoleTagSettings.Update(roleTagSettings);
+            await DatabaseContext.SaveChangesAsync();
         }
 
         private sealed class RoleTagOptions : IAutocompleteProvider
@@ -158,12 +155,12 @@ namespace LiveBot.SlashCommands
         public async Task Rank(InteractionContext ctx)
         {
             await ctx.DeferAsync();
-            var activityList = await _databaseContext.UserActivity
+            var activityList = await DatabaseContext.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == ctx.Guild.Id)
                 .GroupBy(w => w.UserDiscordId, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
                 .OrderByDescending(w => w.Points.Sum())
                 .ToListAsync();
-            Leaderboard userInfo = await _databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
+            User userInfo = await DatabaseContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
             if (userInfo == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find your rank in the database"));
@@ -235,7 +232,7 @@ namespace LiveBot.SlashCommands
 
         private async Task<string> GenerateLeaderboardAsync(InteractionContext ctx, int page)
         {
-            var activityList = await _databaseContext.UserActivity
+            var activityList = await DatabaseContext.UserActivity
                 .Where(x => x.Date > DateTime.UtcNow.AddDays(-30) && x.GuildId == ctx.Guild.Id)
                 .GroupBy(x => x.UserDiscordId)
                 .Select(g => new { UserID = g.Key, Points = g.Sum(x => x.Points) })
@@ -246,7 +243,7 @@ namespace LiveBot.SlashCommands
             for (int i = (page * 10) - 10; i < page * 10; i++)
             {
                 DiscordUser user = await ctx.Client.GetUserAsync(activityList[i].UserID);
-                Leaderboard userInfo = await _databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == user.Id);
+                User userInfo = await DatabaseContext.Users.FindAsync(user.Id);
                 stringBuilder.Append($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{activityList[i].Points}");
                 if (userInfo!=null)
                 {
@@ -263,7 +260,7 @@ namespace LiveBot.SlashCommands
             {
                 rank++;
                 if (item.UserID != ctx.User.Id) continue;
-                Leaderboard userInfo = await _databaseContext.Leaderboard.FirstOrDefaultAsync(w => w.UserDiscordId == ctx.User.Id);
+                User userInfo = await DatabaseContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
                 personalScore.Append($"⭐Rank: {rank}\t Points: {item.Points}");
                 if (userInfo == null) continue;
                 personalScore.AppendLine($"\t🍪:{userInfo.CookiesTaken}/{userInfo.CookiesGiven}");
@@ -275,7 +272,7 @@ namespace LiveBot.SlashCommands
 
         [SlashRequireGuild]
         [SlashCommand("cookie", "Gives a user a cookie.")]
-        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cooky to")] DiscordUser member)
+        public async Task Cookie(InteractionContext ctx, [Option("User", "Who to give the cookie to")] DiscordUser member)
         {
             await ctx.DeferAsync(true);
             if (ctx.Member == member)
@@ -283,15 +280,11 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
                 return;
             }
-            Leaderboard giver = await _databaseContext.Leaderboard.FirstOrDefaultAsync(f => f.UserDiscordId == ctx.Member.Id);
-            Leaderboard receiver = await _databaseContext.Leaderboard.FirstOrDefaultAsync(f => f.UserDiscordId == member.Id);
 
-            if (giver == null)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You do not have a Database entry, one will be created, please try again."));
-                await _databaseContext.Leaderboard.AddAsync(new Leaderboard(_databaseContext, ctx.Member.Id));
-                return;
-            }
+            User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? (await DatabaseContext.Users.AddAsync(new User(DatabaseContext, ctx.Member.Id))).Entity;
+            User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? (await DatabaseContext.Users.AddAsync(new User(DatabaseContext, member.Id))).Entity;
+            await DatabaseContext.SaveChangesAsync();
+            
             if (giver.CookieDate.Date == DateTime.UtcNow.Date)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your cookie box is empty. You can give a cookie in {24-DateTime.UtcNow.Hour} Hours, {(59-DateTime.UtcNow.Minute)-1} Minutes, {(59-DateTime.UtcNow.Second)} Seconds."));
@@ -302,8 +295,8 @@ namespace LiveBot.SlashCommands
             giver.CookiesGiven++;
             receiver.CookiesTaken++;
             
-            _databaseContext.Leaderboard.UpdateRange(giver,receiver);
-            await _databaseContext.SaveChangesAsync();
+            DatabaseContext.Users.UpdateRange(giver,receiver);
+            await DatabaseContext.SaveChangesAsync();
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
 

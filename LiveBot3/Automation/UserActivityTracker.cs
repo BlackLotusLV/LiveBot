@@ -29,7 +29,7 @@ namespace LiveBot.Automation
             Cooldowns coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
 
-            if (await _dbContext.Leaderboard.FirstOrDefaultAsync(w=>w.UserDiscordId==e.Author.Id)==null)
+            if (await _dbContext.Users.FirstOrDefaultAsync(w=>w.DiscordId==e.Author.Id)==null)
             {
                 _leaderboardService.AddToQueue(new LeaderboardService.LeaderboardItem(e.Author,e.Guild));
                 return;
@@ -37,7 +37,7 @@ namespace LiveBot.Automation
             UserActivity userActivity = _dbContext.UserActivity.FirstOrDefault(w => w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id && w.Date == DateTime.UtcNow.Date);
             if (userActivity == null)
             {
-                await _dbContext.UserActivity.AddAsync(new UserActivity(_dbContext, e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
+                //await _dbContext.UserActivity.AddAsync(new UserActivity(_dbContext, e.Author.Id, e.Guild.Id, new Random().Next(25, 50), DateTime.UtcNow.Date));
                 await _dbContext.SaveChangesAsync();
                 return;
             }
