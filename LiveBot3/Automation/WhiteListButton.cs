@@ -13,7 +13,7 @@ public class WhiteListButton
     public async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
         if (e.Guild == null ||e.Interaction.Type != InteractionType.Component || e.Interaction.Data.CustomId != "Activate") return;
-        DiscordInteractionResponseBuilder responseBuilder = new()
+        DiscordInteractionResponseBuilder responseBuilder = new() 
         {
             IsEphemeral = true
         };
