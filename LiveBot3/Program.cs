@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata;
-using DSharpPlus.CommandsNext;
+﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.SlashCommands;
@@ -11,8 +10,6 @@ using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using SixLabors.Fonts;
-using Microsoft.Extensions.Http;
 
 namespace LiveBot;
 
@@ -25,7 +22,7 @@ internal sealed class Program
         program.RunBotAsync(args).GetAwaiter().GetResult();
     }
 
-    private async Task RunBotAsync(string[] args)
+    private async Task RunBotAsync(IEnumerable<string> args)
     {
         var botCredentialsLink = "ConfigFiles/DevBot.Json";
         var logLevel = LogLevel.Debug;
@@ -53,12 +50,12 @@ internal sealed class Program
         {
             string databaseString = await sr.ReadToEndAsync();
             var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
-            dbConnectionString = $"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database}; Port={database.Port}";
+            dbConnectionString = $"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database};Port={database.Port}";
         }
         
         
         ServiceProvider serviceProvider = new ServiceCollection()
-            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString))
+            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
             .AddHttpClient()
             .AddTransient<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
@@ -84,7 +81,7 @@ internal sealed class Program
         };
         CommandsNextConfiguration cNextConfig = new()
         {
-            StringPrefixes = new string[] { liveBotSettings.CommandPrefix },
+            StringPrefixes = new[] { liveBotSettings.CommandPrefix },
             CaseSensitive = false,
             IgnoreExtraArguments = true,
             Services = serviceProvider
@@ -93,7 +90,7 @@ internal sealed class Program
         {
             Services = serviceProvider
         };
-        InteractivityConfiguration interactivityConfiguration = new() { };
+        InteractivityConfiguration interactivityConfiguration = new();
 
         DiscordClient discordClient = new(discordConfig);
         CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
@@ -126,41 +123,41 @@ internal sealed class Program
         var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
+        
+        discordClient.PresenceUpdated += liveStream.Stream_Notification;
+
+        discordClient.MessageCreated += autoMod.Media_Only_Filter;
+        discordClient.MessageCreated += autoMod.Spam_Protection;
+        discordClient.MessageCreated += autoMod.Link_Spam_Protection;
+        discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
+        discordClient.MessageDeleted += autoMod.Delete_Log;
+        discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
+        discordClient.GuildMemberAdded += autoMod.User_Join_Log;
+        discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
+        discordClient.GuildMemberRemoved += autoMod.User_Kicked_Log;
+        discordClient.GuildBanAdded += autoMod.User_Banned_Log;
+        discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
+        discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
+        discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
+
+        discordClient.MessageCreated += userActivityTracker.Add_Points;
+
+        discordClient.ComponentInteractionCreated += roles.Button_Roles;
+            
+        discordClient.ComponentInteractionCreated += whiteListButton.Activate;
+
+        discordClient.GuildMemberAdded += memberFlow.Welcome_Member;
+        discordClient.GuildMemberRemoved += memberFlow.Say_Goodbye;
+
+        discordClient.GuildMemberUpdated += membershipScreening.AcceptRules;
+
+        discordClient.MessageCreated += modMailService.ProcessModMailDm;
+        discordClient.ComponentInteractionCreated += modMailService.CloseButton;
+        discordClient.ComponentInteractionCreated += modMailService.OpenButton;
+        
         if (!testBuild)
         {
             discordClient.Logger.LogInformation("Running live version");
-            
-            discordClient.PresenceUpdated += liveStream.Stream_Notification;
-
-            discordClient.MessageCreated += autoMod.Media_Only_Filter;
-            discordClient.MessageCreated += autoMod.Spam_Protection;
-            discordClient.MessageCreated += autoMod.Link_Spam_Protection;
-            discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
-            discordClient.MessageDeleted += autoMod.Delete_Log;
-            discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
-            discordClient.GuildMemberAdded += autoMod.User_Join_Log;
-            discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
-            discordClient.GuildMemberRemoved += autoMod.User_Kicked_Log;
-            discordClient.GuildBanAdded += autoMod.User_Banned_Log;
-            discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
-            discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
-            discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
-
-            discordClient.MessageCreated += userActivityTracker.Add_Points;
-
-            discordClient.ComponentInteractionCreated += roles.Button_Roles;
-            
-            discordClient.ComponentInteractionCreated += whiteListButton.Activate;
-
-            discordClient.GuildMemberAdded += memberFlow.Welcome_Member;
-            discordClient.GuildMemberRemoved += memberFlow.Say_Goodbye;
-
-            discordClient.GuildMemberUpdated += membershipScreening.AcceptRules;
-
-            discordClient.MessageCreated += modMailService.ProcessModMailDm;
-            discordClient.ComponentInteractionCreated += modMailService.CloseButton;
-            discordClient.ComponentInteractionCreated += modMailService.OpenButton;
-
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
@@ -192,10 +189,7 @@ internal sealed class Program
         Guild entry = await dbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
         if (entry==null)
         {
-            Guild newEntry = new()
-            {
-                Id = e.Guild.Id
-            };
+            Guild newEntry = new(e.Guild.Id);
             await dbContext.Guilds.AddAsync(newEntry);
             await dbContext.SaveChangesAsync();
         }
@@ -233,7 +227,8 @@ internal sealed class Program
             Color = new DiscordColor(0xFF0000) // red
         };
         DiscordMessage errorMsg = await e.Context.RespondAsync(string.Empty, embed: embed);
-        await Task.Delay(10000).ContinueWith(t => errorMsg.DeleteAsync());
+        await Task.Delay(10000);
+        await errorMsg.DeleteAsync();
     }
 
     private static Task SlashExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)

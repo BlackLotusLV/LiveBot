@@ -10,12 +10,17 @@ public interface IModMailService
      Task CloseModMailAsync(DiscordClient client, ModMail modMail, DiscordUser closer, string closingText, string closingTextToUser);
      Task CloseButton(DiscordClient client, ComponentInteractionCreateEventArgs e);
      Task OpenButton(DiscordClient client, ComponentInteractionCreateEventArgs e);
+     public string CloseButtonPrefix { get; }
+     public string OpenButtonPrefix { get; }
 }
 
 public class ModMailService : IModMailService
 {
     private readonly LiveBotDbContext _dbContext;
-    public int TimeoutMinutes { get; }= 120;
+    public int TimeoutMinutes => 120;
+
+    public string CloseButtonPrefix { get; } = "closeModMail";
+    public string OpenButtonPrefix { get; } = "openModMail";
 
     public ModMailService(LiveBotDbContext dbContext)
     {
@@ -42,9 +47,9 @@ public class ModMailService : IModMailService
 
             if (e.Message.Attachments != null)
             {
-                foreach (var attachment in e.Message.Attachments)
+                foreach (DiscordAttachment attachment in e.Message.Attachments)
                 {
-                    embed.AddField("Attachment", attachment.Url, false);
+                    embed.AddField("Attachment", attachment.Url);
                 }
             }
 
@@ -69,9 +74,15 @@ public class ModMailService : IModMailService
     public async Task CloseModMailAsync(DiscordClient client,ModMail modMail, DiscordUser closer, string closingText, string closingTextToUser)
     {
         modMail.IsActive = false;
-        string notificationMessage = string.Empty;
+        var notificationMessage = string.Empty;
         DiscordGuild guild = await client.GetGuildAsync(modMail.GuildId);
-        DiscordChannel modMailChannel = guild.GetChannel(_dbContext.Guilds.First(w => w.Id == guild.Id).ModMailChannelId.Value);
+        Guild dbGuild = await _dbContext.Guilds.FindAsync(guild.Id) ?? (await _dbContext.Guilds.AddAsync(new Guild(guild.Id))).Entity;
+        if (dbGuild.ModMailChannelId == null)
+        {
+            client.Logger.LogWarning("User tried to close mod mail, mod mail channel was not found. Something is set up incorrectly. Server ID:{serverId}",guild.Id);
+            return;
+        }
+        DiscordChannel modMailChannel = guild.GetChannel(dbGuild.ModMailChannelId.Value);
         DiscordEmbedBuilder embed = new()
         {
             Title = $"[CLOSED] #{modMail.Id} {closingText}",
@@ -99,8 +110,8 @@ public class ModMailService : IModMailService
 
     public async Task CloseButton(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
-        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("close")) return;
-        ModMail mmEntry = await _dbContext.ModMail.FirstOrDefaultAsync(w => w.IsActive && $"{w.Id}" == e.Interaction.Data.CustomId.Replace("close", ""));
+        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains(CloseButtonPrefix)) return;
+        ModMail mmEntry = await _dbContext.ModMail.FindAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace(CloseButtonPrefix, "")));
         DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
         if (e.Message.Embeds.Count>0)
         {
@@ -134,17 +145,16 @@ public class ModMailService : IModMailService
             }
 
             Random r = new();
-            string colorId = string.Format("#{0:X6}", r.Next(0x1000000));
-            ModMail newEntry = new(_dbContext,guild.Id,e.User.Id,DateTime.UtcNow, colorId)
+            var colorId = $"#{r.Next(0x1000000):X6}";
+            ModMail newEntry = new(guild.Id,e.User.Id,DateTime.UtcNow, colorId)
             {
                 IsActive = true,
                 HasChatted = false
             };
+
+            await _dbContext.AddModMailAsync(_dbContext, newEntry);
             
-            await _dbContext.ModMail.AddAsync(newEntry);
-            await _dbContext.SaveChangesAsync();
-            
-            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"close{newEntry.Id}", "Close", false, new DiscordComponentEmoji("✖️"));
+            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{CloseButtonPrefix}{newEntry.Id}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().AddComponents(closeButton).WithContent($"**----------------------------------------------------**\n" +
                             $"Modmail entry **open** with `{guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {TimeoutMinutes} minutes after last message is sent.*\n" +

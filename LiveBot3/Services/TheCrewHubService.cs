@@ -140,7 +140,7 @@ public class TheCrewHubService : ITheCrewHubService
     public async Task<Image<Rgba32>> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             var locale = "en-GB";
-            User userInfo = await _dbContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ubiInfo.UserDiscordId);
+            User userInfo = await _dbContext.Users.FindAsync(ubiInfo.UserDiscordId);
             if (userInfo != null)
                 locale = userInfo.Locale;
             var eventImage = Image.Load<Rgba32>(eventImageBytes);
@@ -206,7 +206,7 @@ public class TheCrewHubService : ITheCrewHubService
                 eventTitle = DictionaryLookup(ThisEventNameID, locale),
                 activityResult = $"Score: {activity.Score}",
                 vehicleInfo = string.Empty;
-            SummitLeaderboardEntries entries = leaderboard.Entries.FirstOrDefault(w => w.ProfileId == ubiInfo.ProfileId);
+            SummitLeaderboardEntries entries = leaderboard.Entries.FirstOrDefault(w => w.ProfileId == ubiInfo.ProfileId.ToString());
             if (@event.ConstraintTextId.Contains("60871"))
             {
                 vehicleInfo = "Forced Vehicle";

@@ -138,7 +138,7 @@ namespace LiveBot.Commands
             StringBuilder sb = new();
             int i = 0;
             sb.AppendLine("```csharp\n\t\tUsername");
-            foreach (var item in _liveBotDbContext.Warnings.Where(w => w.GuildId == ctx.Guild.Id).GroupBy(w => w.AdminDiscordId)
+            foreach (var item in _liveBotDbContext.Infractions.Where(w => w.GuildId == ctx.Guild.Id).GroupBy(w => w.AdminDiscordId)
                 .Select(s => new
                 {
                     Admin_ID = s.Key,

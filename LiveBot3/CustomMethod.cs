@@ -7,18 +7,18 @@ namespace LiveBot
 {
     internal static class CustomMethod
     {
-        public static string ScoreToTime(int Time)
+        public static string ScoreToTime(int time)
         {
             StringBuilder[] sTime = { new StringBuilder(), new StringBuilder() };
-            for (int i = 0; i < Time.ToString().Length; i++)
+            for (var i = 0; i < time.ToString().Length; i++)
             {
-                if (i < Time.ToString().Length - 3)
+                if (i < time.ToString().Length - 3)
                 {
-                    sTime[0].Append(Time.ToString()[i]);
+                    sTime[0].Append(time.ToString()[i]);
                 }
                 else
                 {
-                    sTime[1].Append(Time.ToString()[i]);
+                    sTime[1].Append(time.ToString()[i]);
                 }
             }
             if (sTime[0].Length == 0)
@@ -30,64 +30,59 @@ namespace LiveBot
                 sTime[1].Insert(0, '0');
             }
             TimeSpan seconds = TimeSpan.FromSeconds(double.Parse(sTime[0].ToString()));
-            if (seconds.Hours == 0)
-            {
-                return $"{seconds.Minutes}:{seconds.Seconds}.{sTime[1]}";
-            }
-
-            return $"{seconds.Hours}:{seconds.Minutes}:{seconds.Seconds}.{sTime[1]}";
+            return seconds.Hours == 0 ? $"{seconds.Minutes}:{seconds.Seconds}.{sTime[1]}" : $"{seconds.Hours}:{seconds.Minutes}:{seconds.Seconds}.{sTime[1]}";
         }
 
         /// <summary>
         /// Sends a message in the moderator log channel
         /// </summary>
-        /// <param name="ModLogChannel">Channel where the message will be sent.</param>
-        /// <param name="TargetUser">The user against who an action is being taken against.</param>
-        /// <param name="Description">The description of the action taken.</param>
+        /// <param name="modLogChannel">Channel where the message will be sent.</param>
+        /// <param name="targetUser">The user against who an action is being taken against.</param>
+        /// <param name="description">The description of the action taken.</param>
         /// <param name="type">The type of action taken.</param>
-        /// <param name="Content">Additional content outside of the embed</param>
+        /// <param name="content">Additional content outside of the embed</param>
         /// <returns></returns>
-        public static async Task SendModLogAsync(DiscordChannel ModLogChannel, DiscordUser TargetUser, string Description, ModLogType type, string Content = null)
+        public static async Task SendModLogAsync(DiscordChannel modLogChannel, DiscordUser targetUser, string description, ModLogType type, string content = null)
         {
             DiscordColor color = DiscordColor.NotQuiteBlack;
-            string FooterText = string.Empty;
+            var footerText = string.Empty;
             switch (type)
             {
                 case ModLogType.Kick:
                     color = new DiscordColor(0xf90707);
-                    FooterText = "User Kicked";
+                    footerText = "User Kicked";
                     break;
 
                 case ModLogType.Ban:
                     color = new DiscordColor(0xf90707);
-                    FooterText = "User Banned";
+                    footerText = "User Banned";
                     break;
 
                 case ModLogType.Info:
                     color = new DiscordColor(0x59bfff);
-                    FooterText = "Info";
+                    footerText = "Info";
                     break;
 
                 case ModLogType.Warning:
                     color = new DiscordColor(0xFFBA01);
-                    FooterText = "User Warned";
+                    footerText = "User Warned";
                     break;
 
                 case ModLogType.Unwarn:
-                    FooterText = "User Unwarned";
+                    footerText = "User Unwarned";
                     break;
 
                 case ModLogType.Unban:
-                    FooterText = "User Unbanned";
+                    footerText = "User Unbanned";
                     break;
 
                 case ModLogType.TimedOut:
                     color = new DiscordColor(0xFFBA01);
-                    FooterText = "User Timed Out";
+                    footerText = "User Timed Out";
                     break;
 
                 case ModLogType.TimeOutRemoved:
-                    FooterText = "User Timeout Removed";
+                    footerText = "User Timeout Removed";
                     break;
 
                 default:
@@ -97,23 +92,23 @@ namespace LiveBot
             DiscordEmbedBuilder discordEmbedBuilder = new()
             {
                 Color = color,
-                Description = Description,
+                Description = description,
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
-                    IconUrl = TargetUser.AvatarUrl,
-                    Name = $"{TargetUser.Username} ({TargetUser.Id})"
+                    IconUrl = targetUser.AvatarUrl,
+                    Name = $"{targetUser.Username} ({targetUser.Id})"
                 },
                 Footer = new DiscordEmbedBuilder.EmbedFooter
                 {
-                    IconUrl = TargetUser.AvatarUrl,
-                    Text = FooterText
+                    IconUrl = targetUser.AvatarUrl,
+                    Text = footerText
                 }
             };
 
             discordMessageBuilder.AddEmbed(discordEmbedBuilder);
-            discordMessageBuilder.Content = Content;
+            discordMessageBuilder.Content = content;
 
-            await ModLogChannel.SendMessageAsync(discordMessageBuilder);
+            await modLogChannel.SendMessageAsync(discordMessageBuilder);
         }
 
         /// <summary>
@@ -123,15 +118,10 @@ namespace LiveBot
         /// <returns>If user has permissions, returns true</returns>
         public static bool CheckIfMemberAdmin(DiscordMember member)
         {
-            if (
-                member.Permissions.HasPermission(Permissions.ManageMessages) ||
-                member.Permissions.HasPermission(Permissions.KickMembers) ||
-                member.Permissions.HasPermission(Permissions.BanMembers) ||
-                member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                return true;
-            }
-            return false;
+            return member.Permissions.HasPermission(Permissions.ManageMessages) ||
+                   member.Permissions.HasPermission(Permissions.KickMembers) ||
+                   member.Permissions.HasPermission(Permissions.BanMembers) ||
+                   member.Permissions.HasPermission(Permissions.Administrator);
         }
 
         

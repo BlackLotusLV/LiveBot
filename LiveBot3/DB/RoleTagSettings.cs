@@ -5,12 +5,9 @@ namespace LiveBot.DB
 {
     public class RoleTagSettings
     {
-        public RoleTagSettings(LiveBotDbContext context)
+        public RoleTagSettings(ulong guildId)
         {
-            Guild guild = context.Guilds.FirstOrDefault(x => x.Id == this.GuildId);
-            if (guild != null) return;
-            guild = new Guild() { Id = this.GuildId };
-            context.Guilds.Add(guild);
+            GuildId = guildId;
         }
         private ulong _guildId;
         private ulong _roleId;

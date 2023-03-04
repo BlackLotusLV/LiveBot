@@ -5,8 +5,10 @@ namespace LiveBot.DB
 {
     public class Infraction
     {
-        public Infraction(LiveBotDbContext context, ulong adminDiscordId, string reason, bool isActive, string type)
+        public Infraction(ulong adminDiscordId, ulong userId, ulong guildId, string reason, bool isActive, string type)
         {
+            UserId = userId;
+            GuildId = guildId;
             Reason = reason;
             IsActive = isActive;
             AdminDiscordId = adminDiscordId;
@@ -32,7 +34,7 @@ namespace LiveBot.DB
         
         public string Reason { get; set; }
         public bool IsActive { get; set; }
-        public DateTime TimeCreated { get; set; }
+        public DateTime TimeCreated { get; set; } = DateTime.UtcNow;
 
         public ulong AdminDiscordId
         {

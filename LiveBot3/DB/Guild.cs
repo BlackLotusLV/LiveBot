@@ -6,6 +6,10 @@ namespace LiveBot.DB
 {
     public class Guild
     {
+        public Guild(ulong id)
+        {
+            Id = id;
+        }
         public ulong Id
         { 
             get => _id; 
@@ -85,5 +89,6 @@ namespace LiveBot.DB
         public ICollection<RoleTagSettings> RoleTagSettings { get; set; }
         public ICollection<StreamNotifications> StreamNotifications { get; set; }
         public ICollection<SpamIgnoreChannels> SpamIgnoreChannels { get; set; }
+        public ICollection<WhiteListSettings> WhiteListSettings { get; set; }
     }
 }

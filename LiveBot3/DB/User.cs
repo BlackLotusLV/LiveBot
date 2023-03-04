@@ -5,15 +5,9 @@ namespace LiveBot.DB
 {
     public sealed class User
     {
-        public User(LiveBotDbContext context, ulong discordId)
+        public User(ulong discordId)
         {
             DiscordId = discordId;
-            if (ParentDiscordId==null)return;
-            User entry = context.Users.Find(ParentDiscordId);
-            if (entry != null || _parentDiscordId==discordId) return;
-            entry = new User(context, ParentDiscordId.Value);
-            context.Users.Add(entry);
-            context.SaveChanges();
         }
         public ulong DiscordId
         { 
@@ -36,6 +30,6 @@ namespace LiveBot.DB
         
         public ICollection<UbiInfo> UbiInfo { get; set; }
         public ICollection<User> ChildUsers { get; set; }
-        public ICollection<GuildUser> ServerRanks { get; set; }
+        public ICollection<GuildUser> UserGuilds { get; set; }
     }
 }

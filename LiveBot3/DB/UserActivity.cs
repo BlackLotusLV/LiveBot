@@ -5,6 +5,13 @@ namespace LiveBot.DB
 {
     public class UserActivity
     {
+        public UserActivity(ulong userDiscordId, ulong guildId, int points, DateTime date)
+        {
+            UserDiscordId = userDiscordId;
+            GuildId = guildId;
+            Points = points;
+            Date = date;
+        }
         public long Id { get; set; }
         public ulong UserDiscordId
         { 
@@ -25,7 +32,6 @@ namespace LiveBot.DB
             set => _date = DateTime.SpecifyKind(value, DateTimeKind.Utc);
         }
         private DateTime _date;
-        public int ServerRanksId { get; set; }
         
         public GuildUser GuildUser { get; set; }
     }

@@ -5,6 +5,11 @@ namespace LiveBot.DB;
 
 public class SpamIgnoreChannels
 {
+    public SpamIgnoreChannels(ulong guildId, ulong channelId)
+    {
+        GuildId = guildId;
+        ChannelId = channelId;
+    }
     private ulong _guildId;
     private ulong _channelId;
     public int Id { get; set; }

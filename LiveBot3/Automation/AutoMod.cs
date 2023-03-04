@@ -189,7 +189,6 @@ namespace LiveBot.Automation
 
         public async Task User_Kicked_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            /*
             DateTimeOffset time = DateTimeOffset.UtcNow;
             DateTimeOffset beforeTime = time.AddSeconds(-5);
             DateTimeOffset afterTime = time.AddSeconds(10);
@@ -203,29 +202,19 @@ namespace LiveBot.Automation
             {
                 await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);
 
-                GuildUser userSettings = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => e.Member.Id == f.UserDiscordId);
-                EntityEntry<GuildUser> newEntry;
-                if (userSettings is null)
-                {
-                    newEntry= await _databaseContext.GuildUsers.AddAsync(new GuildUser(_databaseContext, e.Member.Id, e.Guild.Id));
-                    newEntry.Entity.KickCount++;
-                }
-                else
-                {
-                    userSettings.KickCount++;
-                    _databaseContext.GuildUsers.Update(userSettings);
-                }
-                await _databaseContext.Warnings.AddAsync(new Infraction(_databaseContext, logs[0].UserResponsible.Id, e.Member.Id, e.Guild.Id, logs[0].Reason, false, "kick"));
+                GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { e.Member.Id, e.Guild.Id }) ??
+                                      await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(e.Member.Id, e.Guild.Id));
+                guildUser.KickCount++;
+                _databaseContext.GuildUsers.Update(guildUser);
                 await _databaseContext.SaveChangesAsync();
+
+                await _databaseContext.AddInfractionsAsync(_databaseContext, new Infraction(logs[0].UserResponsible.Id, e.Member.Id, e.Guild.Id, logs[0].Reason, false, "kick"));
             }
             //*/
         }
 
-        public Task User_Banned_Log(DiscordClient client, GuildBanAddEventArgs e)
+        public async Task User_Banned_Log(DiscordClient client, GuildBanAddEventArgs e)
         {
-            /*
-            _ = Task.Run(async () =>
-            {
                 var wkbSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == e.Guild.Id);
                 DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == wkbSettings.Id).Value;
                 if (wkbSettings.ModerationLogChannelId != null)
@@ -246,10 +235,10 @@ namespace LiveBot.Automation
                     if (banEntry != null)
                     {
                         Console.WriteLine("Ban reason search succeeded");
-                        await CustomMethod.SendModLogAsync(wkbLog, banEntry.Target, $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
-                        await _databaseContext.Warnings.AddAsync(
-                            new Infraction(_databaseContext, banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified",false, "ban")
-                            );
+                        await CustomMethod.SendModLogAsync(wkbLog, banEntry.Target,
+                            $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
+                        await _databaseContext.AddInfractionsAsync(_databaseContext,
+                            new Infraction(banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified", false, "ban"));
                     }
                     else
                     {
@@ -257,29 +246,19 @@ namespace LiveBot.Automation
                         await wkbLog.SendMessageAsync("A user got banned but failed to find data, please log manually");
                     }
                 }
-                var userSettings = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => e.Member.Id == f.UserDiscordId && e.Guild.Id == f.GuildId);
-                if (userSettings == null)
-                {
-                    DiscordUser user = await client.GetUserAsync(e.Member.Id);
-                    var addedEntry = await _databaseContext.GuildUsers.AddAsync(new GuildUser(_databaseContext, user.Id, e.Guild.Id));
-                    addedEntry.Entity.BanCount += 1;
-                }
-                else
-                {
-                    userSettings.BanCount += 1;
-                    _databaseContext.GuildUsers.Update(userSettings);
-                }
+
+                GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { e.Member.Id, e.Guild.Id }) ??
+                                      await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(e.Member.Id, e.Guild.Id));
+                guildUser.BanCount++;
+                _databaseContext.Update(guildUser);
                 await _databaseContext.SaveChangesAsync();
-            });
-            //*/
-            return Task.CompletedTask;
         }
 
         public Task User_Unbanned_Log(DiscordClient client, GuildBanRemoveEventArgs e)
         {
             _ = Task.Run(async () =>
             {
-                var wkbSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
+                Guild wkbSettings = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
                 DiscordGuild guild = await client.GetGuildAsync(wkbSettings.Id);
                 if (wkbSettings.ModerationLogChannelId != null)
                 {
@@ -316,7 +295,7 @@ namespace LiveBot.Automation
                 await channel.DeleteMessagesAsync(duplicateMessages.GetRange(i - 5, 5));
             }
 
-            int infractionLevel = _databaseContext.Warnings.Count(w => w.UserId == member.Id && w.GuildId == e.Guild.Id && w.Type == "warning" && w.IsActive);
+            int infractionLevel = _databaseContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == e.Guild.Id && w.Type == "warning" && w.IsActive);
 
             if (infractionLevel < 5)
             {
@@ -326,11 +305,12 @@ namespace LiveBot.Automation
 
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
-            Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
+            if (e.Guild == null) return;
+            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
             if (e.Author.IsBot || guild == null || guild.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-            if (!CustomMethod.CheckIfMemberAdmin(member) && (e.Message.Content.Contains("discordapp.com/invite/") || e.Message.Content.Contains("discord.gg/")) && !invites.Any(w => e.Message.Content.Contains($"/{w.Code}")))
+            if (!CustomMethod.CheckIfMemberAdmin(member) && !e.Message.Content.Contains("?event=") && (e.Message.Content.Contains("discordapp.com/invite/") || e.Message.Content.Contains("discord.gg/")) && !invites.Any(w => e.Message.Content.Contains($"/{w.Code}")))
             {
                 await e.Message.DeleteAsync();
                 await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));

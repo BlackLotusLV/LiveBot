@@ -71,13 +71,11 @@ namespace LiveBot.SlashCommands
 
             Random r = new();
             var colorId = $"#{r.Next(0x1000000):X6}";
-            ModMail newEntry = new(DatabaseContext,ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
-
-            await DatabaseContext.ModMail.AddAsync(newEntry);
-            await DatabaseContext.SaveChangesAsync();
+            ModMail newEntry = new(ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
+            await DatabaseContext.AddModMailAsync(DatabaseContext, newEntry);
 
             string entryId = $"{ctx.User.Id}-{ctx.Guild.Id}";
-            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"close{entryId}", "Close", false, new DiscordComponentEmoji("✖️"));
+            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{ModMailService.CloseButtonPrefix}{entryId}", "Close", false, new DiscordComponentEmoji("✖️"));
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{entryId} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
@@ -281,8 +279,8 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
-            User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? (await DatabaseContext.Users.AddAsync(new User(DatabaseContext, ctx.Member.Id))).Entity;
-            User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? (await DatabaseContext.Users.AddAsync(new User(DatabaseContext, member.Id))).Entity;
+            User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? await DatabaseContext.AddUserAsync(DatabaseContext, new User(ctx.Member.Id));
+            User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? await DatabaseContext.AddUserAsync(DatabaseContext, new User( member.Id));
             await DatabaseContext.SaveChangesAsync();
             
             if (giver.CookieDate.Date == DateTime.UtcNow.Date)

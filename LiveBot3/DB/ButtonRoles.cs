@@ -5,6 +5,10 @@ namespace LiveBot.DB
 {
     public class ButtonRoles
     {
+        public ButtonRoles(ulong guildId)
+        {
+            GuildId = guildId;
+        }
         public int Id { get; set; }
         public ulong ButtonId
         { 

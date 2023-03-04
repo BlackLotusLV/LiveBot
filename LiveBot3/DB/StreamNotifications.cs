@@ -5,6 +5,10 @@ namespace LiveBot.DB
 {
     public class StreamNotifications
     {
+        public StreamNotifications(ulong guildId)
+        {
+            GuildId = guildId;
+        }
         public int Id { get; set; }
         public ulong GuildId
         { 

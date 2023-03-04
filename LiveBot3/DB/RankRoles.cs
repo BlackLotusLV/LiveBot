@@ -5,12 +5,11 @@ namespace LiveBot.DB
 {
     public class RankRoles
     {
-        public RankRoles(LiveBotDbContext context)
+        public RankRoles(ulong guildId, ulong roleId,long serverRank)
         {
-            Guild guild = context.Guilds.FirstOrDefault(x => x.Id == this.GuildId);
-            if (guild != null) return;
-            guild = new Guild() { Id = this.GuildId };
-            context.Guilds.Add(guild);
+            GuildId = guildId;
+            RoleId = roleId;
+            ServerRank = serverRank;
         }
         public int Id { get; set; }
         public ulong GuildId

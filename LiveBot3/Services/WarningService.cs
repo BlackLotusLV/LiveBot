@@ -24,7 +24,7 @@ namespace LiveBot.Services
         {
             foreach (WarningItem warningItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == warningItem.Guild.Id);
+                Guild guild = await _databaseContext.Guilds.FindAsync(warningItem.Guild.Id);
 
                 DiscordMember member = null;
                 try
@@ -55,12 +55,11 @@ namespace LiveBot.Services
 
                 DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
 
-                //Infraction newInfraction = new(_databaseContext, warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
-                //await _databaseContext.AddAsync(newInfraction);
-                await _databaseContext.SaveChangesAsync();
+                Infraction newInfraction = new(warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
+                await _databaseContext.AddInfractionsAsync(_databaseContext, newInfraction);
 
-                int warningCount = await _databaseContext.Warnings.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
-                int infractionLevel = await _databaseContext.Warnings.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
+                int warningCount = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
+                int infractionLevel = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
 
                 DiscordEmbedBuilder embedToUser = new()
                 {
@@ -136,8 +135,8 @@ namespace LiveBot.Services
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
         {
-            Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(f => ctx.Guild.Id == f.Id);
-            var infractions = await _databaseContext.Warnings.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserId && w.Type == "warning" && w.IsActive).ToListAsync();
+            Guild guild = await _databaseContext.Guilds.FindAsync(ctx.Guild.Id);
+            var infractions = await _databaseContext.Infractions.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserId && w.Type == "warning" && w.IsActive).ToListAsync();
             int infractionLevel = infractions.Count;
 
             if (infractionLevel == 0)
@@ -168,7 +167,7 @@ namespace LiveBot.Services
             entry ??= infractions.Where(f => f.IsActive).OrderBy(f => f.Id).First();
             entry.IsActive = false;
 
-            _databaseContext.Warnings.Update(entry);
+            _databaseContext.Infractions.Update(entry);
             await _databaseContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.Id} deactivated for {user.Username}({user.Id})"));
 
@@ -184,93 +183,80 @@ namespace LiveBot.Services
 
             await CustomMethod.SendModLogAsync(modLog, user, description, CustomMethod.ModLogType.Unwarn, modMessageBuilder.ToString());
         }
-        public async Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild Guild, DiscordUser User, bool AdminCommand = false)
+        public async Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
-            int kcount = 0,
-                bcount = 0,
-                wlevel = 0,
-                wcount = 0,
-                splitcount = 1;
-            StringBuilder Reason = new();
-            var UserStats = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
-            if (UserStats == null)
+            var splitCount = 1;
+            StringBuilder reason = new();
+            GuildUser userStats = await _databaseContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id });
+            if (userStats==null)
             {
-                await _databaseContext.GuildUsers.AddAsync(new GuildUser(_databaseContext, User.Id, Guild.Id));
-                await _databaseContext.SaveChangesAsync();
-                UserStats = await _databaseContext.GuildUsers.FirstOrDefaultAsync(f => User.Id == f.UserDiscordId && Guild.Id == f.GuildId);
+                userStats = await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(user.Id, guild.Id));
             }
-            kcount = UserStats.KickCount;
-            bcount = UserStats.BanCount;
-            var WarningsList = await _databaseContext.Warnings.Where(w => w.UserId == User.Id && w.GuildId == Guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
-            if (!AdminCommand)
+            int kickCount = userStats.KickCount;
+            int banCount = userStats.BanCount;
+            var warningsList = await _databaseContext.Infractions.Where(w => w.UserId == user.Id && w.GuildId == guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
+            if (!adminCommand)
             {
-                WarningsList.RemoveAll(w => w.Type == "note");
+                warningsList.RemoveAll(w => w.Type == "note");
             }
-            wlevel = WarningsList.Count(w => w.Type == "warning" && w.IsActive);
-            wcount = WarningsList.Count(w => w.Type == "warning");
-            foreach (var item in WarningsList)
+            int infractionLevel = warningsList.Count(w => w.Type == "warning" && w.IsActive);
+            int infractionCount = warningsList.Count(w => w.Type == "warning");
+            foreach (Infraction infraction in warningsList)
             {
-                switch (item.Type)
+                switch (infraction.Type)
                 {
                     case "ban":
-                        Reason.Append("[🔨]");
+                        reason.Append("[🔨]");
                         break;
 
                     case "kick":
-                        Reason.Append("[🥾]");
+                        reason.Append("[🥾]");
                         break;
 
                     case "note":
-                        Reason.Append("[❔]");
+                        reason.Append("[❔]");
                         break;
 
                     default: // warning
-                        if (item.IsActive)
-                        {
-                            Reason.Append("[✅] ");
-                        }
-                        else
-                        {
-                            Reason.Append("[❌] ");
-                        }
+                        reason.Append(infraction.IsActive ? "[✅] " : "[❌] ");
                         break;
                 }
-                string addedInfraction = $"**ID:**{item.Id}\t**By:** <@{item.AdminDiscordId}>\t**Date:** <t:{(int)(item.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {item.Reason}\n **Type:**\t{item.Type}";
+                var addedInfraction = $"**ID:**{infraction.Id}\t**By:** <@{infraction.AdminDiscordId}>\t**Date:** <t:{(int)(infraction.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {infraction.Reason}\n **Type:**\t{infraction.Type}";
 
-                if (Reason.Length + addedInfraction.Length > 1023 * splitcount)
+                if (reason.Length + addedInfraction.Length > 1023 * splitCount)
                 {
-                    Reason.Append("~split~");
-                    splitcount++;
+                    reason.Append("~split~");
+                    splitCount++;
                 }
-                Reason.AppendLine(addedInfraction);
+                reason.AppendLine(addedInfraction);
             }
-            if (WarningsList.Count == 0)
+            if (warningsList.Count == 0)
             {
-                Reason.AppendLine("User has no warnings.");
+                reason.AppendLine("User has no warnings.");
             }
             DiscordEmbedBuilder embed = new()
             {
                 Color = new DiscordColor(0xFF6600),
                 Author = new DiscordEmbedBuilder.EmbedAuthor
                 {
-                    Name = $"{User.Username}({User.Id})",
-                    IconUrl = User.AvatarUrl
+                    Name = $"{user.Username}({user.Id})",
+                    IconUrl = user.AvatarUrl
                 },
                 Description = $"",
                 Title = "Infraction Count",
                 Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
                 {
-                    Url = User.AvatarUrl
+                    Url = user.AvatarUrl
                 }
             };
-            embed.AddField("Warning level: ", $"{wlevel}", true);
-            embed.AddField("Times warned: ", $"{wcount}", true);
-            embed.AddField("Times kicked: ", $"{kcount}", true);
-            embed.AddField("Times banned: ", $"{bcount}", true);
-            string[] SplitReason = Reason.ToString().Split("~split~");
-            for (int i = 0; i < SplitReason.Length; i++)
+            embed.AddField("Warning level: ", $"{infractionLevel}", true);
+            embed.AddField("Times warned: ", $"{infractionCount}", true);
+            embed.AddField("Times kicked: ", $"{kickCount}", true);
+            embed.AddField("Times banned: ", $"{banCount}", true);
+            string[] splitReason = reason.ToString().Split("~split~");
+            for (var i = 0; i < splitReason.Length; i++)
             {
-                embed.AddField($"Infraction({i + 1}/{SplitReason.Length})", SplitReason[i], false);
+                embed.AddField($"Infraction({i + 1}/{splitReason.Length})", splitReason[i]);
             }
             return embed;
         }
