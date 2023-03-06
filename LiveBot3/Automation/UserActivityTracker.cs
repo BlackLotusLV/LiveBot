@@ -21,7 +21,7 @@ namespace LiveBot.Automation
             if (e.Guild == null || e.Author.IsBot) return;
             
             Cooldown coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
-            if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
+            //if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
             
             UserActivity userActivity =
                 _dbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
@@ -40,21 +40,22 @@ namespace LiveBot.Automation
                 .SumAsync(w => w.Points);
             var rankRole = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToListAsync();
             var rankRoleUnder = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToListAsync();
+            var rankRolesOver = rankRole.Except(rankRoleUnder);
 
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-            if (rankRoleUnder.Count != 0  && member.Roles.Any(w=>w.Id == rankRoleUnder[0].RoleId))
+
+            if (rankRoleUnder.Count==0)return;
+            if (member.Roles.Any(memberRole=>memberRole.Id!=rankRoleUnder.First().RoleId))
             {
-                if (member.Roles.Any(w=>rankRole.Any(x=>x.RoleId==w.Id)))
-                {
-                    await member.RevokeRoleAsync(member.Roles.First(w => rankRole.Any(x => x.RoleId == w.Id && w.Id != rankRoleUnder[0].RoleId)));
-                }
-                await member.GrantRoleAsync(e.Guild.Roles.Values.FirstOrDefault(w => w.Id == rankRoleUnder[0].RoleId));
-                return;
+                await member.GrantRoleAsync(e.Guild.Roles.Values.First(role => role.Id == rankRoleUnder.First().RoleId));
             }
-            if (rankRoleUnder.Count == 0 && member.Roles.Any(w => rankRole.Any(x => x.RoleId == w.Id)))
+
+            var matchingRoleList = member.Roles.Where(memberRole => rankRoleUnder.Skip(1).Any(under => memberRole.Id == under.RoleId) || rankRolesOver.Any(over => memberRole.Id == over.RoleId));
+            foreach (DiscordRole discordRole in matchingRoleList)
             {
-                await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => w.Id == x.RoleId)));
+                await member.RevokeRoleAsync(discordRole);
             }
+            
         }
 
         private sealed class Cooldown
