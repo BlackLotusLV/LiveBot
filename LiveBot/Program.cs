@@ -95,7 +95,7 @@ internal sealed class Program
         DiscordClient discordClient = new(discordConfig);
         CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
-        InteractivityExtension interactivityExtension = discordClient.UseInteractivity(interactivityConfiguration);
+        discordClient.UseInteractivity(interactivityConfiguration);
         
         discordClient.Ready += Ready;
         discordClient.GuildAvailable += GuildAvailable;
