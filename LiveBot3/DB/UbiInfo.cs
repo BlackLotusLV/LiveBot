@@ -1,27 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿
+namespace LiveBot.DB;
 
-namespace LiveBot.DB
+public class UbiInfo
 {
-    [Table("Ubi_Info", Schema = "livebot")]
-    public class UbiInfo
+    public UbiInfo(LiveBotDbContext context, ulong userDiscordId)
     {
-        [Key]
-        [Column("id")]
-        public int Id { get; set; }
-
-        [Required]
-        [Column("discord_id")]
-        public ulong Discord_Id 
-        { get => _Discord_Id; set { _Discord_Id = Convert.ToUInt64(value); } }
-
-        private ulong _Discord_Id;
-        [Required]
-        [Column("profile_id")]
-        public string Profile_Id { get; set; }
-
-        [Required]
-        [Column("platform")]
-        public string Platform { get; set; }
+        UserDiscordId = userDiscordId;
     }
+
+    public int Id { get; set; }
+
+    public ulong UserDiscordId
+    {
+        get => _userDiscordId;
+        init => _userDiscordId = Convert.ToUInt64(value);
+    }
+
+    private readonly ulong _userDiscordId;
+    public string ProfileId { get; set; }
+    public string Platform { get; set; }
+
+    public User User { get; set; }
 }

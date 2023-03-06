@@ -1,314 +1,258 @@
-﻿using System.Reflection.Metadata;
-using DSharpPlus.CommandsNext;
+﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.EventArgs;
 using LiveBot.Automation;
+using LiveBot.DB;
 using LiveBot.Json;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using SixLabors.Fonts;
 
-namespace LiveBot
+namespace LiveBot;
+
+internal sealed class Program
 {
-    internal sealed class Program
+    private ServiceProvider _provider;
+    private static void Main(string[] args)
     {
-        public static DiscordClient Client { get; private set; }
-        public SlashCommandsExtension Slash { get; private set; }
-        public CommandsNextExtension Commands { get; private set; }
-        public static readonly DateTime Start = DateTime.UtcNow;
-        public const string BotVersion = $"20230119_D";
-        public static bool TestBuild { get; set; } = true;
-        // TC Hub
+        Program program = new();
+        program.RunBotAsync(args).GetAwaiter().GetResult();
+    }
 
-        public static ConfigJson.TheCrewHubApi TheCrewHubJson { get; set; }
-        public static TCHubJson.TCHub TheCrewHub { get; set; }
-        public static List<TCHubJson.Summit> JSummit { get; set; }
-        public static ConfigJson.Bot ConfigJson { get; set; }
-
-        // Lists
-
-        public static List<ulong> ServerIdList { get; set; } = new();
-
-        // string
-
-        public static readonly string TmpLoc = $"{Path.GetTempPath()}/livebot-";
-
-        // fonts
-        public static FontCollection Fonts { get; set; } = new();
-
-        // Timers
-        private Timer MessageCacheClearTimer { get; set; } = new(e => AutoMod.ClearMSGCache());
-        private Timer ModMailCloserTimer { get; set; } = new(async e => await ModMail.ModMailCloser());
-        private Timer HubUpdateTimer { get; set; } = new(async e => await HubMethods.UpdateHubInfo());
-
-        private static void Main(string[] args)
+    private async Task RunBotAsync(IEnumerable<string> args)
+    {
+        var botCredentialsLink = "ConfigFiles/DevBot.json";
+        var logLevel = LogLevel.Debug;
+        var testBuild = true;
+        var databaseConnectionString = "ConfigFiles/DevDatabase.json";
+        
+        if (args.Any(x=>x.Contains("live")))
         {
-            Program prog = new Program();
-            prog.RunBotAsync(args).GetAwaiter().GetResult();
+            botCredentialsLink = "ConfigFiles/ProdBot.json";
+            logLevel = LogLevel.Information;
+            testBuild = false;
+            databaseConnectionString = "ConfigFiles/Database.json";
         }
 
-        public async Task RunBotAsync(string[] args)
+        Bot liveBotSettings;
+        string dbConnectionString;
+        
+        using (StreamReader sr = new(File.OpenRead(botCredentialsLink)))
         {
-            // Load Fonts
-            Fonts.Add("Assets/Fonts/HurmeGeometricSans4-Black.ttf");
-            Fonts.Add("Assets/Fonts/Noto Sans Mono CJK JP Bold.otf");
-            Fonts.Add("Assets/Fonts/NotoSansArabic-Bold.ttf");
-            // Load Config
-            string json;
-            using (StreamReader sr = new(File.OpenRead("Config.json"), new UTF8Encoding(false)))
-                json = await sr.ReadToEndAsync();
-            ConfigJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).DevBot;
+            string credentialsString = await sr.ReadToEndAsync();
+            liveBotSettings = JsonConvert.DeserializeObject<Bot>(credentialsString);
+        }
 
-            // Start The Crew Hub service
-            TheCrewHubJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).TCHub;
-            Thread hubThread = new(async () => await HubMethods.UpdateHubInfo());
-            hubThread.Start();
+        using (StreamReader sr  = new(File.OpenRead(databaseConnectionString)))
+        {
+            string databaseString = await sr.ReadToEndAsync();
+            var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
+            dbConnectionString = $"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database};Port={database.Port}";
+        }
+        
+        
+        ServiceProvider serviceProvider = new ServiceCollection()
+            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
+            .AddHttpClient()
+            .AddSingleton<ITheCrewHubService,TheCrewHubService>()
+            .AddSingleton<IWarningService,WarningService>()
+            .AddSingleton<IStreamNotificationService,StreamNotificationService>()
+            .AddSingleton<ILeaderboardService,LeaderboardService>()
+            .AddSingleton<IModMailService,ModMailService>()
+            .BuildServiceProvider();
+        _provider = serviceProvider;
+
+        var warningService = serviceProvider.GetService<IWarningService>();
+        var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
+        var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
+        var modMailService = serviceProvider.GetService<IModMailService>();
+        var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
+        DiscordConfiguration discordConfig = new()
+        {
+            Token = liveBotSettings.Token,
+            TokenType = TokenType.Bot,
+            ReconnectIndefinitely = true,
+            MinimumLogLevel = logLevel,
+            Intents = DiscordIntents.All,
+            LogUnknownEvents = false
+        };
+        CommandsNextConfiguration cNextConfig = new()
+        {
+            StringPrefixes = new[] { liveBotSettings.CommandPrefix },
+            CaseSensitive = false,
+            IgnoreExtraArguments = true,
+            Services = serviceProvider
+        };
+        SlashCommandsConfiguration slashCommandConfig = new()
+        {
+            Services = serviceProvider
+        };
+        InteractivityConfiguration interactivityConfiguration = new();
+
+        DiscordClient discordClient = new(discordConfig);
+        CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
+        SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
+        InteractivityExtension interactivityExtension = discordClient.UseInteractivity(interactivityConfiguration);
+        
+        discordClient.Ready += Ready;
+        discordClient.GuildAvailable += GuildAvailable;
+        discordClient.ClientErrored += ClientErrored;
+
+        commandsNextExtension.CommandExecuted += CommandExecuted;
+        commandsNextExtension.CommandErrored += CommandErrored;
+
+        slashCommandsExtension.SlashCommandExecuted += SlashExecuted;
+        slashCommandsExtension.SlashCommandErrored += SlashErrored;
+
+        slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
+        slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
+        leaderboardService.StartService();
+        warningService.StartService();
+        streamNotificationService.StartService();
+        await theCrewHubService.StartServiceAsync();
+        Timer timer = new(state => streamNotificationService.StreamListCleanup());
+        timer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
+
+        var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
+        var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(serviceProvider);
+        var liveStream = ActivatorUtilities.CreateInstance<LiveStream>(serviceProvider);
+        var userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(serviceProvider);
+        var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
+        var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
+        var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
+        
+        discordClient.PresenceUpdated += liveStream.Stream_Notification;
+
+        discordClient.MessageCreated += autoMod.Media_Only_Filter;
+        discordClient.MessageCreated += autoMod.Spam_Protection;
+        discordClient.MessageCreated += autoMod.Link_Spam_Protection;
+        discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
+        discordClient.MessageDeleted += autoMod.Delete_Log;
+        discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
+        discordClient.GuildMemberAdded += autoMod.User_Join_Log;
+        discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
+        discordClient.GuildMemberRemoved += autoMod.User_Kicked_Log;
+        discordClient.GuildBanAdded += autoMod.User_Banned_Log;
+        discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
+        discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
+        discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
+
+        discordClient.MessageCreated += userActivityTracker.Add_Points;
+
+        discordClient.ComponentInteractionCreated += roles.Button_Roles;
             
-            LogLevel logLevel = LogLevel.Debug;
-            if (args.Length == 1 && args[0] == "live") // Checks for command argument to be "live", if so, then launches the live version of the bot, not dev
-            {
-                ConfigJson = JsonConvert.DeserializeObject<ConfigJson.Config>(json).LiveBot;
+        discordClient.ComponentInteractionCreated += whiteListButton.Activate;
 
-                TestBuild = false;
-                logLevel = LogLevel.Information;
-            }
-            DiscordConfiguration cfg = new()
-            {
-                Token = ConfigJson.Token,
-                TokenType = TokenType.Bot,
-                AutoReconnect = true,
-                ReconnectIndefinitely = false,
-                MinimumLogLevel = logLevel,
-                Intents = DiscordIntents.All,
-                LogUnknownEvents = false
-            };
-            Client = new DiscordClient(cfg);
+        discordClient.GuildMemberAdded += memberFlow.Welcome_Member;
+        discordClient.GuildMemberRemoved += memberFlow.Say_Goodbye;
 
-            ServiceProvider service = new ServiceCollection()
-                .AddSingleton<IWarningService, WarningService>()
-                .AddSingleton<IStreamNotificationService, StreamNotificationService>()
-                .AddSingleton<ILeaderboardService, LeaderboardService>()
-                .BuildServiceProvider();
-            
-            DB.DBLists.LoadAllLists(); // loads data from database
-            Client.Ready += Client_Ready;
-            Client.GuildAvailable += this.Client_GuildAvailable;
-            Client.ClientErrored += this.Client_ClientError;
+        discordClient.GuildMemberUpdated += membershipScreening.AcceptRules;
 
-            Client.UseInteractivity(new InteractivityConfiguration
-            {
-                PaginationBehaviour = DSharpPlus.Interactivity.Enums.PaginationBehaviour.Ignore,
-                Timeout = TimeSpan.FromMinutes(2)
-            });
-            CommandsNextConfiguration commandNextConfig = new()
-            {
-                StringPrefixes = new string[] { ConfigJson.CommandPrefix },
-                CaseSensitive = false,
-                IgnoreExtraArguments = true,
-                Services = service
-            };
-            SlashCommandsConfiguration slashCommandConfig = new()
-            {
-                Services = service
-            };
-
-            this.Slash = Client.UseSlashCommands(slashCommandConfig);
-            this.Commands = Client.UseCommandsNext(commandNextConfig);
-
-            this.Commands.CommandExecuted += this.Commands_CommandExecuted;
-            this.Commands.CommandErrored += this.Commands_CommandErrored;
-
-            this.Slash.SlashCommandExecuted += this.Slash_Commands_CommandExecuted;
-            this.Slash.SlashCommandErrored += this.Slash_Commands_CommandErrored;
-            this.Slash.ContextMenuExecuted += this.Context_Menu_Executed;
-            this.Slash.ContextMenuErrored += this.Context_Menu_Errored;
-
-            this.Commands.RegisterCommands<Commands.UngroupedCommands>();
-            this.Commands.RegisterCommands<Commands.AdminCommands>();
-            this.Commands.RegisterCommands<Commands.OCommands>();
-            this.Commands.RegisterCommands<Commands.ModMailCommands>();
-
-            //*/
-
-            // Services
-            IWarningService warningService = service.GetService<IWarningService>();
-            IStreamNotificationService streamNotificationService = service.GetService<IStreamNotificationService>();
-            ILeaderboardService leaderboardService = service.GetService<ILeaderboardService>();
-            
-            warningService.StartService(Client);
-            streamNotificationService.StartService(Client);
-            leaderboardService.StartService(Client);
-
-            AutoMod autoMod = ActivatorUtilities.CreateInstance<AutoMod>(service);
-            LiveStream liveStream = ActivatorUtilities.CreateInstance<LiveStream>(service);
-            UserActivityTracker userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(service);
-            
-            
-
-            //
-
-            if (!TestBuild) //Only enables these when using live version
-            {
-                Client.Logger.LogInformation("Running liver version: {version}", BotVersion);
-                Client.PresenceUpdated += liveStream.Stream_Notification;
-
-                Client.GuildMemberAdded += autoMod.Add_To_Leaderboards;
-                Client.MessageCreated += AutoMod.Media_Only_Filter;
-                Client.MessageCreated += autoMod.Banned_Words;
-                Client.MessageCreated += autoMod.Spam_Protection;
-                Client.MessageCreated += autoMod.Link_Spam_Protection;
-                Client.MessageCreated += autoMod.Everyone_Tag_Protection;
-                Client.MessageDeleted += AutoMod.Delete_Log;
-                Client.MessagesBulkDeleted += AutoMod.Bulk_Delete_Log;
-                Client.GuildMemberAdded += AutoMod.User_Join_Log;
-                Client.GuildMemberRemoved += AutoMod.User_Leave_Log;
-                Client.GuildMemberRemoved += AutoMod.User_Kicked_Log;
-                Client.GuildBanAdded += AutoMod.User_Banned_Log;
-                Client.GuildBanRemoved += AutoMod.User_Unbanned_Log;
-                Client.VoiceStateUpdated += AutoMod.Voice_Activity_Log;
-                Client.GuildMemberUpdated += AutoMod.User_Timed_Out_Log;
-
-                Client.MessageCreated += userActivityTracker.Add_Points;
-
-                Client.ComponentInteractionCreated += Roles.Button_Roles;
-                
-                Client.ComponentInteractionCreated += WhiteListButton.Activate;
-
-                Client.GuildMemberAdded += MemberFlow.Welcome_Member;
-                Client.GuildMemberRemoved += MemberFlow.Say_Goodbye;
-
-                Client.GuildMemberUpdated += MembershipScreening.AcceptRules;
-
-                Client.MessageCreated += ModMail.ModMailDM;
-                Client.ComponentInteractionCreated += ModMail.ModMailCloseButton;
-                Client.ComponentInteractionCreated += ModMail.ModMailDMOpenButton;
-
-                this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
-                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>();
-                this.Slash.RegisterCommands<SlashCommands.SlashCommands>();
-                this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>();
-            }
-            else
-            {
-                Client.Logger.LogInformation("Running in test build mode");
-                this.Slash.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
-                this.Slash.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
-
-                Client.ScheduledGuildEventCreated += GuildEvents.Event_Created;
-            }
-            DiscordActivity botActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
-            await Client.ConnectAsync(botActivity);
-            await Task.Delay(-1);
-        }
-
-        private static Task Client_Ready(DiscordClient client, ReadyEventArgs e)
+        discordClient.MessageCreated += modMailService.ProcessModMailDm;
+        discordClient.ComponentInteractionCreated += modMailService.CloseButton;
+        discordClient.ComponentInteractionCreated += modMailService.OpenButton;
+        
+        if (!testBuild)
         {
-            client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
-            return Task.CompletedTask;
+            discordClient.Logger.LogInformation("Running live version");
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>();
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>();
+        }
+        else
+        {
+            discordClient.Logger.LogInformation("Running in test build mode");
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
+        }
+        
+        DiscordActivity botActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
+        await discordClient.ConnectAsync(botActivity);
+        await Task.Delay(-1);
+    }
+    private static Task Ready(DiscordClient client, ReadyEventArgs e)
+    {
+        client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
+        return Task.CompletedTask;
+    }
+
+    private async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
+    {
+        var dbContext = _provider.GetService<LiveBotDbContext>();
+        Guild entry = await dbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
+        if (entry==null)
+        {
+            Guild newEntry = new(e.Guild.Id);
+            await dbContext.Guilds.AddAsync(newEntry);
+            await dbContext.SaveChangesAsync();
         }
 
-        private Task Client_GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
-        {
-            ServerIdList.Add(e.Guild.Id);
-            var list = (from ss in DB.DBLists.ServerSettings
-                        where ss.ID_Server == e.Guild.Id
-                        select ss).ToList();
-            if (list.Count == 0)
-            {
-                var newEntry = new DB.ServerSettings()
-                {
-                    ID_Server = e.Guild.Id,
-                    Delete_Log = 0,
-                    User_Traffic = 0,
-                    WKB_Log = 0,
-                    Spam_Exception_Channels = new ulong[] { 0 }
-                };
-                DB.DBLists.InsertServerSettings(newEntry);
-            }
-            if (e.Guild.Id == 150283740172517376)
-            {
-                HubUpdateTimer.Change(TimeSpan.Zero, TimeSpan.FromMinutes(30));
-                MessageCacheClearTimer.Change(TimeSpan.Zero, TimeSpan.FromDays(1));
-                ModMailCloserTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(30));
-            }
-            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
-            return Task.CompletedTask;
-        }
+        client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
+    }
+    private static Task ClientErrored(DiscordClient client, ClientErrorEventArgs e)
+    {
+        client.Logger.LogError(CustomLogEvents.ClientError, e.Exception, "Exception occurred");
+        return Task.CompletedTask;
+    }
 
-        private Task Client_ClientError(DiscordClient client, ClientErrorEventArgs e)
-        {
-            client.Logger.LogError(CustomLogEvents.ClientError, e.Exception, "Exception occurred");
-            return Task.CompletedTask;
-        }
+    private static Task CommandExecuted(CommandsNextExtension ext, CommandExecutionEventArgs e)
+    {
+        ext.Client.Logger.LogInformation("{username} successfully executed '{commandName}' command", e.Context.User.Username,e.Command.QualifiedName);
+        return Task.CompletedTask;
+    }
 
-        private Task Commands_CommandExecuted(CommandsNextExtension ext, CommandExecutionEventArgs e)
+    private static async Task CommandErrored(CommandsNextExtension ext, CommandErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.CommandError, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Command?.QualifiedName ?? "<unknown command>");
+        if (e.Exception is not ChecksFailedException ex) return;
+        DiscordEmoji noEntry = DiscordEmoji.FromName(e.Context.Client, ":no_entry:");
+        string msgContent = ex.FailedChecks[0] switch
         {
-            Client.Logger.LogInformation(CustomLogEvents.CommandExecuted, "{Username} successfully executed '{CommandName}' command", e.Context.User.Username, e.Command.QualifiedName);
-            return Task.CompletedTask;
-        }
+            CooldownAttribute => $"{DiscordEmoji.FromName(e.Context.Client, ":clock:")} You, {e.Context.Member?.Mention}, tried to execute the command too fast, wait and try again later.",
+            RequireRolesAttribute => $"{noEntry} You, {e.Context.User.Mention}, don't have the required role for this command",
+            RequireDirectMessageAttribute => $"{noEntry} You are trying to use a command that is only available in DMs",
+            _ => $"{noEntry} You, {e.Context.User.Mention}, do not have the permissions required to execute this command."
+        };
+        DiscordEmbedBuilder embed = new()
+        {
+            Title = "Access denied",
+            Description = msgContent,
+            Color = new DiscordColor(0xFF0000) // red
+        };
+        DiscordMessage errorMsg = await e.Context.RespondAsync(string.Empty, embed: embed);
+        await Task.Delay(10000);
+        await errorMsg.DeleteAsync();
+    }
 
-        private async Task Commands_CommandErrored(CommandsNextExtension ext, CommandErrorEventArgs e)
-        {
-            Client.Logger.LogError(CustomLogEvents.CommandError, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Command?.QualifiedName ?? "<unknown command>");
-            if (e.Exception is ChecksFailedException ex)
-            {
-                var noEntry = DiscordEmoji.FromName(e.Context.Client, ":no_entry:");
-                string msgContent;
-                if (ex.FailedChecks[0] is CooldownAttribute)
-                {
-                    msgContent = $"{DiscordEmoji.FromName(e.Context.Client, ":clock:")} You, {e.Context.Member.Mention}, tried to execute the command too fast, wait and try again later.";
-                }
-                else if (ex.FailedChecks[0] is RequireRolesAttribute)
-                {
-                    msgContent = $"{noEntry} You, {e.Context.User.Mention}, don't have the required role for this command";
-                }
-                else if (ex.FailedChecks[0] is RequireDirectMessageAttribute)
-                {
-                    msgContent = $"{noEntry} You are trying to use a command that is only available in DMs";
-                }
-                else
-                {
-                    msgContent = $"{noEntry} You, {e.Context.User.Mention}, do not have the permissions required to execute this command.";
-                }
-                DiscordEmbedBuilder embed = new DiscordEmbedBuilder
-                {
-                    Title = "Access denied",
-                    Description = msgContent,
-                    Color = new DiscordColor(0xFF0000) // red
-                };
-                DiscordMessage errorMsg = await e.Context.RespondAsync(string.Empty, embed: embed);
-                await Task.Delay(10000).ContinueWith(t => errorMsg.DeleteAsync());
-            }
-        }
+    private static Task SlashExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)
+    {
+        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        return Task.CompletedTask;
+    }
 
-        private Task Slash_Commands_CommandExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)
-        {
-            Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{CommandName}' command", e.Context.User.Username, e.Context.CommandName);
-            return Task.CompletedTask;
-        }
+    private static Task SlashErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
+        return Task.CompletedTask;
+    }
 
-        private Task Slash_Commands_CommandErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
-        {
-            Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
-            return Task.CompletedTask;
-        }
+    private static Task ContextMenuExecuted(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
+    {
+        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        return Task.CompletedTask;
+    }
 
-        private Task Context_Menu_Executed(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
-        {
-            Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{CommandName}' command", e.Context.User.Username, e.Context.CommandName);
-            return Task.CompletedTask;
-        }
-
-        private Task Context_Menu_Errored(SlashCommandsExtension ext, ContextMenuErrorEventArgs e)
-        {
-            Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
-            return Task.CompletedTask;
-        }
+    private static Task ContextMenuErrored(SlashCommandsExtension ext, ContextMenuErrorEventArgs e)
+    {
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
+        return Task.CompletedTask;
     }
 }

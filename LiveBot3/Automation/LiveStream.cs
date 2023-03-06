@@ -1,26 +1,31 @@
-﻿using LiveBot.Services;
+﻿using LiveBot.DB;
+using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation
 {
     internal class LiveStream
     {
         private readonly IStreamNotificationService _streamNotificationService;
+        private readonly LiveBotDbContext _dbContext;
 
-        public LiveStream(IStreamNotificationService streamNotificationService)
+        public LiveStream(IStreamNotificationService streamNotificationService, LiveBotDbContext dbContext)
         {
             _streamNotificationService = streamNotificationService;
+            _dbContext = dbContext;
         }
 
         public async Task Stream_Notification(object client, PresenceUpdateEventArgs e)
         {
             if (e.User == null || e.User.IsBot || e.User.Presence == null) return;
             DiscordGuild guild = e.User.Presence.Guild;
-            List<DB.StreamNotifications> streamNotifications = DB.DBLists.StreamNotifications.Where(w => w.Server_ID == guild.Id).ToList();
+            if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
+            if (await _dbContext.StreamNotifications.FirstOrDefaultAsync(sn=>sn.GuildId == guild.Id)==null)return; 
+            var streamNotifications = await _dbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToListAsync();
             if (streamNotifications.Count < 1) return;
-            foreach (var streamNotification in streamNotifications)
+            foreach (StreamNotifications streamNotification in streamNotifications)
             {
-                DiscordChannel channel = guild.GetChannel(streamNotification.Channel_ID);
-                if (!Program.ServerIdList.Contains(guild.Id)) return;
+                DiscordChannel channel = guild.GetChannel(streamNotification.ChannelId);
                 LiveStreamer streamer = new()
                 {
                     User = e.User,
@@ -40,24 +45,29 @@ namespace LiveBot.Automation
                 {
                     itemIndex = -1;
                 }
-                if (itemIndex >= 0
-                    && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == null)
+
+                switch (itemIndex)
                 {
-                    //removes user from list
-                    if (StreamNotificationService.LiveStreamerList[itemIndex].Time.AddHours(StreamNotificationService.StreamCheckDelay) < DateTime.UtcNow
-                        && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == StreamNotificationService.LiveStreamerList[itemIndex].User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube"))
+                    case >= 0
+                        when e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == null:
                     {
-                        StreamNotificationService.LiveStreamerList.RemoveAt(itemIndex);
+                        //removes user from list
+                        if (StreamNotificationService.LiveStreamerList[itemIndex].Time.AddHours(StreamNotificationService.StreamCheckDelay) < DateTime.UtcNow
+                            && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") == StreamNotificationService.LiveStreamerList[itemIndex]
+                                .User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube"))
+                        {
+                            StreamNotificationService.LiveStreamerList.RemoveAt(itemIndex);
+                        }
+
+                        break;
                     }
-                }
-                else if (itemIndex == -1
-                && e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") != null
-                && e.User.Presence.Activities.First(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").ActivityType.Equals(ActivityType.Streaming))
-                {
-                    _streamNotificationService.QueueStream(streamNotification, e, guild, channel, streamer);
+                    case -1
+                        when e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube") != null
+                             && e.User.Presence.Activities.First(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube").ActivityType.Equals(ActivityType.Streaming):
+                        _streamNotificationService.AddToQueue(new StreamNotificationItem(streamNotification, e, guild, channel, streamer));
+                        break;
                 }
             }
-            await Task.Delay(1);
         }
     }
 }

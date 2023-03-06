@@ -5,129 +5,83 @@ namespace LiveBot.Services
 {
     public interface IStreamNotificationService
     {
-        void StartService(DiscordClient client);
-        void StopService(DiscordClient client);
-        void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer);
+        void StartService();
+        void StopService();
+        void AddToQueue(StreamNotificationItem value);
+        void StreamListCleanup();
     }
-    public class StreamNotificationService : IStreamNotificationService
+    public class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
     {
+        public StreamNotificationService(LiveBotDbContext databaseContext) :base (databaseContext){}
+        
+
         public static List<LiveStreamer> LiveStreamerList { get; set; } = new();
         public static int StreamCheckDelay { get; } = 5;
 
-        private static readonly ConcurrentQueue<StreamNotificationItem> Notifications = new();
-        // Use a CancellationTokenSource and CancellationToken to be able to stop the thread
-        private static readonly CancellationTokenSource Cts = new();
-        private static readonly CancellationToken Token = Cts.Token;
-        
-        private static readonly Thread NotificationThread = new(async () =>
+        private protected override async Task ProcessQueueAsync()
         {
-            while (!Token.IsCancellationRequested)
+            foreach (StreamNotificationItem streamNotificationItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                try
-                {
-                    if (Notifications.IsEmpty)
-                    {
-                        Thread.Sleep(1000);
-                        continue;
-                    }
+                DiscordMember streamMember = await streamNotificationItem.Guild.GetMemberAsync(streamNotificationItem.EventArgs.User.Id);
+                if (streamNotificationItem.EventArgs.User == null || streamNotificationItem.EventArgs.User.Presence?.Activities == null) continue;;
+                DiscordActivity activity = streamNotificationItem.EventArgs.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
+                if (activity?.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) continue;
+                string gameTitle = activity.RichPresence.State;
+                string streamTitle = activity.RichPresence.Details;
+                string streamUrl = activity.StreamUrl;
 
-                    if (Notifications.TryDequeue(out StreamNotificationItem item))
-                    {
-                        await StreamNotificationAsync(item.StreamNotification, item.EventArgs, item.Guild, item.Channel, item.Streamer);
-                    }
-                }
-                catch (Exception ex)
+                var roleIds = new HashSet<ulong>(streamNotificationItem.StreamNotification.RoleIds ?? Array.Empty<ulong>());
+                var games = new HashSet<string>(streamNotificationItem.StreamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+
+                bool role = roleIds.Count == 0 || streamMember.Roles.Any(r => roleIds.Contains(r.Id));
+                bool game = games.Count == 0 || games.Contains(gameTitle);
+
+                if (!game || !role) continue;
+                string description = $"**Streamer:**\n {streamNotificationItem.EventArgs.User.Mention}\n\n" +
+                                     $"**Game:**\n{gameTitle}\n\n" +
+                                     $"**Stream title:**\n{streamTitle}\n\n" +
+                                     $"**Stream Link:**\n{streamUrl}";
+                DiscordEmbedBuilder embed = new()
                 {
-                    Program.Client.Logger.LogError(CustomLogEvents.LiveBot, "Stream Notification Service experienced an error\n{exceptionMessage}", ex.Message);
-                }
+                    Color = new DiscordColor(0x6441A5),
+                    Author = new DiscordEmbedBuilder.EmbedAuthor
+                    {
+                        IconUrl = streamNotificationItem.EventArgs.User.AvatarUrl,
+                        Name = "STREAM",
+                        Url = streamUrl
+                    },
+                    Description = description,
+                    Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
+                    {
+                        Url = streamNotificationItem.EventArgs.User.AvatarUrl
+                    },
+                    Title = $"Check out {streamNotificationItem.EventArgs.User.Username} is now Streaming!"
+                };
+                await streamNotificationItem.Channel.SendMessageAsync(embed: embed);
+                //adds user to list
+                LiveStreamerList.Add(streamNotificationItem.Streamer);
             }
-        });
-        
-        private Timer StreamDelayTimer { get; } = new(e => StreamListCheck());
-
-        public void StartService(DiscordClient client)
-        {
-            client.Logger.LogInformation(CustomLogEvents.LiveBot,"Stream notification service starting.");
-            NotificationThread.Start();
-            StreamDelayTimer.Change(TimeSpan.Zero, TimeSpan.FromMinutes(2));
-            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Stream notification service started.");
-        }
-        public void StopService(DiscordClient client)
-        {
-            // Request cancellation of the thread
-            Cts.Cancel();
-
-            // Wait for the thread to finish
-            NotificationThread.Join();
-
-            client.Logger.LogInformation(CustomLogEvents.LiveBot, "Leaderboard service stopped.");
         }
 
-        public void QueueStream(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer)
-        {
-            Notifications.Enqueue(new(streamNotification,e,guild,channel,streamer));
-        }
-        private static async Task StreamNotificationAsync(StreamNotifications streamNotification, PresenceUpdateEventArgs e, DiscordGuild guild, DiscordChannel channel, LiveStreamer streamer)
-        {
-            DiscordMember streamMember = await guild.GetMemberAsync(e.User.Id);
-            if (e.User==null || e.User.Presence ==null || e.User.Presence.Activities == null) return;
-            DiscordActivity activity = e.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
-            if (activity == null || activity.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) return;
-            string gameTitle = activity.RichPresence.State;
-            string streamTitle = activity.RichPresence.Details;
-            string streamUrl = activity.StreamUrl;
-
-            var roleIds = new HashSet<ulong>(streamNotification.Roles_ID ?? Array.Empty<ulong>());
-            var games = new HashSet<string>(streamNotification.Games ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
-
-            bool role = roleIds.Count == 0 || streamMember.Roles.Any(r => roleIds.Contains(r.Id));
-            bool game = games.Count == 0 || games.Contains(gameTitle);
-
-            if (!game || !role) return;
-            string description = $"**Streamer:**\n {e.User.Mention}\n\n" +
-                 $"**Game:**\n{gameTitle}\n\n" +
-                 $"**Stream title:**\n{streamTitle}\n\n" +
-                 $"**Stream Link:**\n{streamUrl}";
-            DiscordEmbedBuilder embed = new()
-            {
-                Color = new DiscordColor(0x6441A5),
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    IconUrl = e.User.AvatarUrl,
-                    Name = "STREAM",
-                    Url = streamUrl
-                },
-                Description = description,
-                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
-                {
-                    Url = e.User.AvatarUrl
-                },
-                Title = $"Check out {e.User.Username} is now Streaming!"
-            };
-            await channel.SendMessageAsync(embed: embed);
-            //adds user to list
-            LiveStreamerList.Add(streamer);
-        }
-
-        private static void StreamListCheck()
+        public void StreamListCleanup()
         {
             try
             {
                 foreach (LiveStreamer item in LiveStreamerList.Where(item => item.Time.AddHours(StreamCheckDelay) < DateTime.UtcNow && item.User.Presence.Activity.ActivityType != ActivityType.Streaming))
                 {
-                    Program.Client.Logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
+                    //_logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
                     LiveStreamerList.Remove(item);
                 }
             }
             catch (Exception)
             {
-                Program.Client.Logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
+                //_logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
             }
         }
     }
 
 
-    internal class StreamNotificationItem
+    public class StreamNotificationItem
     {
         public StreamNotifications StreamNotification { get; set; }
         public PresenceUpdateEventArgs EventArgs { get; set; }

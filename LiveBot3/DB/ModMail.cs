@@ -1,47 +1,37 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace LiveBot.DB;
 
-namespace LiveBot.DB
+public class ModMail
 {
-    [Table("Mod_Mail", Schema = "livebot")]
-    internal class ModMail
+    public ModMail(ulong guildId, ulong userDiscordId, DateTime lastMessageTime, string colorHex, bool isActive =true)
     {
-        [Key]
-        [Column("id_modmail")]
-        public long ID { get; set; }
-
-        [Required]
-        [Column("server_id")]
-        public ulong Server_ID
-        { get => _Server_ID; set { _Server_ID = Convert.ToUInt64(value); } }
-
-        private ulong _Server_ID;
-
-        [Required]
-        [Column("user_id")]
-        public ulong User_ID
-        { get => _User_ID; set { _User_ID = Convert.ToUInt64(value); } }
-
-        private ulong _User_ID;
-
-        [Required]
-        [Column("last_message_time")]
-        public DateTime LastMSGTime { get; set; }
-
-        [Required]
-        [Column("has_chatted")]
-        public bool HasChatted { get; set; }
-
-        [Required]
-        [Column("is_active")]
-        public bool IsActive { get; set; }
-
-        [Required]
-        [Column("color_hex")]
-        public string ColorHex { get; set; }
-
-        [Required]
-        [Column("server_ranks_id")]
-        public int Server_Ranks_ID { get; set; }
+        GuildId = guildId;
+        UserDiscordId = userDiscordId;
+        LastMessageTime = lastMessageTime;
+        ColorHex = colorHex;
+        IsActive = isActive;
     }
+
+    private ulong _guildId;
+    private ulong _userDiscordId;
+
+    public long Id { get; set; }
+
+    public ulong GuildId
+    {
+        get => _guildId;
+        set => _guildId = Convert.ToUInt64(value);
+    }
+
+    public ulong UserDiscordId
+    {
+        get => _userDiscordId;
+        set => _userDiscordId = Convert.ToUInt64(value);
+    }
+
+    public DateTime LastMessageTime { get; set; }
+    public bool HasChatted { get; set; }
+    public bool IsActive { get; set; }
+    public string ColorHex { get; set; }
+
+    public GuildUser GuildUser { get; set; }
 }

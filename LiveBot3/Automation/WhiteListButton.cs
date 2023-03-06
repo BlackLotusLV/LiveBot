@@ -1,56 +1,53 @@
 ﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 public class WhiteListButton
 {
-    public static async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
+    private readonly LiveBotDbContext _dbContext;
+    public WhiteListButton(LiveBotDbContext dbContext)
     {
-        if (e.Interaction.Data.CustomId != "Activate") return;
+        _dbContext = dbContext;
+    }
+    public async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
+    {
+        if (e.Guild == null ||e.Interaction.Type != InteractionType.Component || e.Interaction.Data.CustomId != "Activate") return;
         DiscordInteractionResponseBuilder responseBuilder = new()
         {
             IsEphemeral = true
         };
-        if (DBLists.WhiteList.Any(x=>x.DiscordId==e.User.Id))
+        var settingsList = await _dbContext.WhiteListSettings.Where(x => x.GuildId == e.Guild.Id).ToListAsync();
+        if (settingsList.Count==0)
         {
-            responseBuilder.WithContent("You are already verified.");
+            responseBuilder.WithContent("Whitelist feature not set up properly. Contact a moderator.");
             await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
             return;
         }
-        
         var member = (DiscordMember)e.User;
-        
-        Whitelist entry = DBLists.WhiteList.FirstOrDefault(x => x.Username == member.Username || x.Username == member.Nickname);
-        
-        if (entry == null)
+        var entries = await _dbContext.WhiteLists.Where(x => x.UbisoftName == member.Username || x.UbisoftName == member.Nickname).ToListAsync();
+        WhiteList entry = entries.FirstOrDefault(whiteList => settingsList.Any(wls => wls.Id == whiteList.WhiteListSettingsId));
+
+        if (entry==null)
         {
-            client.Logger.LogDebug("User not found in the whitelist");
             responseBuilder.WithContent("Your username/Nickname has not been found in the database, please make sure you have set it exactly as on Ubisoft Connect!");
             await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
             return;
         }
-        
-        if (entry.DiscordId != null)
+
+        if (entry.DiscordId !=null)
         {
-            client.Logger.LogDebug("username already linked");
-            responseBuilder.WithContent("This username has already been linked, please make sure you have set your username/nickname as your Ubisoft Connect name");
+            responseBuilder.WithContent("You have already been verified once, if you think this is a mistake please contact a moderator");
             await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
             return;
         }
 
-        var whiteListRole = DBLists.ServerWelcomeSettings.First(x => x.Server_ID == e.Guild.Id).WhiteListRole;
-        if (whiteListRole == null)
-        {
-            client.Logger.LogDebug("No role specified to be assigned, exiting.");
-            return;
-        }
-
-        DiscordRole role = e.Guild.GetRole((ulong)whiteListRole);
-
-            await member.GrantRoleAsync(role);
-
+        DiscordRole role = e.Guild.GetRole(entry.Settings.RoleId);
+        await member.GrantRoleAsync(role);
         entry.DiscordId = member.Id;
-        DBLists.UpdateWhteList(entry);
+        _dbContext.WhiteLists.Update(entry);
+        await _dbContext.SaveChangesAsync();
+        
         responseBuilder.WithContent("You have verified successfully!");
         await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);
     }

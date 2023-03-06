@@ -1,8 +1,9 @@
-﻿using DSharpPlus.Entities;
-using DSharpPlus.SlashCommands;
+﻿using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.SlashCommands
 {
@@ -11,38 +12,38 @@ namespace LiveBot.SlashCommands
     [SlashRequireGuild]
     internal class SlashModeratorCommands : ApplicationCommandModule
     {
-        private readonly IWarningService _warningService;
-
-        public SlashModeratorCommands(IWarningService warningService)
-        {
-            _warningService = warningService;
-        }
+        public IWarningService WarningService { private get; set; }
+        public LiveBotDbContext DatabaseContext { private get; set; }
+        public IModMailService ModMailService { private get; set; }
+        
         [SlashCommand("warn", "Warn a user.")]
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
             [Option("reason", "Why the user is being warned")] string reason)
         {
             await ctx.DeferAsync(true);
-            _warningService.QueueWarning(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx);
+            WarningService.AddToQueue(new WarningItem(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx));
         }
 
-        [SlashCommand("unwarn", "Removes a warning from the user")]
+        [SlashCommand("remove-warning", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
-            [Autocomplete(typeof(UnwarnOptions))]
+            [Autocomplete(typeof(RemoveWarningOptions))]
             [Option("Warning_ID", "The ID of a specific warning. Leave as is if don't want a specific one", true)] long warningId = -1)
         {
             await ctx.DeferAsync(true);
-            await _warningService.RemoveWarningAsync(user, ctx, (int)warningId);
+            await WarningService.RemoveWarningAsync(user, ctx, (int)warningId);
         }
-        private sealed class UnwarnOptions : IAutocompleteProvider
+        private sealed class RemoveWarningOptions : IAutocompleteProvider
         {
             public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
             {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
-                foreach (Warnings item in DB.DBLists.Warnings.Where(w=>w.Server_ID == ctx.Guild.Id && w.User_ID == (ulong)ctx.Options.First(x=>x.Name=="user").Value && w.Type=="warning" && w.Active))
+                var userId = (ulong)ctx.Options.First(x => x.Name == "user").Value;
+                foreach (Infraction item in databaseContext.Infractions.Where(w=>w.GuildId == ctx.Guild.Id && w.UserId == userId && w.Type=="warning" && w.IsActive))
                 {
-                    result.Add(new DiscordAutoCompleteChoice($"#{item.ID_Warning} - {item.Reason}",(long)item.ID_Warning));
+                    result.Add(new DiscordAutoCompleteChoice($"#{item.Id} - {item.Reason}",item.Id));
                 }
                 return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
             }
@@ -50,14 +51,14 @@ namespace LiveBot.SlashCommands
 
         [SlashCommand("Prune", "Prune the message in the channel")]
         public async Task Prune(InteractionContext ctx,
-            [Option("Message_Count", "The amount of messages to delete (1-100)")] long MessageCount)
+            [Option("Message_Count", "The amount of messages to delete (1-100)")] long messageCount)
         {
             await ctx.DeferAsync(true);
-            if (MessageCount > 100)
+            if (messageCount > 100)
             {
-                MessageCount = 100;
+                messageCount = 100;
             }
-            IReadOnlyList<DiscordMessage> messageList = await ctx.Channel.GetMessagesAsync((int)MessageCount);
+            var messageList = await ctx.Channel.GetMessagesAsync((int)messageCount);
             await ctx.Channel.DeleteMessagesAsync(messageList);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
         }
@@ -66,52 +67,46 @@ namespace LiveBot.SlashCommands
         public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note", "Contents of the note.")] string note)
         {
             await ctx.DeferAsync(true);
-            DB.Warnings newEntry = new()
+            await DatabaseContext.AddInfractionsAsync(DatabaseContext, new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, "note"));
+            
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
+            
+            Guild guild = await DatabaseContext.Guilds.FindAsync(ctx.Guild.Id);
+            if (guild != null)
             {
-                Server_ID = ctx.Guild.Id,
-                Active = false,
-                Admin_ID = ctx.User.Id,
-                Type = "note",
-                User_ID = user.Id,
-                Time_Created = DateTime.UtcNow,
-                Reason = note
-            };
-            DB.DBLists.InsertWarnings(newEntry);
-            DB.ServerSettings serverSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (serverSettings?.WKB_Log != 0)
-            {
-                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(serverSettings.WKB_Log));
+                DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
                 await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
             }
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
         }
 
         [SlashCommand("Infractions", "Shows the infractions of the user")]
         public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
         {
             await ctx.DeferAsync();
+            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, user, true);
             await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, user, true)));
+                new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
         [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions", false)]
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(CustomMethod.GetUserWarnings(ctx.Guild, ctx.TargetMember, true)));
+            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, ctx.TargetMember, true);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
         [SlashCommand("FAQ", "Creates a new FAQ message")]
-        public async Task FAQ(InteractionContext ctx)
+        public async Task Faq(InteractionContext ctx)
         {
-            string customID = $"FAQ-{ctx.User.Id}";
-            var modal = new DiscordInteractionResponseBuilder().WithTitle("New FAQ entry").WithCustomId(customID)
+            var customId = $"FAQ-{ctx.User.Id}";
+            DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder().WithTitle("New FAQ entry").WithCustomId(customId)
                 .AddComponents(new TextInputComponent("Question", "Question", null, null, true, TextInputStyle.Paragraph))
                 .AddComponents(new TextInputComponent("Answer", "Answer", "Answer to the question", null, true, TextInputStyle.Paragraph));
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
-            var interactivity = ctx.Client.GetInteractivity();
-            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customId, ctx.User);
             if (!response.TimedOut)
             {
                 await new DiscordMessageBuilder()
@@ -122,22 +117,22 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashCommand("FAQ-Edit", "Edits an existing FAQ message, using the message ID")]
-        public async Task FAQEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageID)
+        public async Task FaqEdit(InteractionContext ctx, [Option("Message_ID", "The message ID to edit")] string messageId)
         {
-            DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageID));
+            DiscordMessage message = await ctx.Channel.GetMessageAsync(Convert.ToUInt64(messageId));
             string ogMessage = message.Content.Replace("*", string.Empty);
-            string question = ogMessage.Substring(ogMessage.IndexOf(":") + 1, ogMessage.Length - (ogMessage[ogMessage.IndexOf("\n")..].Length + 2)).TrimStart();
-            string answer = ogMessage[(ogMessage.IndexOf("\n") + 4)..].TrimStart();
+            string question = ogMessage.Substring(ogMessage.IndexOf(":", StringComparison.Ordinal) + 1, ogMessage.Length - (ogMessage[ogMessage.IndexOf("\n", StringComparison.Ordinal)..].Length + 2)).TrimStart();
+            string answer = ogMessage[(ogMessage.IndexOf("\n", StringComparison.Ordinal) + 4)..].TrimStart();
 
-            string customID = $"FAQ-Editor-{ctx.User.Id}";
-            var modal = new DiscordInteractionResponseBuilder().WithTitle("FAQ Editor").WithCustomId(customID)
+            var customId = $"FAQ-Editor-{ctx.User.Id}";
+            DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder().WithTitle("FAQ Editor").WithCustomId(customId)
                 .AddComponents(new TextInputComponent("Question", "Question", null, question, true, TextInputStyle.Paragraph))
                 .AddComponents(new TextInputComponent("Answer", "Answer", null, answer, true, TextInputStyle.Paragraph));
 
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
 
-            var interactivity = ctx.Client.GetInteractivity();
-            var response = await interactivity.WaitForModalAsync(customID, ctx.User);
+            InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+            var response = await interactivity.WaitForModalAsync(customId, ctx.User);
             if (!response.TimedOut)
             {
                 await message.ModifyAsync($"**Q: {response.Result.Values["Question"]}**\n *A: {response.Result.Values["Answer"].TrimEnd()}*");
@@ -190,18 +185,18 @@ namespace LiveBot.SlashCommands
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
             if (member.IsPending != null)
             {
-                bool ispending = member.IsPending ?? false;
-                embedBuilder.AddField("Accepted rules?", ispending ? "No" : "Yes");
+                bool isPending = member.IsPending.Value;
+                embedBuilder.AddField("Accepted rules?", isPending ? "No" : "Yes");
             }
             return embedBuilder.Build();
         }
 
         [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]
-        public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
+        public async Task Message(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
         {
             await ctx.DeferAsync(true);
-            DB.ServerSettings guildSettings = DB.DBLists.ServerSettings.FirstOrDefault(w => w.ID_Server == ctx.Guild.Id);
-            if (guildSettings?.ModMailID == 0)
+            Guild guildSettings = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
+            if (guildSettings?.ModMailChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
                 return;
@@ -217,14 +212,14 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The user is not in the server, can't message."));
                 return;
             }
-            string DMMessage = $"You are receiving a Moderator DM from **{ctx.Guild.Name}** Discord\n{ctx.User.Username} - {message}";
+            var dmMessage = $"You are receiving a Moderator DM from **{ctx.Guild.Name}** Discord\n{ctx.User.Username} - {message}";
             DiscordMessageBuilder messageBuilder = new();
-            messageBuilder.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"openmodmail{ctx.Guild.Id}", "Open Mod Mail"));
-            messageBuilder.WithContent(DMMessage);
+            messageBuilder.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"{ModMailService.OpenButtonPrefix}{ctx.Guild.Id}", "Open Mod Mail"));
+            messageBuilder.WithContent(dmMessage);
 
             await member.SendMessageAsync(messageBuilder);
 
-            DiscordChannel MMChannel = ctx.Guild.GetChannel(guildSettings.ModMailID);
+            DiscordChannel modMailChannel = ctx.Guild.GetChannel(guildSettings.ModMailChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
                 Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -233,10 +228,10 @@ namespace LiveBot.SlashCommands
                     Name = member.Username
                 },
                 Title = $"[MOD DM] Moderator DM to {member.Username}",
-                Description = DMMessage
+                Description = dmMessage
             };
-            await MMChannel.SendMessageAsync(embed: embed);
-            Program.Client.Logger.LogInformation(CustomLogEvents.ModMail, "A Dirrect message was sent to {Username}({UserId}) from {User2Name}({User2Id}) through Mod Mail system.", member.Username, member.Id, ctx.Member.Username, ctx.Member.Id);
+            await modMailChannel.SendMessageAsync(embed: embed);
+            ctx.Client.Logger.LogInformation(CustomLogEvents.ModMail, "A Direct message was sent to {Username}({UserId}) from {User2Name}({User2Id}) through Mod Mail system.", member.Username, member.Id, ctx.Member.Username, ctx.Member.Id);
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message delivered to user. Check Mod Mail channel for logs."));
         }
@@ -250,18 +245,18 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
-            string customId = $"AddButton-{ctx.TargetMessage.Id}-{ctx.User.Id}";
+            var customId = $"AddButton-{ctx.TargetMessage.Id}-{ctx.User.Id}";
             DiscordInteractionResponseBuilder response = new()
             {
                 Title = "Button Parameters",
                 CustomId = customId
             };
-            response.AddComponents(new TextInputComponent("Custom ID", "customid"));
+            response.AddComponents(new TextInputComponent("Custom ID", "customId"));
             response.AddComponents(new TextInputComponent("Label", "label"));
             response.AddComponents(new TextInputComponent("Emoji", "emoji", required: false));
 
             await ctx.CreateResponseAsync(InteractionResponseType.Modal, response);
-            var interactivity = ctx.Client.GetInteractivity();
+            InteractivityExtension interactivity = ctx.Client.GetInteractivity();
             var modalResponse = await interactivity.WaitForModalAsync(customId, ctx.User);
 
             if (modalResponse.TimedOut) return;
@@ -273,21 +268,14 @@ namespace LiveBot.SlashCommands
             DiscordComponentEmoji emoji = null;
             if (modalResponse.Result.Values["emoji"] != string.Empty)
             {
-                if (UInt64.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId))
-                {
-                    emoji = new DiscordComponentEmoji(emojiId);
-                }
-                else
-                {
-                    emoji = new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
-                }
+                emoji = UInt64.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId) ? new DiscordComponentEmoji(emojiId) : new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
             }
 
             if (ctx.TargetMessage.Components.Count == 0)
             {
-                modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
+                modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customId"], modalResponse.Result.Values["label"], emoji: emoji));
             }
-            foreach (var row in ctx.TargetMessage.Components)
+            foreach (DiscordActionRowComponent row in ctx.TargetMessage.Components)
             {
                 if (row.Components.Count == 5)
                 {
@@ -295,15 +283,13 @@ namespace LiveBot.SlashCommands
                 }
                 else
                 {
-                    List<DiscordComponent> buttons = row.Components.ToList();
-                    buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], false, emoji: emoji));
+                    var buttons = row.Components.ToList();
+                    buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customId"], modalResponse.Result.Values["label"], emoji: emoji));
                     modified.AddComponents(buttons);
                 }
             }
-
-
             await ctx.TargetMessage.ModifyAsync(modified);
-            await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customid"]}").AsEphemeral());
+            await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customId"]}").AsEphemeral());
         }
     }
 }
