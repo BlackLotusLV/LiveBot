@@ -162,6 +162,7 @@ internal sealed class Program
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>();
+            slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>();
         }
         else
         {
