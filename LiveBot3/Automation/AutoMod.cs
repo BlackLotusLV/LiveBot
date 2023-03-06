@@ -150,10 +150,9 @@ namespace LiveBot.Automation
 
         public async Task User_Join_Log(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
-            
+            Guild guildSettings = await _databaseContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseContext.AddGuildAsync(_databaseContext, new Guild(e.Guild.Id));
+            if (guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
-            if (guildSettings == null || guildSettings.UserTrafficChannelId == null) return;
             DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
             DiscordEmbedBuilder embed = new()
             {
@@ -274,9 +273,9 @@ namespace LiveBot.Automation
         public async Task Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
-            Guild guild = _databaseContext.Guilds.FirstOrDefault(w => w.Id == e.Guild.Id);
+            Guild guild = _databaseContext.Guilds.Include(g=>g.SpamIgnoreChannels).FirstOrDefault(w => w.Id == e.Guild.Id);
 
-            if (guild == null || guild.ModerationLogChannelId == null || guild.SpamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
+            if (guild?.ModerationLogChannelId == null || guild.SpamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;

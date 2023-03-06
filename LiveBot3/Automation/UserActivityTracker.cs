@@ -38,15 +38,15 @@ namespace LiveBot.Automation
             long userPoints = await _dbContext.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id)
                 .SumAsync(w => w.Points);
-            var rankRole = _dbContext.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id).ToList();
-            var rankRoleUnder = _dbContext.RankRoles.AsParallel().Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
+            var rankRole = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToListAsync();
+            var rankRoleUnder = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToListAsync();
 
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (rankRoleUnder.Count != 0  && member.Roles.Any(w=>w.Id == rankRoleUnder[0].RoleId))
             {
                 if (member.Roles.Any(w=>rankRole.Any(x=>x.RoleId==w.Id)))
                 {
-                    await member.RevokeRoleAsync(member.Roles.FirstOrDefault(w => rankRole.Any(x => x.RoleId == w.Id && w.Id != rankRoleUnder[0].RoleId)));
+                    await member.RevokeRoleAsync(member.Roles.First(w => rankRole.Any(x => x.RoleId == w.Id && w.Id != rankRoleUnder[0].RoleId)));
                 }
                 await member.GrantRoleAsync(e.Guild.Roles.Values.FirstOrDefault(w => w.Id == rankRoleUnder[0].RoleId));
                 return;

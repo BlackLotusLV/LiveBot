@@ -2,12 +2,13 @@
 
 public class ModMail
 {
-    public ModMail(ulong guildId, ulong userDiscordId, DateTime lastMessageTime, string colorHex)
+    public ModMail(ulong guildId, ulong userDiscordId, DateTime lastMessageTime, string colorHex, bool isActive =true)
     {
         GuildId = guildId;
         UserDiscordId = userDiscordId;
         LastMessageTime = lastMessageTime;
         ColorHex = colorHex;
+        IsActive = isActive;
     }
 
     private ulong _guildId;

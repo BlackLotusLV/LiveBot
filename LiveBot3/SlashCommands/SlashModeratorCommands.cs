@@ -185,14 +185,14 @@ namespace LiveBot.SlashCommands
                 .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
             if (member.IsPending != null)
             {
-                bool ispending = member.IsPending.Value;
-                embedBuilder.AddField("Accepted rules?", ispending ? "No" : "Yes");
+                bool isPending = member.IsPending.Value;
+                embedBuilder.AddField("Accepted rules?", isPending ? "No" : "Yes");
             }
             return embedBuilder.Build();
         }
 
         [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]
-        public async Task Measseg(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
+        public async Task Message(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
         {
             await ctx.DeferAsync(true);
             Guild guildSettings = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
@@ -251,7 +251,7 @@ namespace LiveBot.SlashCommands
                 Title = "Button Parameters",
                 CustomId = customId
             };
-            response.AddComponents(new TextInputComponent("Custom ID", "customid"));
+            response.AddComponents(new TextInputComponent("Custom ID", "customId"));
             response.AddComponents(new TextInputComponent("Label", "label"));
             response.AddComponents(new TextInputComponent("Emoji", "emoji", required: false));
 
@@ -273,7 +273,7 @@ namespace LiveBot.SlashCommands
 
             if (ctx.TargetMessage.Components.Count == 0)
             {
-                modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], emoji: emoji));
+                modified.AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customId"], modalResponse.Result.Values["label"], emoji: emoji));
             }
             foreach (DiscordActionRowComponent row in ctx.TargetMessage.Components)
             {
@@ -284,14 +284,12 @@ namespace LiveBot.SlashCommands
                 else
                 {
                     var buttons = row.Components.ToList();
-                    buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customid"], modalResponse.Result.Values["label"], emoji: emoji));
+                    buttons.Add(new DiscordButtonComponent(ButtonStyle.Primary, modalResponse.Result.Values["customId"], modalResponse.Result.Values["label"], emoji: emoji));
                     modified.AddComponents(buttons);
                 }
             }
-
-
             await ctx.TargetMessage.ModifyAsync(modified);
-            await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customid"]}").AsEphemeral());
+            await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customId"]}").AsEphemeral());
         }
     }
 }

@@ -24,14 +24,14 @@ internal sealed class Program
 
     private async Task RunBotAsync(IEnumerable<string> args)
     {
-        var botCredentialsLink = "ConfigFiles/DevBot.Json";
+        var botCredentialsLink = "ConfigFiles/DevBot.json";
         var logLevel = LogLevel.Debug;
         var testBuild = true;
         var databaseConnectionString = "ConfigFiles/DevDatabase.json";
         
         if (args.Any(x=>x.Contains("live")))
         {
-            botCredentialsLink = "ConfigFiles/ProdBot.Json";
+            botCredentialsLink = "ConfigFiles/ProdBot.json";
             logLevel = LogLevel.Information;
             testBuild = false;
             databaseConnectionString = "ConfigFiles/Database.json";
@@ -57,7 +57,7 @@ internal sealed class Program
         ServiceProvider serviceProvider = new ServiceCollection()
             .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
             .AddHttpClient()
-            .AddTransient<ITheCrewHubService,TheCrewHubService>()
+            .AddSingleton<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
             .AddSingleton<IStreamNotificationService,StreamNotificationService>()
             .AddSingleton<ILeaderboardService,LeaderboardService>()

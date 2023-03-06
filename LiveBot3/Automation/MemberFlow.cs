@@ -32,7 +32,7 @@ namespace LiveBot.Automation
 
         public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            Guild guild = _databaseContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
+            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
             bool pendingCheck = guild != null && !(guild.HasScreening && e.Member.IsPending == true);
             if (guild != null && guild.WelcomeChannelId != null && pendingCheck)
             {

@@ -16,7 +16,7 @@ namespace LiveBot.Automation
             if (e.PendingBefore == null) return;
             if (e.PendingBefore.Value && e.PendingAfter.Value)
             {
-                Guild guild = await _dbContext.Guilds.FirstOrDefaultAsync(w => w.Id == e.Guild.Id);
+                Guild guild = await _dbContext.Guilds.FindAsync(e.Guild.Id);
                 if (guild == null) return;
 
                 if (guild.WelcomeChannelId == null || !guild.HasScreening) return;

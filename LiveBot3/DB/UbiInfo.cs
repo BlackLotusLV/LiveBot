@@ -17,7 +17,7 @@ public class UbiInfo
     }
 
     private readonly ulong _userDiscordId;
-    public Guid ProfileId { get; set; }
+    public string ProfileId { get; set; }
     public string Platform { get; set; }
 
     public User User { get; set; }

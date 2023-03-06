@@ -30,44 +30,43 @@ public class ModMailService : IModMailService
     public async Task ProcessModMailDm(DiscordClient client, MessageCreateEventArgs e)
     {
         ModMail mmEntry = await _dbContext.ModMail.FirstOrDefaultAsync(w => w.UserDiscordId == e.Author.Id && w.IsActive);
-        if (e.Guild == null && mmEntry != null)
+        if (e.Guild != null || mmEntry == null) return;
+        DiscordGuild guild = client.Guilds.First(w => w.Value.Id == mmEntry.GuildId).Value;
+        DiscordEmbedBuilder embed = new()
         {
-            DiscordGuild guild = client.Guilds.First(w => w.Value.Id == mmEntry.GuildId).Value;
-            DiscordEmbedBuilder embed = new()
+            Author = new DiscordEmbedBuilder.EmbedAuthor
             {
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    IconUrl = e.Author.AvatarUrl,
-                    Name = $"{e.Author.Username} ({e.Author.Id})"
-                },
-                Color = new DiscordColor(mmEntry.ColorHex),
-                Title = $"[INBOX] #{mmEntry.Id} Mod Mail user message.",
-                Description = e.Message.Content
-            };
+                IconUrl = e.Author.AvatarUrl,
+                Name = $"{e.Author.Username} ({e.Author.Id})"
+            },
+            Color = new DiscordColor(mmEntry.ColorHex),
+            Title = $"[INBOX] #{mmEntry.Id} Mod Mail user message.",
+            Description = e.Message.Content
+        };
 
-            if (e.Message.Attachments != null)
+        if (e.Message.Attachments != null)
+        {
+            foreach (DiscordAttachment attachment in e.Message.Attachments)
             {
-                foreach (DiscordAttachment attachment in e.Message.Attachments)
-                {
-                    embed.AddField("Attachment", attachment.Url);
-                }
+                embed.AddField("Attachment", attachment.Url);
             }
+        }
 
-            mmEntry.HasChatted = true;
-            mmEntry.LastMessageTime = DateTime.UtcNow;
+        mmEntry.HasChatted = true;
+        mmEntry.LastMessageTime = DateTime.UtcNow;
 
-            _dbContext.ModMail.Update(mmEntry);
-            await _dbContext.SaveChangesAsync();
+        _dbContext.ModMail.Update(mmEntry);
+        await _dbContext.SaveChangesAsync();
 
 
-            ulong? modMailChannelId = _dbContext.Guilds.First(w => w.Id == mmEntry.GuildId).ModMailChannelId;
-            if (modMailChannelId != null)
-            {
-                DiscordChannel modMailChannel = guild.GetChannel(modMailChannelId.Value);
-                await modMailChannel.SendMessageAsync(embed: embed);
+        ulong? modMailChannelId = _dbContext.Guilds.First(w => w.Id == mmEntry.GuildId).ModMailChannelId;
+        if (modMailChannelId != null)
+        {
+            DiscordChannel modMailChannel = guild.GetChannel(modMailChannelId.Value);
+            await modMailChannel.SendMessageAsync(embed: embed);
 
-                client.Logger.LogInformation(CustomLogEvents.ModMail, "New Mod Mail message sent to {ChannelName}({ChannelId}) in {GuildName} from {Username}({UserId})", modMailChannel.Name, modMailChannel.Id, modMailChannel.Guild.Name, e.Author.Username, e.Author.Id);
-            }
+            client.Logger.LogInformation(CustomLogEvents.ModMail, "New Mod Mail message sent to {ChannelName}({ChannelId}) in {GuildName} from {Username}({UserId})", modMailChannel.Name,
+                modMailChannel.Id, modMailChannel.Guild.Name, e.Author.Username, e.Author.Id);
         }
     }
 
@@ -111,14 +110,14 @@ public class ModMailService : IModMailService
     public async Task CloseButton(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
         if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains(CloseButtonPrefix)) return;
-        ModMail mmEntry = await _dbContext.ModMail.FindAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace(CloseButtonPrefix, "")));
+        ModMail mmEntry = await _dbContext.ModMail.FindAsync(Convert.ToInt64(e.Interaction.Data.CustomId.Replace(CloseButtonPrefix, "")));
         DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
         if (e.Message.Embeds.Count>0)
         {
             discordInteractionResponseBuilder.AddEmbeds(e.Message.Embeds);
         }
         await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, discordInteractionResponseBuilder.WithContent(e.Message.Content));
-        if (mmEntry == null) return;
+        if (mmEntry is not { IsActive: true }) return;
         await CloseModMailAsync(
             client,
             mmEntry,
@@ -129,10 +128,10 @@ public class ModMailService : IModMailService
 
     public async Task OpenButton(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
-        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains("openmodmail")) return;
+        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains(OpenButtonPrefix)) return;
             await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
-            DiscordGuild guild = await client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace("openmodmail","")));
+            DiscordGuild guild = await client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace(OpenButtonPrefix,"")));
             if (_dbContext.GuildUsers.First(w=>w.GuildId == guild.Id && w.UserDiscordId == e.User.Id).IsModMailBlocked)
             {
                 await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));

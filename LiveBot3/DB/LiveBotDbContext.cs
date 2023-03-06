@@ -27,6 +27,7 @@ public class LiveBotDbContext : DbContext
     public LiveBotDbContext(DbContextOptions<LiveBotDbContext> options) : base(options)
     {
     }
+    /*
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         using StreamReader sr  = new(File.OpenRead("ConfigFiles/DevDatabase.json"));
@@ -34,6 +35,7 @@ public class LiveBotDbContext : DbContext
         var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
         optionsBuilder.UseNpgsql($"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database}; Port={database.Port}");
     }
+    //*/
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +110,10 @@ public class LiveBotDbContext : DbContext
             .HasMany(gu => gu.ModMails)
             .WithOne(mm => mm.GuildUser)
             .HasForeignKey(mm => new { mm.UserDiscordId, mm.GuildId });
+        modelBuilder.Entity<GuildUser>()
+            .HasMany(gu => gu.UserActivity)
+            .WithOne(ua => ua.GuildUser)
+            .HasForeignKey(ua => new { ua.UserDiscordId, ua.GuildId });
 
         modelBuilder.Entity<WhiteListSettings>()
             .HasMany(wls => wls.WhitelistedUsers)

@@ -234,6 +234,7 @@ namespace LiveBot.SlashCommands
                 };
 
                 Image<Rgba32> BaseImage = new(1127, 765);
+                User user = await DatabaseService.Users.FindAsync(ctx.User.Id);
 
                 await Parallel.ForEachAsync(jSummit[0].Events, new ParallelOptions(), async (Event, token) =>
                 {
@@ -243,6 +244,7 @@ namespace LiveBot.SlashCommands
                         Event,
                         Events,
                         UbiInfo,
+                        user,
                         Event.ImageByte,
                         i == 7,
                         i == 8);
@@ -349,6 +351,9 @@ namespace LiveBot.SlashCommands
 
             using Image<Rgba32> BaseImage = new(1127, 735);
 
+            UbiInfo ubiInfo = new DB.UbiInfo(DatabaseService, 6969);
+            User user = await DatabaseService.Users.FindAsync(ctx.User.Id);
+
             await Parallel.ForEachAsync(JSummit[0].Events, new ParallelOptions(), async (Event, token) =>
             {
                 using HttpClient wc = new();
@@ -356,16 +361,17 @@ namespace LiveBot.SlashCommands
                        .FirstOrDefault(x => x.element.Equals(Event))?.index ?? -1;
                 SummitLeaderboard Activity = JsonConvert.DeserializeObject<SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/leaderboard/{search}/{Event.Id}?page_size=1", CancellationToken.None));
                 Rank Rank = null;
-                DB.UbiInfo ubiInfo = null;
                 if (Activity.Entries.Length != 0)
                 {
                     Rank = JsonConvert.DeserializeObject<Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{JSummit[0].Id}/score/{search}/profile/{Activity.Entries[0].ProfileId}", CancellationToken.None));
-                    ubiInfo = new DB.UbiInfo(DatabaseService,ctx.User.Id) { Platform = search, ProfileId = Guid.Parse(Activity.Entries[0].ProfileId) };
+                    ubiInfo.Platform = search;
+                    ubiInfo.ProfileId = Activity.Entries[0].ProfileId;
                 }
                 Image image = await TheCrewHubService.BuildEventImageAsync(
                         Event,
                         Rank,
                         ubiInfo,
+                        user,
                         Event.ImageByte,
                         i == 7,
                         i == 8);
@@ -592,7 +598,7 @@ namespace LiveBot.SlashCommands
             await ctx.DeferAsync(true);
             link = HubLinkRegex().Replace(link, string.Empty);
 
-            if (!Guid.TryParse(link, out Guid ubiGuid))
+            if (!Guid.TryParse(link, out _))
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder() { Content = "The link you provided does not contain your Ubisoft Guid. Please check the tutorial again of how to get the right link" });
                 return;
@@ -618,7 +624,7 @@ namespace LiveBot.SlashCommands
 
             DB.UbiInfo newEntry = new(DatabaseService,ctx.User.Id)
             {
-                ProfileId = ubiGuid,
+                ProfileId = link,
                 Platform = search
             };
 

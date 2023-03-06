@@ -4,6 +4,7 @@ using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualBasic.FileIO;
 
 namespace LiveBot.SlashCommands
 {
@@ -43,19 +44,13 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command requires to be executed in the server you wish to contact."));
                 return;
             }
-
-            Console.WriteLine(1);
             GuildUser userRanks = await DatabaseContext.GuildUsers.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id && w.UserDiscordId == ctx.User.Id);
-            Console.WriteLine(3);
             if (userRanks == null || userRanks.IsModMailBlocked)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
                 return;
             }
-
-            Console.WriteLine(2);
             Guild guild = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
-            Console.WriteLine(4);
 
             if (guild == null || guild.ModMailChannelId == null)
             {
@@ -74,10 +69,9 @@ namespace LiveBot.SlashCommands
             ModMail newEntry = new(ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
             await DatabaseContext.AddModMailAsync(DatabaseContext, newEntry);
 
-            string entryId = $"{ctx.User.Id}-{ctx.Guild.Id}";
-            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{ModMailService.CloseButtonPrefix}{entryId}", "Close", false, new DiscordComponentEmoji("✖️"));
+            DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{ModMailService.CloseButtonPrefix}{newEntry.Id}", "Close", false, new DiscordComponentEmoji("✖️"));
 
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{entryId} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Mod Mail #{newEntry.Id} opened, please head over to your Direct Messages with Live Bot to chat to the moderator team!"));
 
             await ctx.Member.SendMessageAsync(new DiscordMessageBuilder().AddComponents(closeButton).WithContent($"**----------------------------------------------------**\n" +
                             $"Mod mail entry **open** with `{ctx.Guild.Name}`. Continue to write as you would normally ;)\n*Mod Mail will time out in {ModMailService.TimeoutMinutes} minutes after last message is sent.*\n" +
@@ -90,7 +84,7 @@ namespace LiveBot.SlashCommands
                     Name = $"{ctx.User.Username} ({ctx.User.Id})",
                     IconUrl = ctx.User.AvatarUrl
                 },
-                Title = $"[NEW] #{entryId} Mod Mail created by {ctx.User.Username}.",
+                Title = $"[NEW] #{newEntry.Id} Mod Mail created by {ctx.User.Username}.",
                 Color = new DiscordColor(colorId),
                 Description = subject
             };
@@ -154,11 +148,12 @@ namespace LiveBot.SlashCommands
         {
             await ctx.DeferAsync();
             var activityList = await DatabaseContext.UserActivity
-                .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == ctx.Guild.Id)
-                .GroupBy(w => w.UserDiscordId, w => w.Points, (key, g) => new { UserID = key, Points = g.ToList() })
-                .OrderByDescending(w => w.Points.Sum())
+                .Where(x => x.Date > DateTime.UtcNow.AddDays(-30) && x.GuildId == ctx.Guild.Id)
+                .GroupBy(x => x.UserDiscordId)
+                .Select(g => new { UserID = g.Key, Points = g.Sum(x => x.Points) })
+                .OrderByDescending(x => x.Points)
                 .ToListAsync();
-            User userInfo = await DatabaseContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
+            User userInfo = await DatabaseContext.Users.FindAsync(ctx.User.Id);
             if (userInfo == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find your rank in the database"));
@@ -169,7 +164,7 @@ namespace LiveBot.SlashCommands
             {
                 rank++;
                 if (item.UserID != ctx.User.Id) continue;
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked **#{rank}** in {ctx.Guild.Name} server with **{item.Points.Sum()}** points. Your cookie stats are: {userInfo.CookiesTaken} Received /  {userInfo.CookiesGiven} Given"));
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You are ranked **#{rank}** in {ctx.Guild.Name} server with **{item.Points}** points. Your cookie stats are: {userInfo.CookiesTaken} Received /  {userInfo.CookiesGiven} Given"));
                 break;
             }
         }
@@ -187,7 +182,8 @@ namespace LiveBot.SlashCommands
                 new DiscordButtonComponent(ButtonStyle.Primary, "right", "",false,new DiscordComponentEmoji("▶️"))
             };
 
-            DiscordMessage message = await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(await GenerateLeaderboardAsync(ctx,(int)page)).AddComponents(buttons));
+            string board = await GenerateLeaderboardAsync(ctx, (int)page);
+            DiscordMessage message = await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(board).AddComponents(buttons));
 
             var end = false;
             do
@@ -204,7 +200,8 @@ namespace LiveBot.SlashCommands
                         if (page > 1)
                         {
                             page--;
-                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                            board = await GenerateLeaderboardAsync(ctx, (int)page);
+                            await message.ModifyAsync(board);
                         }
                         break;
 
@@ -212,7 +209,8 @@ namespace LiveBot.SlashCommands
                         page++;
                         try
                         {
-                            await message.ModifyAsync(await GenerateLeaderboardAsync(ctx, (int)page));
+                            board = await GenerateLeaderboardAsync(ctx, (int)page);
+                            await message.ModifyAsync(board);
                         }
                         catch (Exception)
                         {
