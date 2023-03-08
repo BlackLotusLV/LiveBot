@@ -109,10 +109,10 @@ internal sealed class Program
 
         slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
         slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
-        leaderboardService.StartService();
-        warningService.StartService();
-        streamNotificationService.StartService();
-        await theCrewHubService.StartServiceAsync();
+        leaderboardService.StartService(discordClient);
+        warningService.StartService(discordClient);
+        streamNotificationService.StartService(discordClient);
+        await theCrewHubService.StartServiceAsync(discordClient);
         Timer timer = new(state => streamNotificationService.StreamListCleanup());
         timer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
 

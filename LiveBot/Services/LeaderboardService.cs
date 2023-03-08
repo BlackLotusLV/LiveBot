@@ -4,7 +4,7 @@ namespace LiveBot.Services
 {
     public interface ILeaderboardService
     {
-        void StartService();
+        void StartService(DiscordClient client);
         void StopService();
         void AddToQueue(LeaderboardService.LeaderboardItem value);
     }
@@ -16,7 +16,15 @@ namespace LiveBot.Services
         {
             foreach (LeaderboardItem value in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(value.User.Id, value.Guild.Id));
+                try
+                {
+                    await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(value.User.Id, value.Guild.Id));
+                }
+                catch (Exception e)
+                {
+                    _client.Logger.LogError("{} failed to process item in queue ", this.GetType().Name);
+                    continue;
+                }
             }
         }
 

@@ -7,7 +7,7 @@ namespace LiveBot.Services
 {
     public interface IWarningService
     {
-        public void StartService();
+        public void StartService(DiscordClient client);
         public void StopService();
         public void AddToQueue(WarningItem value);
         public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
@@ -24,111 +24,120 @@ namespace LiveBot.Services
         {
             foreach (WarningItem warningItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                Guild guild = await _databaseContext.Guilds.FindAsync(warningItem.Guild.Id);
-
-                DiscordMember member = null;
                 try
                 {
-                    member = await warningItem.Guild.GetMemberAsync(warningItem.User.Id);
-                }
-                catch (Exception)
-                {
-                    if (warningItem.AutoMessage) return;
-                    await warningItem.Channel.SendMessageAsync($"{warningItem.User.Username} is no longer in the server.");
-                }
+                    Guild guild = await _databaseContext.Guilds.FindAsync(warningItem.Guild.Id);
 
-                var modInfo = "";
-                bool kick = false, ban = false;
-                if (guild == null || guild.ModerationLogChannelId == null)
-                {
+                    DiscordMember member = null;
+                    try
+                    {
+                        member = await warningItem.Guild.GetMemberAsync(warningItem.User.Id);
+                    }
+                    catch (Exception)
+                    {
+                        if (warningItem.AutoMessage) return;
+                        await warningItem.Channel.SendMessageAsync($"{warningItem.User.Username} is no longer in the server.");
+                    }
+
+                    var modInfo = "";
+                    bool kick = false, ban = false;
+                    if (guild?.ModerationLogChannelId == null)
+                    {
+                        if (warningItem.InteractionContext == null)
+                        {
+                            await warningItem.Channel.SendMessageAsync("This server has not set up this feature!");
+                        }
+                        else
+                        {
+                            await warningItem.InteractionContext.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature!"));
+                        }
+
+                        return;
+                    }
+
+                    DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
+
+                    Infraction newInfraction = new(warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
+                    await _databaseContext.AddInfractionsAsync(_databaseContext, newInfraction);
+
+                    int warningCount = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
+                    int infractionLevel = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
+
+                    DiscordEmbedBuilder embedToUser = new()
+                    {
+                        Author = new DiscordEmbedBuilder.EmbedAuthor()
+                        {
+                            Name = warningItem.Guild.Name,
+                            IconUrl = warningItem.Guild.IconUrl
+                        },
+                        Title = "You have been warned!"
+                    };
+                    embedToUser.AddField("Reason", warningItem.Reason);
+                    embedToUser.AddField("Infraction Level", $"{infractionLevel}", true);
+                    embedToUser.AddField("Warning by", $"{warningItem.Admin.Mention}", true);
+                    embedToUser.AddField("Server", warningItem.Guild.Name, true);
+
+                    var warningDescription =
+                        $"**Warned user:**\t{warningItem.User.Mention}\n**Infraction level:**\t {infractionLevel}\t**Infractions:**\t {warningCount}\n**Warned by**\t{warningItem.Admin.Username}\n**Reason:** {warningItem.Reason}";
+
+                    switch (infractionLevel)
+                    {
+                        case > 4:
+                            embedToUser.AddField("Banned", "Due to you exceeding the Infraction threshold, you have been banned");
+                            ban = true;
+                            break;
+                        case > 2:
+                            embedToUser.AddField("Kicked", "Due to you exceeding the Infraction threshold, you have been kicked");
+                            kick = true;
+                            break;
+                    }
+
+                    if (warningItem.AutoMessage)
+                    {
+                        embedToUser.WithFooter("This message was sent by Auto Moderator, contact staff if you think this is a mistake");
+                    }
+
+                    try
+                    {
+                        if (member != null) await member.SendMessageAsync(embed: embedToUser);
+                    }
+                    catch
+                    {
+                        modInfo = $":exclamation:{warningItem.User.Mention} could not be contacted via DM. Reason not sent";
+                    }
+
+                    if (kick && member != null)
+                    {
+                        await member.RemoveAsync("Exceeded warning limit!");
+                    }
+
+                    if (ban)
+                    {
+                        await warningItem.Guild.BanMemberAsync(warningItem.User.Id, 0, "Exceeded warning limit!");
+                    }
+
+                    await CustomMethod.SendModLogAsync(modLog, warningItem.User, warningDescription, CustomMethod.ModLogType.Warning, modInfo);
+
                     if (warningItem.InteractionContext == null)
                     {
-                        await warningItem.Channel.SendMessageAsync("This server has not set up this feature!");
+                        DiscordMessage info = await warningItem.Channel.SendMessageAsync($"{warningItem.User.Username}, Has been warned!");
+                        await Task.Delay(10000);
+                        await info.DeleteAsync();
                     }
                     else
                     {
-                        await warningItem.InteractionContext.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature!"));
+                        await warningItem.InteractionContext.EditResponseAsync(
+                            new DiscordWebhookBuilder().WithContent(
+                                $"{warningItem.Admin.Mention}, The user {warningItem.User.Mention}({warningItem.User.Id}) has been warned. Please check the log for additional info."));
+                        await Task.Delay(10000);
+                        await warningItem.InteractionContext.DeleteResponseAsync();
                     }
 
-                    return;
                 }
-
-                DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
-
-                Infraction newInfraction = new(warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, "warning");
-                await _databaseContext.AddInfractionsAsync(_databaseContext, newInfraction);
-
-                int warningCount = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning");
-                int infractionLevel = await _databaseContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.Type == "warning" && w.IsActive);
-
-                DiscordEmbedBuilder embedToUser = new()
+                catch (Exception e)
                 {
-                    Author = new DiscordEmbedBuilder.EmbedAuthor()
-                    {
-                        Name = warningItem.Guild.Name,
-                        IconUrl = warningItem.Guild.IconUrl
-                    },
-                    Title = "You have been warned!"
-                };
-                embedToUser.AddField("Reason", warningItem.Reason);
-                embedToUser.AddField("Infraction Level", $"{infractionLevel}", true);
-                embedToUser.AddField("Warning by", $"{warningItem.Admin.Mention}", true);
-                embedToUser.AddField("Server", warningItem.Guild.Name, true);
-
-                var warningDescription =
-                    $"**Warned user:**\t{warningItem.User.Mention}\n**Infraction level:**\t {infractionLevel}\t**Infractions:**\t {warningCount}\n**Warned by**\t{warningItem.Admin.Username}\n**Reason:** {warningItem.Reason}";
-
-                switch (infractionLevel)
-                {
-                    case > 4:
-                        embedToUser.AddField("Banned", "Due to you exceeding the Infraction threshold, you have been banned");
-                        ban = true;
-                        break;
-                    case > 2:
-                        embedToUser.AddField("Kicked", "Due to you exceeding the Infraction threshold, you have been kicked");
-                        kick = true;
-                        break;
-                }
-
-                if (warningItem.AutoMessage)
-                {
-                    embedToUser.WithFooter("This message was sent by Auto Moderator, contact staff if you think this is a mistake");
-                }
-
-                try
-                {
-                    if (member != null) await member.SendMessageAsync(embed: embedToUser);
-                }
-                catch
-                {
-                    modInfo = $":exclamation:{warningItem.User.Mention} could not be contacted via DM. Reason not sent";
-                }
-
-                if (kick && member != null)
-                {
-                    await member.RemoveAsync("Exceeded warning limit!");
-                }
-
-                if (ban)
-                {
-                    await warningItem.Guild.BanMemberAsync(warningItem.User.Id, 0, "Exceeded warning limit!");
-                }
-
-                await CustomMethod.SendModLogAsync(modLog, warningItem.User, warningDescription, CustomMethod.ModLogType.Warning, modInfo);
-
-                if (warningItem.InteractionContext == null)
-                {
-                    DiscordMessage info = await warningItem.Channel.SendMessageAsync($"{warningItem.User.Username}, Has been warned!");
-                    await Task.Delay(10000);
-                    await info.DeleteAsync();
-                }
-                else
-                {
-                    await warningItem.InteractionContext.EditResponseAsync(
-                        new DiscordWebhookBuilder().WithContent(
-                            $"{warningItem.Admin.Mention}, The user {warningItem.User.Mention}({warningItem.User.Id}) has been warned. Please check the log for additional info."));
-                    await Task.Delay(10000);
-                    await warningItem.InteractionContext.DeleteResponseAsync();
+                    _client.Logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
+                    continue;
                 }
             }
         }

@@ -30,13 +30,13 @@ public interface ITheCrewHubService
     Task GetGameDataAsync(bool isForced = false);
     FontCollection FontCollection { get; set; }
 
-    Task StartServiceAsync();
+    Task StartServiceAsync(DiscordClient client);
     Task<Image<Rgba32>> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
 }
 public class TheCrewHubService : ITheCrewHubService
 {
     private readonly HttpClient _httpClient;
-    //private readonly ILogger _logger;
+    private DiscordClient _client;
     private readonly LiveBotDbContext _dbContext;
     public Summit[] Summit { get;private set; }
     public Mission[] Missions { get;private set; }
@@ -53,12 +53,12 @@ public class TheCrewHubService : ITheCrewHubService
     public TheCrewHubService(HttpClient httpClient,LiveBotDbContext dbContext)
     {
         _httpClient = httpClient;
-        //_logger = logger;
         _dbContext = dbContext;
     }
 
-    public async Task StartServiceAsync()
+    public async Task StartServiceAsync(DiscordClient client)
     {
+        _client = client;
         await GetGameDataAsync();
         await GetSummitDataAsync();
         await LoadLocaleDataAsync();
@@ -70,6 +70,7 @@ public class TheCrewHubService : ITheCrewHubService
 
     public async Task LoadLocaleDataAsync()
     {
+        _client.Logger.LogInformation("Loading The Crew Hub locale data");
         using var sr = new StreamReader("ConfigFiles/TheCrewHub.json");
         JObject jsonObject = JObject.Parse(await sr.ReadToEndAsync());
         var locales = jsonObject["dictionary"]?.ToObject<Dictionary<string, string>>();
@@ -82,6 +83,7 @@ public class TheCrewHubService : ITheCrewHubService
     
     public async Task GetGameDataAsync(bool isForced = false)
     {
+        _client.Logger.LogInformation("Loading the crew hub game data");
         string json;
         try
         {
@@ -89,7 +91,7 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            //_logger.LogError(e,"Error while downloading game data from hub.");
+            _client.Logger.LogError(e,"Error while downloading game data from hub.");
             return;
         }
 
@@ -104,6 +106,7 @@ public class TheCrewHubService : ITheCrewHubService
 
     public async Task GetSummitDataAsync(bool isForced = false)
     {
+        _client.Logger.LogInformation("Loading the crew hub summit data");
         string json;
         var oldSummit = Summit;
         try
@@ -112,7 +115,7 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            //_logger.LogError(e, "Error while getting summit data");
+            _client.Logger.LogError(e, "Error while getting summit data");
             return;
         }
         
@@ -139,7 +142,7 @@ public class TheCrewHubService : ITheCrewHubService
                 }
             }
         }
-        //_logger.LogInformation("The Crew Hub information downloaded");
+        _client.Logger.LogInformation("The Crew Hub information downloaded");
     }
 
     public string DictionaryLookup(string id, string locale = "en-GB")
