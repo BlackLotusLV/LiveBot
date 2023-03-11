@@ -22,8 +22,7 @@ namespace LiveBot.Services
                 }
                 catch (Exception e)
                 {
-                    _client.Logger.LogError("{} failed to process item in queue ", this.GetType().Name);
-                    continue;
+                    _client.Logger.LogError("{} failed to process item in queue/n{error} ", this.GetType().Name,e.Message);
                 }
             }
         }

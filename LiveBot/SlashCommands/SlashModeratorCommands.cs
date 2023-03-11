@@ -92,7 +92,7 @@ namespace LiveBot.SlashCommands
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, ctx.TargetMember, true);
+            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, (DiscordUser)ctx.TargetMember, true);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
