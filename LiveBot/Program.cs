@@ -123,6 +123,7 @@ internal sealed class Program
         var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
+        var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
         
         discordClient.PresenceUpdated += liveStream.Stream_Notification;
 
@@ -139,6 +140,8 @@ internal sealed class Program
         discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
         discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
         discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
+
+        discordClient.ComponentInteractionCreated += getInfractionOnButton.OnPress;
 
         discordClient.MessageCreated += userActivityTracker.Add_Points;
 

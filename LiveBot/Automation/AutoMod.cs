@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace LiveBot.Automation
 {
@@ -11,13 +10,11 @@ namespace LiveBot.Automation
     {
         
         private readonly IWarningService _warningService;
-        private readonly ILeaderboardService _leaderboardService;
         private readonly LiveBotDbContext _databaseContext;
 
-        public AutoMod(IWarningService warningService,ILeaderboardService leaderboardService, LiveBotDbContext databaseContext)
+        public AutoMod(IWarningService warningService, LiveBotDbContext databaseContext)
         {
             _warningService = warningService;
-            _leaderboardService = leaderboardService;
             _databaseContext = databaseContext;
         }
         
@@ -77,13 +74,13 @@ namespace LiveBot.Automation
                             Text = $"Time posted: {msg.CreationTimestamp}"
                         }
                     };
-                    embed.AddField("Message Content", convertedDeleteMessage, false);
-                    embed.AddField("Had attachment?", hasAttachment ? $"{e.Message.Attachments.Count} Attachments" : "no", false);
+                    embed.AddField("Message Content", convertedDeleteMessage);
+                    embed.AddField("Had attachment?", hasAttachment ? $"{e.Message.Attachments.Count} Attachments" : "no");
                     await deleteLogChannel.SendMessageAsync(embed: embed);
                 }
                 else
                 {
-                    var location = $"{System.IO.Path.GetTempPath()}{e.Message.Id}-DeleteLog.txt";
+                    var location = $"{Path.GetTempPath()}{e.Message.Id}-DeleteLog.txt";
                     await File.WriteAllTextAsync(location, $"{description}\n**Contents:** {convertedDeleteMessage}");
                     await using var upFile = new FileStream(location, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
                     var msgBuilder = new DiscordMessageBuilder
@@ -164,7 +161,15 @@ namespace LiveBot.Automation
                 },
                 Color = new DiscordColor(0x00ff00),
             };
-            await userTraffic.SendMessageAsync(embed: embed);
+            embed.AddField("User tag", e.Member.Mention);
+
+            var infractions = await _databaseContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
+            
+            embed.AddField("Infraction count", infractions.Count.ToString());
+            DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
+                .AddEmbed(embed)
+                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"GetInfractions-{e.Member.Id}", "Get infractions"));
+            await userTraffic.SendMessageAsync(messageBuilder);
         }
 
         public async Task User_Leave_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
@@ -183,7 +188,15 @@ namespace LiveBot.Automation
                 },
                 Color = new DiscordColor(0xff0000),
             };
-            await userTraffic.SendMessageAsync(embed: embed);
+            embed.AddField("User tag", e.Member.Mention);
+
+            var infractions = await _databaseContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
+            
+            embed.AddField("Infraction count", infractions.Count.ToString());
+            DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
+                .AddEmbed(embed)
+                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"GetInfractions-{e.Member.Id}", "Get infractions"));
+            await userTraffic.SendMessageAsync(messageBuilder);
         }
 
         public async Task User_Kicked_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
