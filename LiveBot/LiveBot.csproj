@@ -244,9 +244,6 @@
     <None Update="Assets\Summit\Silver.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Summit\STADIA.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Assets\Summit\summit_big.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -265,10 +262,10 @@
     <None Update="live.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Summit\PC.jpeg">
+    <None Update="Assets\Summit\pc.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Summit\PS.jpg">
+    <None Update="Assets\Summit\ps4.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Summit\SummitBase.png">
@@ -277,7 +274,7 @@
     <None Update="Assets\Summit\TierBar.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Summit\XB.png">
+    <None Update="Assets\Summit\x1.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
