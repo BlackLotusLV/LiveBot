@@ -31,10 +31,10 @@ namespace LiveBot.SlashCommands
             var imageLoc = $"{Path.GetTempPath()}{ctx.User.Id}-summit.png";
             const float outlineSize = 0.7f;
             byte[] summitLogo;
-            var tierCutoff = new int[,] { { 4000, 8000, 15000 }, { 11000, 21000, 41000 }, { 2100, 4200, 8500 }, { 100, 200, 400 } };
+            var tierCutoff = new int[][] { new[]{ 4000, 8000, 15000 }, new[]{ 11000, 21000, 41000 }, new[]{ 2100, 4200, 8500 }};
             var jSummit = TheCrewHubService.Summit;
 
-            int platforms = 3;
+            const int platforms = 3;
 
             using (HttpClient wc = new())
             {
@@ -97,7 +97,7 @@ namespace LiveBot.SlashCommands
                                     HorizontalAlignment = HorizontalAlignment.Right,
                                     VerticalAlignment = VerticalAlignment.Top
                                 },
-                                 j == 3 ? "All Participants" : $"Top {tierCutoff[i, j]}",
+                                 j == 3 ? "All Participants" : $"Top {tierCutoff[i][j]}",
                                 Brushes.Solid(textColour),
                                 Pens.Solid(outlineColour, outlineSize))
                             );
@@ -610,7 +610,7 @@ namespace LiveBot.SlashCommands
                 Platforms.x1 => "x1",
                 _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, null)
             };
-            DB.UbiInfo info =await DatabaseService.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId.ToString() == link);
+            UbiInfo info =await DatabaseService.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId == link);
             if (info != null)
             {
                 if (info.UserDiscordId != ctx.User.Id)
