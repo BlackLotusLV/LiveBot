@@ -14,12 +14,10 @@ namespace LiveBot.Automation
         public async Task AcceptRules(DiscordClient client, GuildMemberUpdateEventArgs e)
         {
             if (e.PendingBefore == null) return;
-            if (e.PendingBefore.Value && e.PendingAfter.Value)
+            if (e.PendingBefore.Value && !e.PendingAfter.Value)
             {
                 Guild guild = await _dbContext.Guilds.FindAsync(e.Guild.Id);
-                if (guild == null) return;
-
-                if (guild.WelcomeChannelId == null || !guild.HasScreening) return;
+                if (guild?.WelcomeChannelId == null || !guild.HasScreening) return;
                 DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
 
                 if (guild.WelcomeMessage == null) return;
