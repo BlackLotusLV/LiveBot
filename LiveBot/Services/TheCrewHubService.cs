@@ -31,7 +31,7 @@ public interface ITheCrewHubService
     FontCollection FontCollection { get; set; }
 
     Task StartServiceAsync(DiscordClient client);
-    Task<Image<Rgba32>> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
+    Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
 }
 public class TheCrewHubService : ITheCrewHubService
 {
@@ -156,7 +156,7 @@ public class TheCrewHubService : ITheCrewHubService
         return WebUtility.HtmlDecode(hubText);
     }
     
-    public async Task<Image<Rgba32>> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false)
+    public async Task<(Image<Rgba32>, bool)> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             var locale = "en-GB";
             if (user!= null)
@@ -190,7 +190,7 @@ public class TheCrewHubService : ITheCrewHubService
             Font vehicleFont = new(FontCollection.Get("HurmeGeometricSans4 Black"), 11.5f);
             if (activity == null)
             {
-                using Image<Rgba32> notComplete = new(eventImage.Width, eventImage.Height);
+                Image<Rgba32> notComplete = new(eventImage.Width, eventImage.Height);
                 TextOptions textOptions = new(basefont)
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -205,25 +205,25 @@ public class TheCrewHubService : ITheCrewHubService
                 eventImage.Mutate(ctx => ctx
                 .DrawImage(notComplete, new Point(0, 0), 0.8f)
                 );
-                return eventImage;
+                return (eventImage, false);
             }
 
             using HttpClient wc = new();
 
-            string ThisEventNameID;
+            string thisEventNameId;
             if (@event.IsMission)
             {
-                ThisEventNameID = Missions.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
+                thisEventNameId = Missions.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
             }
             else
             {
-                ThisEventNameID = Skills.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
+                thisEventNameId = Skills.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
             }
-            SummitLeaderboard leaderboard = JsonConvert.DeserializeObject<SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{@event.Id}?profile={ubiInfo.ProfileId}"));
+            var leaderboard = JsonConvert.DeserializeObject<SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{@event.Id}?profile={ubiInfo.ProfileId}"));
             string
-                eventTitle = DictionaryLookup(ThisEventNameID, locale),
+                eventTitle = DictionaryLookup(thisEventNameId, locale),
                 activityResult = $"Score: {activity.Score}",
-                vehicleInfo = string.Empty;
+                vehicleInfo;
             SummitLeaderboardEntries entries = leaderboard.Entries.FirstOrDefault(w => w.ProfileId == ubiInfo.ProfileId.ToString());
             if (@event.ConstraintTextId.Contains("60871"))
             {
@@ -231,17 +231,17 @@ public class TheCrewHubService : ITheCrewHubService
             }
             else
             {
-                Model Model = Models.FirstOrDefault(w => w.Id == entries.VehicleId);
-                Brand Brand;
-                if (Model != null)
+                Model model = Models.FirstOrDefault(w => w.Id == entries.VehicleId);
+                Brand brand;
+                if (model != null)
                 {
-                    Brand = Brands.FirstOrDefault(w => w.Id == Model.BrandId);
+                    brand = Brands.FirstOrDefault(w => w.Id == model.BrandId);
                 }
                 else
                 {
-                    Brand = null;
+                    brand = null;
                 }
-                vehicleInfo = $"{DictionaryLookup(Brand != null ? Brand.TextId : "not found", locale)} - {DictionaryLookup(Model != null ? Model.TextId : "not found", locale)}";
+                vehicleInfo = $"{DictionaryLookup(brand != null ? brand.TextId : "not found", locale)} - {DictionaryLookup(model != null ? model.TextId : "not found", locale)}";
             }
             if (leaderboard.ScoreFormat == "time")
             {
@@ -318,6 +318,6 @@ public class TheCrewHubService : ITheCrewHubService
                 .DrawImage(modifierImg, modifierPoint, 1f));
             });
 
-            return eventImage;
+            return (eventImage, true);
         }
 }
