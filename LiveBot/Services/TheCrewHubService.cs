@@ -31,7 +31,7 @@ public interface ITheCrewHubService
     FontCollection FontCollection { get; set; }
 
     Task StartServiceAsync(DiscordClient client);
-    Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
+    Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event summitEvent, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
 }
 public class TheCrewHubService : ITheCrewHubService
 {
@@ -156,7 +156,7 @@ public class TheCrewHubService : ITheCrewHubService
         return WebUtility.HtmlDecode(hubText);
     }
     
-    public async Task<(Image<Rgba32>, bool)> BuildEventImageAsync(Event @event, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false)
+    public async Task<(Image<Rgba32>, bool)> BuildEventImageAsync(Event summitEvent, Rank rank, UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false)
         {
             var locale = "en-GB";
             if (user!= null)
@@ -165,9 +165,9 @@ public class TheCrewHubService : ITheCrewHubService
             Activities activity = null;
             if (rank != null)
             {
-                activity = rank.Activities.FirstOrDefault(w => w.ActivityId.Equals(@event.Id.ToString()));
+                activity = rank.Activities.FirstOrDefault(w => w.ActivityId.Equals(summitEvent.Id.ToString()));
             }
-            if (@event.IsMission && !isSpecial && !isCorner)
+            if (summitEvent.IsMission && !isSpecial && !isCorner)
             {
                 eventImage.Mutate(ctx => ctx
                 .Resize(368, 239)
@@ -208,24 +208,17 @@ public class TheCrewHubService : ITheCrewHubService
                 return (eventImage, false);
             }
 
-            using HttpClient wc = new();
+            string thisEventNameId = summitEvent.IsMission ? Missions.Where(w => w.Id == summitEvent.Id).Select(s => s.TextId).FirstOrDefault() : Skills.Where(w => w.Id == summitEvent.Id).Select(s => s.TextId).FirstOrDefault();
 
-            string thisEventNameId;
-            if (@event.IsMission)
-            {
-                thisEventNameId = Missions.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
-            }
-            else
-            {
-                thisEventNameId = Skills.Where(w => w.Id == @event.Id).Select(s => s.TextId).FirstOrDefault();
-            }
-            var leaderboard = JsonConvert.DeserializeObject<SummitLeaderboard>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{@event.Id}?profile={ubiInfo.ProfileId}"));
+            string eventLeaderboardString =
+                await _httpClient.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{summitEvent.Id}{(ubiInfo.ProfileId!="0"?"?profile={ubiInfo.ProfileId}":"")}");
+            var leaderboard = JsonConvert.DeserializeObject<SummitLeaderboard>(eventLeaderboardString);
             string
                 eventTitle = DictionaryLookup(thisEventNameId, locale),
                 activityResult = $"Score: {activity.Score}",
                 vehicleInfo;
-            SummitLeaderboardEntries entries = leaderboard.Entries.FirstOrDefault(w => w.ProfileId == ubiInfo.ProfileId.ToString());
-            if (@event.ConstraintTextId.Contains("60871"))
+            SummitLeaderboardEntries entries = ubiInfo.ProfileId=="0" ? leaderboard.Entries.First() : leaderboard.Entries.First(w => w.ProfileId == ubiInfo.ProfileId);
+            if (summitEvent.ConstraintTextId.Contains("60871"))
             {
                 vehicleInfo = "Forced Vehicle";
             }
@@ -299,12 +292,12 @@ public class TheCrewHubService : ITheCrewHubService
                 .DrawText(new(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 22) }, $"Points: {activity.Points}", Color.White)
                 .DrawText(vehicleTextOptions, vehicleInfo, Color.White)
                 );
-            Parallel.For(0, @event.Modifiers.Length, (i, state) =>
+            Parallel.For(0, summitEvent.Modifiers.Length, (i, state) =>
             {
                 Image<Rgba32> modifierImg = new(1, 1);
                 try
                 {
-                    modifierImg = Image.Load<Rgba32>($"Assets/Summit/Modifiers/{@event.Modifiers[i]}.png");
+                    modifierImg = Image.Load<Rgba32>($"Assets/Summit/Modifiers/{summitEvent.Modifiers[i]}.png");
                 }
                 catch (Exception)
                 {

@@ -341,7 +341,7 @@ namespace LiveBot.SlashCommands
                 {
                     rank = JsonConvert.DeserializeObject<Rank>(await wc.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{jSummit[0].Id}/score/{search}/profile/{activity.Entries[0].ProfileId}", CancellationToken.None));
                     ubiInfo.Platform = search;
-                    ubiInfo.ProfileId = activity.Entries[0].ProfileId;
+                    ubiInfo.ProfileId = "0";
                 }
                 (var image, bool isCompleted) = await TheCrewHubService.BuildEventImageAsync(
                     summitEvent,
