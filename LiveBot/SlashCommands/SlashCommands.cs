@@ -4,7 +4,6 @@ using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualBasic.FileIO;
 
 namespace LiveBot.SlashCommands
 {
@@ -16,7 +15,9 @@ namespace LiveBot.SlashCommands
         [SlashCommand("LiveBot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
         {
-            const string changelog = "[FIX] Summit leaderboard text formatter fix";
+            const string changelog = "[FIX] Mod mail auto close fixed\n" +
+                                     "[FIX] TopSummit command not generating an image fixed\n" +
+                                     "[Various fixes and improvements to backend code]";
             DiscordUser user = ctx.Client.CurrentUser;
             DiscordEmbedBuilder embed = new()
             {
