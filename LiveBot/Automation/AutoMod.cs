@@ -199,32 +199,6 @@ namespace LiveBot.Automation
             await userTraffic.SendMessageAsync(messageBuilder);
         }
 
-        public async Task User_Kicked_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
-        {
-            DateTimeOffset time = DateTimeOffset.UtcNow;
-            DateTimeOffset beforeTime = time.AddSeconds(-5);
-            DateTimeOffset afterTime = time.AddSeconds(10);
-            Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
-            if (guildSettings == null || guildSettings.ModerationLogChannelId == null) return;
-            DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
-            var logs = await guild.GetAuditLogsAsync(5, action_type: AuditLogActionType.Kick);
-            DiscordChannel wkbLog = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
-            if (logs.Count == 0) return;
-            if (logs[0].CreationTimestamp >= beforeTime && logs[0].CreationTimestamp <= afterTime)
-            {
-                await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);
-
-                GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { e.Member.Id, e.Guild.Id }) ??
-                                      await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(e.Member.Id, e.Guild.Id));
-                guildUser.KickCount++;
-                _databaseContext.GuildUsers.Update(guildUser);
-                await _databaseContext.SaveChangesAsync();
-
-                await _databaseContext.AddInfractionsAsync(_databaseContext, new Infraction(logs[0].UserResponsible.Id, e.Member.Id, e.Guild.Id, logs[0].Reason, false, "kick"));
-            }
-            //*/
-        }
-
         public async Task User_Banned_Log(DiscordClient client, GuildBanAddEventArgs e)
         {
                 var wkbSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == e.Guild.Id);
@@ -423,14 +397,6 @@ namespace LiveBot.Automation
             else if (e.CommunicationDisabledUntilAfter == null && e.CommunicationDisabledUntilBefore != null)
             {
                 await CustomMethod.SendModLogAsync(userTimedOutLogChannel, e.Member, $"**Timeout Removed**", CustomMethod.ModLogType.TimeOutRemoved);
-            }
-        }
-
-        public static void ClearMSGCache()
-        {
-            if (_messageList.Count > 100)
-            {
-                _messageList.RemoveRange(0, _messageList.Count - 100);
             }
         }
 

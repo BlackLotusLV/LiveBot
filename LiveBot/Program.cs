@@ -114,6 +114,8 @@ internal sealed class Program
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
+        var memberKickCheck = ActivatorUtilities.CreateInstance<MemberKickCheck>(serviceProvider);
+        
         var warningService = serviceProvider.GetService<IWarningService>();
         var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
         var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
@@ -124,8 +126,8 @@ internal sealed class Program
         warningService.StartService(discordClient);
         streamNotificationService.StartService(discordClient);
         await theCrewHubService.StartServiceAsync(discordClient);
-        Timer streamCleanupTimer = new(state => streamNotificationService.StreamListCleanup());
-        Timer modMailCleanupTimer = new(async state => await modMailService.ModMailCleanupAsync(discordClient));
+        Timer streamCleanupTimer = new(_ => streamNotificationService.StreamListCleanup());
+        Timer modMailCleanupTimer = new(async _ => await modMailService.ModMailCleanupAsync(discordClient));
         streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(10));
         modMailCleanupTimer.Change(TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(2));
         
@@ -139,7 +141,7 @@ internal sealed class Program
         discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
         discordClient.GuildMemberAdded += autoMod.User_Join_Log;
         discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
-        discordClient.GuildMemberRemoved += autoMod.User_Kicked_Log;
+        discordClient.GuildMemberRemoved += memberKickCheck.OnRemoved;
         discordClient.GuildBanAdded += autoMod.User_Banned_Log;
         discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
         discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
@@ -241,13 +243,13 @@ internal sealed class Program
 
     private static Task SlashExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)
     {
-        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
     private static Task SlashErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
     {
-        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}-{qualifiedName}' but it errored", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
