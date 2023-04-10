@@ -125,7 +125,9 @@ internal sealed class Program
         streamNotificationService.StartService(discordClient);
         await theCrewHubService.StartServiceAsync(discordClient);
         Timer streamCleanupTimer = new(state => streamNotificationService.StreamListCleanup());
-        streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
+        Timer modMailCleanupTimer = new(async state => await modMailService.ModMailCleanupAsync(discordClient));
+        streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(10));
+        modMailCleanupTimer.Change(TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(2));
         
         discordClient.PresenceUpdated += liveStream.Stream_Notification;
 

@@ -12,6 +12,7 @@ public interface IModMailService
      Task OpenButton(DiscordClient client, ComponentInteractionCreateEventArgs e);
      public string CloseButtonPrefix { get; }
      public string OpenButtonPrefix { get; }
+     Task ModMailCleanupAsync(DiscordClient client);
 }
 
 public class ModMailService : IModMailService
@@ -180,5 +181,13 @@ public class ModMailService : IModMailService
                     .WithEmbed(embed)
                     .SendAsync(modMailChannel);
             }
+    }
+
+    public async Task ModMailCleanupAsync(DiscordClient client)
+    {
+        foreach (ModMail modMail in _dbContext.ModMail.Where(mMail=>mMail.IsActive && mMail.LastMessageTime.AddMinutes(TimeoutMinutes) < DateTime.UtcNow).ToList())
+        {
+            await CloseModMailAsync(client, modMail, client.CurrentUser, " Mod Mail timed out.", $"**Mod Mail timed out.**\n----------------------------------------------------");
+        }
     }
 }
