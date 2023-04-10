@@ -55,7 +55,7 @@ internal sealed class Program
         
         
         ServiceProvider serviceProvider = new ServiceCollection()
-            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
+            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors(), ServiceLifetime.Transient)
             .AddHttpClient()
             .AddSingleton<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
@@ -65,11 +65,7 @@ internal sealed class Program
             .BuildServiceProvider();
         _provider = serviceProvider;
 
-        var warningService = serviceProvider.GetService<IWarningService>();
-        var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
-        var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
-        var modMailService = serviceProvider.GetService<IModMailService>();
-        var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
+
         DiscordConfiguration discordConfig = new()
         {
             Token = liveBotSettings.Token,
@@ -109,13 +105,7 @@ internal sealed class Program
 
         slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
         slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
-        leaderboardService.StartService(discordClient);
-        warningService.StartService(discordClient);
-        streamNotificationService.StartService(discordClient);
-        await theCrewHubService.StartServiceAsync(discordClient);
-        Timer timer = new(state => streamNotificationService.StreamListCleanup());
-        timer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
-
+        
         var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
         var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(serviceProvider);
         var liveStream = ActivatorUtilities.CreateInstance<LiveStream>(serviceProvider);
@@ -124,6 +114,18 @@ internal sealed class Program
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
+        var warningService = serviceProvider.GetService<IWarningService>();
+        var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
+        var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
+        var modMailService = serviceProvider.GetService<IModMailService>();
+        var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
+        
+        leaderboardService.StartService(discordClient);
+        warningService.StartService(discordClient);
+        streamNotificationService.StartService(discordClient);
+        await theCrewHubService.StartServiceAsync(discordClient);
+        Timer streamCleanupTimer = new(state => streamNotificationService.StreamListCleanup());
+        streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(2));
         
         discordClient.PresenceUpdated += liveStream.Stream_Notification;
 
