@@ -211,7 +211,7 @@ public class TheCrewHubService : ITheCrewHubService
             string thisEventNameId = summitEvent.IsMission ? Missions.Where(w => w.Id == summitEvent.Id).Select(s => s.TextId).FirstOrDefault() : Skills.Where(w => w.Id == summitEvent.Id).Select(s => s.TextId).FirstOrDefault();
 
             string eventLeaderboardString =
-                await _httpClient.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{summitEvent.Id}{(ubiInfo.ProfileId!="0"?"?profile={ubiInfo.ProfileId}":"")}");
+                await _httpClient.GetStringAsync($"https://api.thecrew-hub.com/v1/summit/{Summit[0].Id}/leaderboard/{ubiInfo.Platform}/{summitEvent.Id}{(ubiInfo.ProfileId!="0"?$"?profile={ubiInfo.ProfileId}":"")}");
             var leaderboard = JsonConvert.DeserializeObject<SummitLeaderboard>(eventLeaderboardString);
             string
                 eventTitle = DictionaryLookup(thisEventNameId, locale),
