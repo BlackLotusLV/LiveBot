@@ -1,18 +1,19 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using LiveBot.Services;
 
 namespace LiveBot.DB
 {
     public class Infraction
     {
-        public Infraction(ulong adminDiscordId, ulong userId, ulong guildId, string reason, bool isActive, string type)
+        public Infraction(ulong adminDiscordId, ulong userId, ulong guildId, string reason, bool isActive, InfractionType infractionType)
         {
             UserId = userId;
             GuildId = guildId;
             Reason = reason;
             IsActive = isActive;
             AdminDiscordId = adminDiscordId;
-            Type = type;
+            InfractionType = infractionType;
         }
         private ulong _guildId;
         private ulong _userId;
@@ -41,8 +42,14 @@ namespace LiveBot.DB
             get => _adminDiscordId;
             set => _adminDiscordId = Convert.ToUInt64(value);
         }
-
-        public string Type { get; set; }
+        public InfractionType InfractionType { get; set; }
         public GuildUser GuildUser { get; set; }
+    }
+    public enum InfractionType
+    {
+        Warning,
+        Kick,
+        Ban,
+        Note
     }
 }

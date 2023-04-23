@@ -30,6 +30,7 @@ public class LiveBotDbContext : DbContext
     /*
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        
         using StreamReader sr  = new(File.OpenRead("ConfigFiles/DevDatabase.json"));
         string databaseString = sr.ReadToEnd();
         var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);

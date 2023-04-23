@@ -41,7 +41,7 @@ namespace LiveBot.SlashCommands
                 var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 List<DiscordAutoCompleteChoice> result = new();
                 var userId = (ulong)ctx.Options.First(x => x.Name == "user").Value;
-                foreach (Infraction item in databaseContext.Infractions.Where(w=>w.GuildId == ctx.Guild.Id && w.UserId == userId && w.Type=="warning" && w.IsActive))
+                foreach (Infraction item in databaseContext.Infractions.Where(w=>w.GuildId == ctx.Guild.Id && w.UserId == userId && w.InfractionType==InfractionType.Warning && w.IsActive))
                 {
                     result.Add(new DiscordAutoCompleteChoice($"#{item.Id} - {item.Reason}",item.Id));
                 }
@@ -67,7 +67,7 @@ namespace LiveBot.SlashCommands
         public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note", "Contents of the note.")] string note)
         {
             await ctx.DeferAsync(true);
-            await DatabaseContext.AddInfractionsAsync(DatabaseContext, new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, "note"));
+            await DatabaseContext.AddInfractionsAsync(DatabaseContext, new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, InfractionType.Note));
             
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
             
@@ -268,7 +268,7 @@ namespace LiveBot.SlashCommands
             DiscordComponentEmoji emoji = null;
             if (modalResponse.Result.Values["emoji"] != string.Empty)
             {
-                emoji = UInt64.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId) ? new DiscordComponentEmoji(emojiId) : new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
+                emoji = ulong.TryParse(modalResponse.Result.Values["emoji"], out ulong emojiId) ? new DiscordComponentEmoji(emojiId) : new DiscordComponentEmoji(modalResponse.Result.Values["emoji"]);
             }
 
             if (ctx.TargetMessage.Components.Count == 0)
@@ -290,6 +290,35 @@ namespace LiveBot.SlashCommands
             }
             await ctx.TargetMessage.ModifyAsync(modified);
             await modalResponse.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent($"Button added to the message. **Custom ID:** {modalResponse.Result.Values["customId"]}").AsEphemeral());
+        }
+        [SlashCommand("Stats", "Displays moderator stats for the server.")]
+        public async Task Stats(InteractionContext ctx)
+        {
+            await ctx.DeferAsync(true);
+            var leaderboard = await DatabaseContext.Infractions.Where(x=>x.GuildId==ctx.Guild.Id).Select(x=> new {UserId = x.AdminDiscordId, Type = x.InfractionType}).ToListAsync();
+            var groupedLeaderboard = leaderboard
+                .GroupBy(x => x.UserId)
+                .Select(x => new
+                {
+                    UserId = x.Key,
+                    Kicks = x.Count(y => y.Type == InfractionType.Kick),
+                    Bans = x.Count(y => y.Type == InfractionType.Ban),
+                    Warnings = x.Count(y => y.Type == InfractionType.Warning)
+                })
+                .OrderByDescending(x => x.Warnings)
+                .ThenByDescending(x=>x.Kicks)
+                .ThenByDescending(x=>x.Bans)
+                .ToList();
+            StringBuilder leaderboardBuilder = new();
+            leaderboardBuilder.AppendLine("```");
+            leaderboardBuilder.AppendLine("User".PadRight(30) + "Warnings".PadRight(10) + "Kicks".PadRight(10) + "Bans".PadRight(10));
+            foreach (var user in groupedLeaderboard)
+            {
+                DiscordUser discordUser = await ctx.Client.GetUserAsync(user.UserId);
+                leaderboardBuilder.AppendLine($"{discordUser.Username}#{discordUser.Discriminator}".PadRight(30) + $"{user.Warnings}".PadRight(10) + $"{user.Kicks}".PadRight(10) + $"{user.Bans}".PadRight(10));
+            }
+            leaderboardBuilder.AppendLine("```");
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(leaderboardBuilder.ToString()));
         }
     }
 }

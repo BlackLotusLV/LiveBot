@@ -32,7 +32,7 @@ public class MemberKickCheck
             _databaseContext.GuildUsers.Update(guildUser);
             await _databaseContext.SaveChangesAsync();
 
-            await _databaseContext.AddInfractionsAsync(_databaseContext, new Infraction(logs[0].UserResponsible.Id, e.Member.Id, e.Guild.Id, logs[0].Reason, false, "kick"));
+            await _databaseContext.AddInfractionsAsync(_databaseContext, new Infraction(logs[0].UserResponsible.Id, e.Member.Id, e.Guild.Id, logs[0].Reason, false, InfractionType.Kick));
         }
     }
 }

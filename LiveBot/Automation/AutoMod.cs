@@ -224,7 +224,7 @@ namespace LiveBot.Automation
                         await CustomMethod.SendModLogAsync(wkbLog, banEntry.Target,
                             $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
                         await _databaseContext.AddInfractionsAsync(_databaseContext,
-                            new Infraction(banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified", false, "ban"));
+                            new Infraction(banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified", false, InfractionType.Ban));
                     }
                     else
                     {
@@ -281,7 +281,7 @@ namespace LiveBot.Automation
                 await channel.DeleteMessagesAsync(duplicateMessages.GetRange(i - 5, 5));
             }
 
-            int infractionLevel = _databaseContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == e.Guild.Id && w.Type == "warning" && w.IsActive);
+            int infractionLevel = _databaseContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == e.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
 
             if (infractionLevel < 5)
             {
