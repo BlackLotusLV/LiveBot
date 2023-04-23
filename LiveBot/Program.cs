@@ -249,19 +249,19 @@ internal sealed class Program
 
     private static Task SlashErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
     {
-        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}-{qualifiedName}' but it errored", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}-{qualifiedName}' command, but it errored", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
     private static Task ContextMenuExecuted(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
     {
-        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{commandName}-{qualifiedName}' menu command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
     private static Task ContextMenuErrored(SlashCommandsExtension ext, ContextMenuErrorEventArgs e)
     {
-        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' but it errored", e.Context.User.Username, e.Context.CommandName ?? "<unknown command>");
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' menu command, but it errored", e.Context.User.Username, e.Context.CommandName);
         return Task.CompletedTask;
     }
 }
