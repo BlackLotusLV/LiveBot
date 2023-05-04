@@ -115,6 +115,7 @@ internal sealed class Program
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
         var memberKickCheck = ActivatorUtilities.CreateInstance<MemberKickCheck>(serviceProvider);
+        var getUserInfoOnbutton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
         
         var warningService = serviceProvider.GetService<IWarningService>();
         var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
@@ -148,6 +149,7 @@ internal sealed class Program
         discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
 
         discordClient.ComponentInteractionCreated += getInfractionOnButton.OnPress;
+        discordClient.ComponentInteractionCreated += getUserInfoOnbutton.OnPress;
 
         discordClient.MessageCreated += userActivityTracker.Add_Points;
 

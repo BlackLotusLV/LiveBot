@@ -1,5 +1,4 @@
 ﻿using DSharpPlus.SlashCommands;
-using System.Collections.Concurrent;
 using LiveBot.DB;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +10,10 @@ namespace LiveBot.Services
         public void StopService();
         public void AddToQueue(WarningItem value);
         public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
-        Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild Guild, DiscordUser User, bool AdminCommand = false);
+        Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
+        Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user);
+        string UserInfoButtonPrefix { get; }
+        string InfractionButtonPrefix { get; }
     }
 
     public class WarningService : BaseQueueService<WarningItem>, IWarningService
@@ -19,6 +21,11 @@ namespace LiveBot.Services
         public WarningService(LiveBotDbContext databaseContext) : base(databaseContext)
         {
         }
+
+        private const string _infractionButtonPrefix = "GetInfractions-";
+        private const string _userInfoButtonPrefix = "GetUserInfo-";
+        public string InfractionButtonPrefix { get; } = _infractionButtonPrefix;
+        public string UserInfoButtonPrefix { get; } = _userInfoButtonPrefix;
 
         private protected override async Task ProcessQueueAsync()
         {
@@ -193,15 +200,42 @@ namespace LiveBot.Services
             await CustomMethod.SendModLogAsync(modLog, user, description, CustomMethod.ModLogType.Unwarn, modMessageBuilder.ToString());
         }
 
-        public async Task<DiscordEmbed> GetUserWarningsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
+        public async Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user)
+        {
+            DiscordEmbedBuilder embedBuilder = new()
+            {
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    Name = user.Username,
+                    IconUrl = user.AvatarUrl
+                },
+                Title = $"{user.Username} Info",
+                ImageUrl = user.AvatarUrl,
+                Url = $"https://discordapp.com/users/{user.Id}"
+            };
+            DiscordMember member = null;
+            try
+            {
+                member = await guild.GetMemberAsync(user.Id);
+            }
+            catch (Exception e)
+            {
+                _client.Logger.LogError(e, "Failed to get member in GetUserInfoAsync");
+            }
+            embedBuilder
+                .AddField("Nickname", (member is null ? "*User not in this server*" : member.Username??"*None*"), true)
+                .AddField("ID", user.Id.ToString(), true)
+                .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
+                .AddField("Server Join Date", (member is null ? "User not in this server" : $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>"))
+                .AddField("Accepted rules?", (member is null ? "User not in this server" : member.IsPending == null ? "Guild has no member screening" : member.IsPending.Value ? "No" : "Yes"));
+            return embedBuilder.Build();
+        }
+
+        public async Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
             var splitCount = 1;
             StringBuilder reason = new();
-            GuildUser userStats = await _databaseContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id });
-            if (userStats == null)
-            {
-                userStats = await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(user.Id, guild.Id));
-            }
+            GuildUser userStats = await _databaseContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(user.Id, guild.Id));
 
             int kickCount = userStats.KickCount;
             int banCount = userStats.BanCount;
@@ -231,8 +265,6 @@ namespace LiveBot.Services
 
                     case InfractionType.Warning:
                         reason.Append(infraction.IsActive ? "[✅] " : "[❌] ");
-                        break;
-                    default:
                         break;
                 }
 

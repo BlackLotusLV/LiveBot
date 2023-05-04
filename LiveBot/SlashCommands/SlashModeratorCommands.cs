@@ -83,7 +83,7 @@ namespace LiveBot.SlashCommands
         public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
         {
             await ctx.DeferAsync();
-            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, user, true);
+            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, user, true);
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().AddEmbed(embed));
         }
@@ -92,7 +92,7 @@ namespace LiveBot.SlashCommands
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = await WarningService.GetUserWarningsAsync(ctx.Guild, (DiscordUser)ctx.TargetMember, true);
+            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, (DiscordUser)ctx.TargetMember, true);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
@@ -144,51 +144,15 @@ namespace LiveBot.SlashCommands
         public async Task Info(InteractionContext ctx, [Option("User", "User who to get the info about.")] DiscordUser user)
         {
             await ctx.DeferAsync();
-            DiscordMember member;
-            try
-            {
-                member = await ctx.Guild.GetMemberAsync(user.Id);
-            }
-            catch (DSharpPlus.Exceptions.NotFoundException)
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The user is not in the server, can't find information!"));
-                return;
-            }
-
-            DiscordEmbed embed = BuildMemberInfoEmbedAsync(member);
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+            DiscordEmbed userInfoEmbed = await WarningService.GetUserInfoAsync(ctx.Guild, user);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(userInfoEmbed));
         }
         [ContextMenu(ApplicationCommandType.UserContextMenu,"Info",false)]
         public async Task InfoContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = BuildMemberInfoEmbedAsync(ctx.TargetMember);
+            DiscordEmbed embed = await WarningService.GetUserInfoAsync(ctx.Guild, ctx.TargetMember);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
-        }
-        private DiscordEmbed BuildMemberInfoEmbedAsync(DiscordMember member)
-        {
-            DiscordEmbedBuilder embedBuilder = new()
-            {
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    Name = member.Username,
-                    IconUrl = member.AvatarUrl
-                },
-                Title = $"{member.Username} Info",
-                ImageUrl = member.AvatarUrl
-            };
-            embedBuilder
-                .AddField("Nickname", (member.Nickname ?? "None"), true)
-                .AddField("ID", member.Id.ToString(), true)
-                .AddField("Account Created On", $"<t:{member.CreationTimestamp.ToUnixTimeSeconds()}:F>")
-                .AddField("Server Join Date", $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>");
-            if (member.IsPending != null)
-            {
-                bool isPending = member.IsPending.Value;
-                embedBuilder.AddField("Accepted rules?", isPending ? "No" : "Yes");
-            }
-            return embedBuilder.Build();
         }
 
         [SlashCommand("Message", "Sends a message to specified user. Requires Mod Mail feature enabled.")]

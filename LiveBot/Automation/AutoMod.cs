@@ -168,7 +168,9 @@ namespace LiveBot.Automation
             embed.AddField("Infraction count", infractions.Count.ToString());
             DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
                 .AddEmbed(embed)
-                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"GetInfractions-{e.Member.Id}", "Get infractions"));
+                .AddComponents(
+                    new DiscordButtonComponent(ButtonStyle.Primary, $"{_warningService.InfractionButtonPrefix}{e.Member.Id}", "Get infractions"),
+                    new DiscordButtonComponent(ButtonStyle.Primary, $"{_warningService.UserInfoButtonPrefix}{e.Member.Id}", "Get User Info"));
             await userTraffic.SendMessageAsync(messageBuilder);
         }
 
@@ -195,7 +197,8 @@ namespace LiveBot.Automation
             embed.AddField("Infraction count", infractions.Count.ToString());
             DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
                 .AddEmbed(embed)
-                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"GetInfractions-{e.Member.Id}", "Get infractions"));
+                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"{_warningService.InfractionButtonPrefix}{e.Member.Id}", "Get infractions"))
+                .AddComponents(new DiscordButtonComponent(ButtonStyle.Primary, $"{_warningService.UserInfoButtonPrefix}{e.Member.Id}", "Get User Info"));
             await userTraffic.SendMessageAsync(messageBuilder);
         }
 
