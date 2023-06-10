@@ -18,14 +18,17 @@ namespace LiveBot.Services
 
     public class WarningService : BaseQueueService<WarningItem>, IWarningService
     {
-        public WarningService(LiveBotDbContext databaseContext) : base(databaseContext)
+        private readonly IModLogService _modLogService;
+        public WarningService(LiveBotDbContext databaseContext, IModLogService modLogService) : base(databaseContext)
         {
+            _modLogService = modLogService;
         }
 
         private const string _infractionButtonPrefix = "GetInfractions-";
         private const string _userInfoButtonPrefix = "GetUserInfo-";
         public string InfractionButtonPrefix { get; } = _infractionButtonPrefix;
         public string UserInfoButtonPrefix { get; } = _userInfoButtonPrefix;
+        
 
         private protected override async Task ProcessQueueAsync()
         {
@@ -123,7 +126,7 @@ namespace LiveBot.Services
                         await warningItem.Guild.BanMemberAsync(warningItem.User.Id, 0, "Exceeded warning limit!");
                     }
 
-                    await CustomMethod.SendModLogAsync(modLog, warningItem.User, warningDescription, CustomMethod.ModLogType.Warning, modInfo);
+                    _modLogService.AddToQueue(new ModLogItem(modLog, warningItem.User, warningDescription, ModLogType.Warning, modInfo,warningItem.Attachment));
 
                     if (warningItem.InteractionContext == null)
                     {
@@ -197,7 +200,7 @@ namespace LiveBot.Services
                 modMessageBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
             }
 
-            await CustomMethod.SendModLogAsync(modLog, user, description, CustomMethod.ModLogType.Unwarn, modMessageBuilder.ToString());
+            _modLogService.AddToQueue(new ModLogItem(modLog, user, description, ModLogType.Unwarn, modMessageBuilder.ToString()));
         }
 
         public async Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user)
@@ -323,8 +326,9 @@ namespace LiveBot.Services
         public string Reason { get; set; }
         public bool AutoMessage { get; set; }
         public InteractionContext InteractionContext { get; set; }
+        public DiscordAttachment Attachment { get; set; }
 
-        public WarningItem(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool autoMessage, InteractionContext interactionContext = null)
+        public WarningItem(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool autoMessage, InteractionContext interactionContext = null, DiscordAttachment attachment = null)
         {
             User = user;
             Admin = admin;
@@ -333,6 +337,7 @@ namespace LiveBot.Services
             Reason = reason;
             AutoMessage = autoMessage;
             InteractionContext = interactionContext;
+            Attachment = attachment;
         }
     }
 }

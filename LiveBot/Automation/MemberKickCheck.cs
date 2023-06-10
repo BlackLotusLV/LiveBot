@@ -1,4 +1,5 @@
 ﻿using LiveBot.DB;
+using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
@@ -6,10 +7,12 @@ namespace LiveBot.Automation;
 public class MemberKickCheck
 {
     private readonly LiveBotDbContext _databaseContext;
+    private readonly IModLogService _modLogService;
 
-    public MemberKickCheck(LiveBotDbContext databaseContext)
+    public MemberKickCheck(LiveBotDbContext databaseContext, IModLogService modLogService)
     {
         _databaseContext = databaseContext;
+        _modLogService = modLogService;
     }
     public async Task OnRemoved(DiscordClient client, GuildMemberRemoveEventArgs e)
     {
@@ -24,7 +27,7 @@ public class MemberKickCheck
         if (logs.Count == 0) return;
         if (logs[0].CreationTimestamp >= beforeTime && logs[0].CreationTimestamp <= afterTime)
         {
-            await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", CustomMethod.ModLogType.Kick);
+            _modLogService.AddToQueue(new ModLogItem(wkbLog, e.Member, $"*by {logs[0].UserResponsible.Mention}*\n**Reason:** {logs[0].Reason}", ModLogType.Kick));
 
             GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { e.Member.Id, e.Guild.Id }) ??
                                   await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(e.Member.Id, e.Guild.Id));

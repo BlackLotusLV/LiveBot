@@ -15,14 +15,16 @@ namespace LiveBot.SlashCommands
         public IWarningService WarningService { private get; set; }
         public LiveBotDbContext DatabaseContext { private get; set; }
         public IModMailService ModMailService { private get; set; }
+        public IModLogService ModLogService { private get; set; }
         
         [SlashCommand("warn", "Warn a user.")]
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
-            [Option("reason", "Why the user is being warned")] string reason)
+            [Option("reason", "Why the user is being warned")] string reason,
+            [Option("Image", "Image to attach to the warning")] DiscordAttachment image = null)
         {
             await ctx.DeferAsync(true);
-            WarningService.AddToQueue(new WarningItem(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx));
+            WarningService.AddToQueue(new WarningItem(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx, image));
         }
 
         [SlashCommand("remove-warning", "Removes a warning from the user")]
@@ -64,7 +66,10 @@ namespace LiveBot.SlashCommands
         }
 
         [SlashCommand("AddNote", "Adds a note in the database without warning the user")]
-        public async Task AddNote(InteractionContext ctx, [Option("user", "User to who to add the note to")] DiscordUser user, [Option("Note", "Contents of the note.")] string note)
+        public async Task AddNote(InteractionContext ctx,
+            [Option("user", "User to who to add the note to")] DiscordUser user,
+            [Option("Note", "Contents of the note.")] string note,
+            [Option("Image", "Image to attach to the note")] DiscordAttachment image = null)
         {
             await ctx.DeferAsync(true);
             await DatabaseContext.AddInfractionsAsync(DatabaseContext, new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, InfractionType.Note));
@@ -75,7 +80,7 @@ namespace LiveBot.SlashCommands
             if (guild != null)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
-                await CustomMethod.SendModLogAsync(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", CustomMethod.ModLogType.Info);
+                ModLogService.AddToQueue(new ModLogItem(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", ModLogType.Info,attachment:image));
             }
         }
 

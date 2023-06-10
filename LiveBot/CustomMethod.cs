@@ -34,84 +34,6 @@ namespace LiveBot
         }
 
         /// <summary>
-        /// Sends a message in the moderator log channel
-        /// </summary>
-        /// <param name="modLogChannel">Channel where the message will be sent.</param>
-        /// <param name="targetUser">The user against who an action is being taken against.</param>
-        /// <param name="description">The description of the action taken.</param>
-        /// <param name="type">The type of action taken.</param>
-        /// <param name="content">Additional content outside of the embed</param>
-        /// <returns></returns>
-        public static async Task SendModLogAsync(DiscordChannel modLogChannel, DiscordUser targetUser, string description, ModLogType type, string content = null)
-        {
-            DiscordColor color = DiscordColor.NotQuiteBlack;
-            var footerText = string.Empty;
-            switch (type)
-            {
-                case ModLogType.Kick:
-                    color = new DiscordColor(0xf90707);
-                    footerText = "User Kicked";
-                    break;
-
-                case ModLogType.Ban:
-                    color = new DiscordColor(0xf90707);
-                    footerText = "User Banned";
-                    break;
-
-                case ModLogType.Info:
-                    color = new DiscordColor(0x59bfff);
-                    footerText = "Info";
-                    break;
-
-                case ModLogType.Warning:
-                    color = new DiscordColor(0xFFBA01);
-                    footerText = "User Warned";
-                    break;
-
-                case ModLogType.Unwarn:
-                    footerText = "User Unwarned";
-                    break;
-
-                case ModLogType.Unban:
-                    footerText = "User Unbanned";
-                    break;
-
-                case ModLogType.TimedOut:
-                    color = new DiscordColor(0xFFBA01);
-                    footerText = "User Timed Out";
-                    break;
-
-                case ModLogType.TimeOutRemoved:
-                    footerText = "User Timeout Removed";
-                    break;
-
-                default:
-                    break;
-            }
-            DiscordMessageBuilder discordMessageBuilder = new();
-            DiscordEmbedBuilder discordEmbedBuilder = new()
-            {
-                Color = color,
-                Description = description,
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    IconUrl = targetUser.AvatarUrl,
-                    Name = $"{targetUser.Username} ({targetUser.Id})"
-                },
-                Footer = new DiscordEmbedBuilder.EmbedFooter
-                {
-                    IconUrl = targetUser.AvatarUrl,
-                    Text = footerText
-                }
-            };
-
-            discordMessageBuilder.AddEmbed(discordEmbedBuilder);
-            discordMessageBuilder.Content = content;
-
-            await modLogChannel.SendMessageAsync(discordMessageBuilder);
-        }
-
-        /// <summary>
         /// Checks if the user has the required permissions to use the command
         /// </summary>
         /// <param name="member"></param>
@@ -122,20 +44,6 @@ namespace LiveBot
                    member.Permissions.HasPermission(Permissions.KickMembers) ||
                    member.Permissions.HasPermission(Permissions.BanMembers) ||
                    member.Permissions.HasPermission(Permissions.Administrator);
-        }
-
-        
-
-        public enum ModLogType
-        {
-            Kick,
-            Ban,
-            Info,
-            Warning,
-            Unwarn,
-            Unban,
-            TimedOut,
-            TimeOutRemoved
         }
     }
 }

@@ -62,6 +62,7 @@ internal sealed class Program
             .AddSingleton<IStreamNotificationService,StreamNotificationService>()
             .AddSingleton<ILeaderboardService,LeaderboardService>()
             .AddSingleton<IModMailService,ModMailService>()
+            .AddSingleton<IModLogService,ModLogService>()
             .BuildServiceProvider();
         _provider = serviceProvider;
 
@@ -115,18 +116,21 @@ internal sealed class Program
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
         var memberKickCheck = ActivatorUtilities.CreateInstance<MemberKickCheck>(serviceProvider);
-        var getUserInfoOnbutton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
+        var getUserInfoOnButton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
         
         var warningService = serviceProvider.GetService<IWarningService>();
         var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
         var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
         var modMailService = serviceProvider.GetService<IModMailService>();
         var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
+        var modLogService = serviceProvider.GetService<IModLogService>();
         
         leaderboardService.StartService(discordClient);
         warningService.StartService(discordClient);
         streamNotificationService.StartService(discordClient);
         await theCrewHubService.StartServiceAsync(discordClient);
+        modLogService.StartService(discordClient);
+        
         Timer streamCleanupTimer = new(_ => streamNotificationService.StreamListCleanup());
         Timer modMailCleanupTimer = new(async _ => await modMailService.ModMailCleanupAsync(discordClient));
         streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(10));
@@ -149,7 +153,7 @@ internal sealed class Program
         discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
 
         discordClient.ComponentInteractionCreated += getInfractionOnButton.OnPress;
-        discordClient.ComponentInteractionCreated += getUserInfoOnbutton.OnPress;
+        discordClient.ComponentInteractionCreated += getUserInfoOnButton.OnPress;
 
         discordClient.MessageCreated += userActivityTracker.Add_Points;
 

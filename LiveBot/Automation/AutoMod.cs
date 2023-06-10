@@ -11,11 +11,13 @@ namespace LiveBot.Automation
         
         private readonly IWarningService _warningService;
         private readonly LiveBotDbContext _databaseContext;
+        private readonly IModLogService _modLogService;
 
-        public AutoMod(IWarningService warningService, LiveBotDbContext databaseContext)
+        public AutoMod(IWarningService warningService, LiveBotDbContext databaseContext, IModLogService modLogService)
         {
             _warningService = warningService;
             _databaseContext = databaseContext;
+            _modLogService = modLogService;
         }
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
@@ -227,8 +229,8 @@ namespace LiveBot.Automation
                     if (banEntry != null)
                     {
                         Console.WriteLine("Ban reason search succeeded");
-                        await CustomMethod.SendModLogAsync(wkbLog, banEntry.Target,
-                            $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}", CustomMethod.ModLogType.Ban);
+                        _modLogService.AddToQueue(new ModLogItem(wkbLog, banEntry.Target,
+                            $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}",ModLogType.Ban));
                         await _databaseContext.AddInfractionsAsync(_databaseContext,
                             new Infraction(banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified", false, InfractionType.Ban));
                     }
@@ -257,7 +259,7 @@ namespace LiveBot.Automation
                     await Task.Delay(1000);
                     var logs = await guild.GetAuditLogsAsync(1, action_type: AuditLogActionType.Unban);
                     DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId.Value);
-                    await CustomMethod.SendModLogAsync(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", CustomMethod.ModLogType.Unban);
+                    _modLogService.AddToQueue(new ModLogItem(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", ModLogType.Unban));
                 }
             });
             return Task.CompletedTask;
@@ -398,11 +400,11 @@ namespace LiveBot.Automation
             DateTimeOffset dto = e.Member.CommunicationDisabledUntil.GetValueOrDefault();
             if (e.CommunicationDisabledUntilAfter != null && e.CommunicationDisabledUntilBefore == null)
             {
-                await CustomMethod.SendModLogAsync(userTimedOutLogChannel, e.Member, $"**Timed Out Until:** <t:{dto.ToUnixTimeSeconds()}:F>(<t:{dto.ToUnixTimeSeconds()}:R>)", CustomMethod.ModLogType.TimedOut);
+                _modLogService.AddToQueue(new ModLogItem(userTimedOutLogChannel, e.Member, $"**Timed Out Until:** <t:{dto.ToUnixTimeSeconds()}:F>(<t:{dto.ToUnixTimeSeconds()}:R>)", ModLogType.TimedOut));
             }
             else if (e.CommunicationDisabledUntilAfter == null && e.CommunicationDisabledUntilBefore != null)
             {
-                await CustomMethod.SendModLogAsync(userTimedOutLogChannel, e.Member, $"**Timeout Removed**", CustomMethod.ModLogType.TimeOutRemoved);
+                _modLogService.AddToQueue(new ModLogItem(userTimedOutLogChannel, e.Member, $"**Timeout Removed**", ModLogType.TimeOutRemoved));
             }
         }
 
