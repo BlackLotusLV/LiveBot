@@ -17,11 +17,10 @@ namespace LiveBot.Automation
 
         public async Task Stream_Notification(object client, PresenceUpdateEventArgs e)
         {
-            if (e.User == null || e.User.IsBot || e.User.Presence == null) return;
+            if (e.User is null || e.User.IsBot || e.User.Presence is null) return;
             DiscordGuild guild = e.User.Presence.Guild;
             if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
-            if (await _dbContext.StreamNotifications.FirstOrDefaultAsync(sn=>sn.GuildId == guild.Id)==null)return; 
-            var streamNotifications = await _dbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToListAsync();
+            var streamNotifications = _dbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
             if (streamNotifications.Count < 1) return;
             foreach (StreamNotifications streamNotification in streamNotifications)
             {

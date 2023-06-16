@@ -30,8 +30,9 @@ public class ModMailService : IModMailService
 
     public async Task ProcessModMailDm(DiscordClient client, MessageCreateEventArgs e)
     {
+        if (e.Guild is not null) return;
         ModMail mmEntry = await _dbContext.ModMail.FirstOrDefaultAsync(w => w.UserDiscordId == e.Author.Id && w.IsActive);
-        if (e.Guild != null || mmEntry == null) return;
+        if (mmEntry == null) return;
         DiscordGuild guild = client.Guilds.First(w => w.Value.Id == mmEntry.GuildId).Value;
         DiscordEmbedBuilder embed = new()
         {
@@ -61,7 +62,7 @@ public class ModMailService : IModMailService
 
 
         ulong? modMailChannelId = _dbContext.Guilds.First(w => w.Id == mmEntry.GuildId).ModMailChannelId;
-        if (modMailChannelId != null)
+        if (modMailChannelId is not null)
         {
             DiscordChannel modMailChannel = guild.GetChannel(modMailChannelId.Value);
             await modMailChannel.SendMessageAsync(embed: embed);

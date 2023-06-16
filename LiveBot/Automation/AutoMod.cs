@@ -299,7 +299,7 @@ namespace LiveBot.Automation
 
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
-            if (e.Guild == null) return;
+            if (e.Guild is null) return;
             Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
             if (e.Author.IsBot || guild == null || guild.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
@@ -314,7 +314,7 @@ namespace LiveBot.Automation
 
         public async Task Everyone_Tag_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
-            if (e.Author.IsBot || e.Guild == null) return;
+            if (e.Author.IsBot || e.Guild is null) return;
 
             Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(w=>w.Id==e.Guild.Id);
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
@@ -391,10 +391,12 @@ namespace LiveBot.Automation
         public async Task User_Timed_Out_Log(DiscordClient client, GuildMemberUpdateEventArgs e)
         {
             if (e.Member.IsBot) return;
-            Guild guild = await _databaseContext.Guilds.FirstAsync(w => w.Id == e.Guild.Id);
-            if (guild.ModerationLogChannelId == null) return;
 
             if (e.CommunicationDisabledUntilBefore == e.CommunicationDisabledUntilAfter) return;
+            
+            Guild guild = await _databaseContext.Guilds.FirstAsync(w => w.Id == e.Guild.Id);
+            if (guild.ModerationLogChannelId == null) return;
+            
             DiscordChannel userTimedOutLogChannel = e.Guild.GetChannel(guild.ModerationLogChannelId.Value);
 
             DateTimeOffset dto = e.Member.CommunicationDisabledUntil.GetValueOrDefault();
