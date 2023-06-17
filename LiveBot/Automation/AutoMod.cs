@@ -1,4 +1,5 @@
-﻿using DSharpPlus.Exceptions;
+﻿using System.Net.Http;
+using DSharpPlus.Exceptions;
 using System.Text.RegularExpressions;
 using LiveBot.DB;
 using LiveBot.Services;
@@ -62,6 +63,7 @@ namespace LiveBot.Automation
                 var description = $"{author.Mention}'s message was deleted in {e.Channel.Mention}";
                 if (convertedDeleteMessage.Length <= 1024)
                 {
+                    DiscordMessageBuilder msgBuilder = new();
                     DiscordEmbedBuilder embed = new()
                     {
                         Color = new DiscordColor(0xFF6600),
@@ -78,7 +80,36 @@ namespace LiveBot.Automation
                     };
                     embed.AddField("Message Content", convertedDeleteMessage);
                     embed.AddField("Had attachment?", hasAttachment ? $"{e.Message.Attachments.Count} Attachments" : "no");
-                    await deleteLogChannel.SendMessageAsync(embed: embed);
+
+                    List<DiscordEmbed> attachmentEmbeds = new();
+                    List<string> imageExtensions = new() { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".jfif", ".svg", ".ico" };
+                    foreach (DiscordAttachment messageAttachment in e.Message.Attachments.Where(x=>imageExtensions.Contains(Path.GetExtension(x.FileName))))
+                    {
+                        using HttpClient httpClient = new();
+                        HttpResponseMessage response = await httpClient.GetAsync(messageAttachment.Url);
+                        if (!response.IsSuccessStatusCode) continue;
+                        var memoryStream = new MemoryStream();
+                        await response.Content.CopyToAsync(memoryStream);
+                        memoryStream.Position = 0;
+                        var uniqueFileName = $"{Guid.NewGuid()}-{messageAttachment.FileName}";
+                        msgBuilder.AddFile(uniqueFileName, memoryStream);
+                        if (embed.ImageUrl is null)
+                        {
+                            embed.ImageUrl = $"attachment://{uniqueFileName}";
+                        }
+                        else
+                        {
+                            attachmentEmbeds.Add(new DiscordEmbedBuilder
+                            {
+                                Color = new DiscordColor(0xFF6600),
+                                ImageUrl = $"attachment://{uniqueFileName}"
+                            }.Build());
+                        }
+                    }
+                    attachmentEmbeds.Insert(0,embed.Build());
+                    msgBuilder.AddEmbeds(attachmentEmbeds);
+                    
+                    await deleteLogChannel.SendMessageAsync(msgBuilder);
                 }
                 else
                 {
