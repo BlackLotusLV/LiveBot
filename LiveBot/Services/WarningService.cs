@@ -221,6 +221,10 @@ namespace LiveBot.Services
             {
                 member = await guild.GetMemberAsync(user.Id);
             }
+            catch (DSharpPlus.Exceptions.NotFoundException e)
+            {
+                _client.Logger.LogDebug("Moderator tried to get info on user {User} in {Guild} but they are not in the server", user.Username, guild.Name);
+            }
             catch (Exception e)
             {
                 _client.Logger.LogError(e, "Failed to get member in GetUserInfoAsync");

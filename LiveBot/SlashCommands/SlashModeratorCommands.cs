@@ -97,7 +97,7 @@ namespace LiveBot.SlashCommands
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, (DiscordUser)ctx.TargetMember, true);
+            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, ctx.TargetUser, true);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
@@ -156,7 +156,7 @@ namespace LiveBot.SlashCommands
         public async Task InfoContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = await WarningService.GetUserInfoAsync(ctx.Guild, ctx.TargetMember);
+            DiscordEmbed embed = await WarningService.GetUserInfoAsync(ctx.Guild, ctx.TargetUser);
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
         }
 
