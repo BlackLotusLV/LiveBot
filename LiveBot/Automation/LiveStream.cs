@@ -67,6 +67,8 @@ namespace LiveBot.Automation
                         break;
                 }
             }
+
+            await Task.Delay(1);
         }
     }
 }
