@@ -35,11 +35,11 @@ namespace LiveBot.Automation
             CoolDowns.Remove(coolDown);
             CoolDowns.Add(new Cooldown(e.Author, e.Guild, DateTime.UtcNow));
 
-            long userPoints = await _dbContext.UserActivity
+            long userPoints = _dbContext.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id)
-                .SumAsync(w => w.Points);
-            var rankRole = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToListAsync();
-            var rankRoleUnder = await _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToListAsync();
+                .Sum(w => w.Points);
+            var rankRole = _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToList();
+            var rankRoleUnder = _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
             var rankRolesOver = rankRole.Except(rankRoleUnder);
 
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
