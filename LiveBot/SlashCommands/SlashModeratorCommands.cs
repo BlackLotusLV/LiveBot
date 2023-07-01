@@ -83,7 +83,7 @@ namespace LiveBot.SlashCommands
                 ModLogService.AddToQueue(new ModLogItem(
                     channel,
                     user,
-                    "# Note Added" +
+                    "# Note Added\n" +
                     $"- **User:** {user.Mention}\n" +
                     $"- **Moderator:** {ctx.Member.Mention}\n" +
                     $"- **Note:** {note}",
