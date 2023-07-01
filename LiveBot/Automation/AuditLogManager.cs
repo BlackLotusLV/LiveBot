@@ -66,7 +66,7 @@ public class AuditLogManager
             "# User Kicked\n" +
             $"- **User:** {targetUser.Mention}\n" +
             $"- **Moderator:** {modUser.Mention}\n" +
-            $"- **Reason:** {logEntry.Reason}" +
+            $"- **Reason:** {logEntry.Reason}\n" +
             $"- **Kick Count:** {guildUser.KickCount}",
             ModLogType.Kick));
         await _databaseContext.AddInfractionsAsync(_databaseContext,
