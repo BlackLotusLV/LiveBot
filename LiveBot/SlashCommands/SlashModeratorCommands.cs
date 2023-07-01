@@ -80,7 +80,15 @@ namespace LiveBot.SlashCommands
             if (guild != null)
             {
                 DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
-                ModLogService.AddToQueue(new ModLogItem(channel, user, $"**Note added to:**\t{user.Mention}\n**by:**\t{ctx.Member.Username}\n**Note:**\t{note}", ModLogType.Info,attachment:image));
+                ModLogService.AddToQueue(new ModLogItem(
+                    channel,
+                    user,
+                    "# Note Added" +
+                    $"- **User:** {user.Mention}\n" +
+                    $"- **Moderator:** {ctx.Member.Mention}\n" +
+                    $"- **Note:** {note}",
+                    ModLogType.Info,
+                    attachment:image));
             }
         }
 
