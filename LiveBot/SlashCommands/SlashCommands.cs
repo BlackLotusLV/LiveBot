@@ -15,9 +15,8 @@ namespace LiveBot.SlashCommands
         [SlashCommand("LiveBot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
         {
-            const string changelog = "[FIX] Mod mail auto close fixed\n" +
-                                     "[FIX] TopSummit command not generating an image fixed\n" +
-                                     "[Various fixes and improvements to backend code]";
+            const string changelog = "- Adjusted formatting for mod logs\n" +
+                                     "- Mod logs now hook in to AuditLogs for accurate and more data";
             DiscordUser user = ctx.Client.CurrentUser;
             DiscordEmbedBuilder embed = new()
             {

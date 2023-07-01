@@ -73,6 +73,14 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                 case ModLogType.TimeOutRemoved:
                     footerText = "User Timeout Removed";
                     break;
+                case ModLogType.TimeOutExtended:
+                    color = new DiscordColor(0xFFBA01);
+                    footerText = "User Timeout Extended";
+                    break;
+                case ModLogType.TimeOutShortened:
+                    color = new DiscordColor(0xFFBA01);
+                    footerText = "User Timeout Shortened";
+                    break;
 
                 default:
                     break;
@@ -137,7 +145,9 @@ public enum ModLogType
     Unwarn,
     Unban,
     TimedOut,
-    TimeOutRemoved
+    TimeOutRemoved,
+    TimeOutExtended,
+    TimeOutShortened
 }
 
 public class ModLogItem

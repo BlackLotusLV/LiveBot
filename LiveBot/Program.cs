@@ -74,7 +74,7 @@ internal sealed class Program
             ReconnectIndefinitely = true,
             MinimumLogLevel = logLevel,
             Intents = DiscordIntents.All,
-            LogUnknownEvents = false
+            LogUnknownEvents = true
         };
         CommandsNextConfiguration cNextConfig = new()
         {
@@ -115,8 +115,8 @@ internal sealed class Program
         var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
         var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
-        var memberKickCheck = ActivatorUtilities.CreateInstance<MemberKickCheck>(serviceProvider);
         var getUserInfoOnButton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
+        var auditLogManager = ActivatorUtilities.CreateInstance<AuditLogManager>(serviceProvider);
         
         var warningService = serviceProvider.GetService<IWarningService>();
         var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
@@ -146,11 +146,7 @@ internal sealed class Program
         discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
         discordClient.GuildMemberAdded += autoMod.User_Join_Log;
         discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
-        discordClient.GuildMemberRemoved += memberKickCheck.OnRemoved;
-        discordClient.GuildBanAdded += autoMod.User_Banned_Log;
-        discordClient.GuildBanRemoved += autoMod.User_Unbanned_Log;
         discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
-        discordClient.GuildMemberUpdated += autoMod.User_Timed_Out_Log;
 
         discordClient.ComponentInteractionCreated += getInfractionOnButton.OnPress;
         discordClient.ComponentInteractionCreated += getUserInfoOnButton.OnPress;
@@ -169,6 +165,8 @@ internal sealed class Program
         discordClient.MessageCreated += modMailService.ProcessModMailDm;
         discordClient.ComponentInteractionCreated += modMailService.CloseButton;
         discordClient.ComponentInteractionCreated += modMailService.OpenButton;
+
+        discordClient.UnknownEvent += auditLogManager.UnknownEventToAuditLog;
         
         if (!testBuild)
         {

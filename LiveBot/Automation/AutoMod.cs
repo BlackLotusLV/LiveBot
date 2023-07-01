@@ -25,20 +25,21 @@ namespace LiveBot.Automation
 
         private static List<DiscordMessage> _messageList = new();
 
-        public Task Media_Only_Filter(DiscordClient client, MessageCreateEventArgs e)
+        public async Task Media_Only_Filter(DiscordClient client, MessageCreateEventArgs e)
         {
-            _ = Task.Run(async () =>
-                {
-                    if (MediaOnlyChannelIDs.Any(id => id == e.Channel.Id) && !e.Author.IsBot && e.Message.Attachments.Count == 0 && !e.Message.Content.Split(' ').Any(a => Uri.TryCreate(a, UriKind.Absolute, out _)))
-                    {
-                        await e.Message.DeleteAsync();
-                        DiscordMessage m = await e.Channel.SendMessageAsync("This channel is for sharing media only, please use the content comment channel for discussions. If this is a mistake please contact a moderator.");
-                        await Task.Delay(9000);
-                        await m.DeleteAsync();
-                        client.Logger.LogInformation(CustomLogEvents.PhotoCleanup, "User tried to send text in photomode channel. Message deleted");
-                    }
-                });
-            return Task.CompletedTask;
+            if (MediaOnlyChannelIDs.Any(id => id == e.Channel.Id) &&
+                !e.Author.IsBot &&
+                e.Message.Attachments.Count == 0 &&
+                !e.Message.Content.Split(' ').Any(a => Uri.TryCreate(a, UriKind.Absolute, out _)))
+            {
+                await e.Message.DeleteAsync();
+                DiscordMessage m = await e.Channel.SendMessageAsync(
+                    "This channel is for sharing media only, please use the content comment channel for discussions. If this is a mistake please contact a moderator.");
+                await Task.Delay(9000);
+                await m.DeleteAsync();
+                client.Logger.LogInformation(CustomLogEvents.PhotoCleanup,
+                    "User tried to send text in photomode channel. Message deleted");
+            }
         }
 
         public async Task Delete_Log(DiscordClient client, MessageDeleteEventArgs e)
@@ -238,64 +239,6 @@ namespace LiveBot.Automation
             await userTraffic.SendMessageAsync(messageBuilder);
         }
 
-        public async Task User_Banned_Log(DiscordClient client, GuildBanAddEventArgs e)
-        {
-                var wkbSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == e.Guild.Id);
-                DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == wkbSettings.Id).Value;
-                if (wkbSettings.ModerationLogChannelId != null)
-                {
-                    int timesRun = 0;
-                    Console.WriteLine("--Ban triggered--");
-                    IReadOnlyList<DiscordAuditLogEntry> entries = await e.Guild.GetAuditLogsAsync(20, null, AuditLogActionType.Ban);
-                    DiscordAuditLogBanEntry banEntry = entries.Select(entry => entry as DiscordAuditLogBanEntry).FirstOrDefault(entry => entry.Target == e.Member);
-                    while (banEntry == null && timesRun < 15)
-                    {
-                        await Task.Delay(2000);
-                        entries = await e.Guild.GetAuditLogsAsync(5, null, AuditLogActionType.Ban);
-                        banEntry = entries.Select(entry => entry as DiscordAuditLogBanEntry).FirstOrDefault(entry => entry.Target == e.Member);
-                        timesRun++;
-                        Console.WriteLine($"--Trying check again {timesRun}. {(banEntry == null ? "Empty" : "Found")}");
-                    }
-                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId.Value);
-                    if (banEntry != null)
-                    {
-                        Console.WriteLine("Ban reason search succeeded");
-                        _modLogService.AddToQueue(new ModLogItem(wkbLog, banEntry.Target,
-                            $"**User Banned:**\t{banEntry.Target.Mention}\n*by {banEntry.UserResponsible.Mention}*\n**Reason:** {banEntry.Reason}",ModLogType.Ban));
-                        await _databaseContext.AddInfractionsAsync(_databaseContext,
-                            new Infraction(banEntry.UserResponsible.Id, banEntry.Target.Id, e.Guild.Id, banEntry.Reason ?? "No reason specified", false, InfractionType.Ban));
-                    }
-                    else
-                    {
-                        Console.WriteLine("Ban Reason search failed");
-                        await wkbLog.SendMessageAsync("A user got banned but failed to find data, please log manually");
-                    }
-                }
-
-                GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { e.Member.Id, e.Guild.Id }) ??
-                                      await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(e.Member.Id, e.Guild.Id));
-                guildUser.BanCount++;
-                _databaseContext.Update(guildUser);
-                await _databaseContext.SaveChangesAsync();
-        }
-
-        public Task User_Unbanned_Log(DiscordClient client, GuildBanRemoveEventArgs e)
-        {
-            _ = Task.Run(async () =>
-            {
-                Guild wkbSettings = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
-                DiscordGuild guild = await client.GetGuildAsync(wkbSettings.Id);
-                if (wkbSettings.ModerationLogChannelId != null)
-                {
-                    await Task.Delay(1000);
-                    var logs = await guild.GetAuditLogsAsync(1, action_type: AuditLogActionType.Unban);
-                    DiscordChannel wkbLog = guild.GetChannel(wkbSettings.ModerationLogChannelId.Value);
-                    _modLogService.AddToQueue(new ModLogItem(wkbLog, e.Member, $"**User Unbanned:**\t{e.Member.Mention}\n*by {logs[0].UserResponsible.Mention}*", ModLogType.Unban));
-                }
-            });
-            return Task.CompletedTask;
-        }
-
         public async Task Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
             if (e.Author.IsBot || e.Guild == null) return;
@@ -306,7 +249,7 @@ namespace LiveBot.Automation
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
             _messageList.Add(e.Message);
-            List<DiscordMessage> duplicateMessages = _messageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
+            var duplicateMessages = _messageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
             int i = duplicateMessages.Count;
             if (i < 5) return;
 
@@ -416,28 +359,6 @@ namespace LiveBot.Automation
             if (e?.After?.Channel != e?.Before?.Channel)
             {
                 await vcActivityLogChannel.SendMessageAsync(embed);
-            }
-        }
-
-        public async Task User_Timed_Out_Log(DiscordClient client, GuildMemberUpdateEventArgs e)
-        {
-            if (e.Member.IsBot) return;
-
-            if (e.CommunicationDisabledUntilBefore == e.CommunicationDisabledUntilAfter) return;
-            
-            Guild guild = await _databaseContext.Guilds.FirstAsync(w => w.Id == e.Guild.Id);
-            if (guild.ModerationLogChannelId == null) return;
-            
-            DiscordChannel userTimedOutLogChannel = e.Guild.GetChannel(guild.ModerationLogChannelId.Value);
-
-            DateTimeOffset dto = e.Member.CommunicationDisabledUntil.GetValueOrDefault();
-            if (e.CommunicationDisabledUntilAfter != null && e.CommunicationDisabledUntilBefore == null)
-            {
-                _modLogService.AddToQueue(new ModLogItem(userTimedOutLogChannel, e.Member, $"**Timed Out Until:** <t:{dto.ToUnixTimeSeconds()}:F>(<t:{dto.ToUnixTimeSeconds()}:R>)", ModLogType.TimedOut));
-            }
-            else if (e.CommunicationDisabledUntilAfter == null && e.CommunicationDisabledUntilBefore != null)
-            {
-                _modLogService.AddToQueue(new ModLogItem(userTimedOutLogChannel, e.Member, $"**Timeout Removed**", ModLogType.TimeOutRemoved));
             }
         }
 
