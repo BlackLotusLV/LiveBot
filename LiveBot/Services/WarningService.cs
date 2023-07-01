@@ -87,8 +87,12 @@ namespace LiveBot.Services
                     embedToUser.AddField("Warning by", $"{warningItem.Admin.Mention}", true);
                     embedToUser.AddField("Server", warningItem.Guild.Name, true);
 
-                    var warningDescription =
-                        $"**Warned user:**\t{warningItem.User.Mention}\n**Infraction level:**\t {infractionLevel}\t**Infractions:**\t {warningCount}\n**Warned by**\t{warningItem.Admin.Username}\n**Reason:** {warningItem.Reason}";
+                    string warningDescription = "# User Warned\n" +
+                                                $"- **User:** {warningItem.User.Mention}\n" +
+                                                $"- **Infraction level:** {infractionLevel}\n" +
+                                                $"- **Infractions:** {warningCount}\n" +
+                                                $"- **Moderator:** {warningItem.Admin.Mention}\n" +
+                                                $"- **Reason:** {warningItem.Reason}";
 
                     switch (infractionLevel)
                     {
@@ -190,7 +194,11 @@ namespace LiveBot.Services
             await _databaseContext.SaveChangesAsync();
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Infraction #{entry.Id} deactivated for {user.Username}({user.Id})"));
 
-            var description = $"{ctx.User.Mention} deactivated infraction #{entry.Id} for user:{user.Mention}. Infraction level: {infractionLevel - 1}";
+            string description = $"# User Warning Removed\n" +
+                                 $"- **User:** {user.Mention}\n" +
+                                 $"- **Infraction ID:** {entry.Id}\n" +
+                                 $"- **Infraction level:** {infractionLevel - 1}\n" +
+                                 $"- **Moderator:** {ctx.User.Mention}\n";
             try
             {
                 if (member != null) await member.SendMessageAsync($"Your infraction level in **{ctx.Guild.Name}** has been lowered to {infractionLevel - 1} by {ctx.User.Mention}");
