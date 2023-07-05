@@ -1,4 +1,5 @@
-﻿using LiveBot.DB;
+﻿#nullable enable
+using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -7,13 +8,11 @@ namespace LiveBot.Automation;
 
 public class AuditLogManager
 {
-    private readonly IWarningService _warningService;
     private readonly LiveBotDbContext _databaseContext;
     private readonly IModLogService _modLogService;
 
-    public AuditLogManager(IWarningService warningService, LiveBotDbContext databaseContext, IModLogService modLogService)
+    public AuditLogManager(LiveBotDbContext databaseContext, IModLogService modLogService)
     {
-        _warningService = warningService;
         _databaseContext = databaseContext;
         _modLogService = modLogService;
     }
@@ -22,6 +21,7 @@ public class AuditLogManager
     {
         if (args.EventName != "GUILD_AUDIT_LOG_ENTRY_CREATE") return;
         var auditLogEntry = JsonConvert.DeserializeObject<AuditLogEntry>(args.Json);
+        if (auditLogEntry is null) return;
         switch (auditLogEntry.ActionType)
         {
             case AuditLogEvents.MemberBanAdd:
@@ -51,8 +51,8 @@ public class AuditLogManager
                               await _databaseContext.AddGuildAsync(_databaseContext, new Guild(guild.Id));
         if (guildSettings.ModerationLogChannelId is null) return;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
-        DiscordUser targetUser = await client.GetUserAsync(logEntry.TargetId);
-        DiscordUser modUser = await client.GetUserAsync(logEntry.UserId);
+        DiscordUser targetUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.TargetId));
+        DiscordUser modUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.UserId));
         GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { targetUser.Id, guild.Id }) ??
                               await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(targetUser.Id, guild.Id));
 
@@ -88,8 +88,8 @@ public class AuditLogManager
                               await _databaseContext.AddGuildAsync(_databaseContext, new Guild(guild.Id));
         if (guildSettings.ModerationLogChannelId is null) return;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
-        DiscordUser targetUser = await client.GetUserAsync(logEntry.TargetId);
-        DiscordUser modUser = await client.GetUserAsync(logEntry.UserId);
+        DiscordUser targetUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.TargetId));
+        DiscordUser modUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.UserId));
         _modLogService.AddToQueue(new ModLogItem(
             modLogChannel,
             targetUser,
@@ -102,8 +102,8 @@ public class AuditLogManager
 
     private async Task TimeOutLogger(DiscordClient client, AuditLogEntry logEntry)
     {
-        if (logEntry.ActionType != AuditLogEvents.MemberUpdate) return;
-        AuditLogChanges changes = logEntry.Changes.FirstOrDefault(w => w.Key == "communication_disabled_until");
+        if (logEntry.ActionType != AuditLogEvents.MemberUpdate || logEntry.Changes is null) return;
+        AuditLogChanges? changes = logEntry.Changes.FirstOrDefault(w => w.Key == "communication_disabled_until");
         if (changes is null) return;
         DateTimeOffset? newTime = null;
         DateTimeOffset? oldTime = null;
@@ -120,11 +120,11 @@ public class AuditLogManager
         Guild guildSettings= _databaseContext.Guilds.First(w => w.Id == logEntry.GuildId);
         if (guildSettings.ModerationLogChannelId is null) return;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
-        DiscordUser targetUser = await client.GetUserAsync(logEntry.TargetId);
-        DiscordUser modUser = await client.GetUserAsync(logEntry.UserId);
-        var modLogType = ModLogType.Info;
+        DiscordUser targetUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.TargetId));
+        DiscordUser modUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.UserId));
+        ModLogType modLogType;
         string description;
-        if (newTime is null)
+        if (newTime is null && oldTime is not null)
         {
             modLogType = ModLogType.TimeOutRemoved;
             description ="# Timeout Removed\n" +
@@ -169,18 +169,18 @@ public class AuditLogManager
     {
         if (logEntry.ActionType != AuditLogEvents.MemberBanAdd) return;
         
-        GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { logEntry.TargetId, logEntry.GuildId }) ??
-                              await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(logEntry.TargetId, logEntry.GuildId));
+        GuildUser guildUser = await _databaseContext.GuildUsers.FindAsync(new object[] { CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId }) ??
+                              await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId));
         guildUser.BanCount++;
         _databaseContext.Update(guildUser);
         await _databaseContext.SaveChangesAsync();
         
-        Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == logEntry.GuildId);
-        if (guildSettings.ModerationLogChannelId is null) return;
+        Guild? guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == logEntry.GuildId);
+        if (guildSettings?.ModerationLogChannelId is null) return;
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == guildSettings.Id).Value;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
-        DiscordUser targetUser = await client.GetUserAsync(logEntry.TargetId);
-        DiscordUser moderator = await client.GetUserAsync(logEntry.UserId);
+        DiscordUser targetUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.TargetId));
+        DiscordUser moderator = await client.GetUserAsync(CheckIfIdNotNull(logEntry.UserId));
         _modLogService.AddToQueue(new ModLogItem(
             modLogChannel,
             targetUser,
@@ -196,15 +196,27 @@ public class AuditLogManager
             new Infraction(moderator.Id,targetUser.Id,guild.Id,logEntry.Reason,false,InfractionType.Ban)
             );
     }
+    
+    private ulong CheckIfIdNotNull(string? id)
+    {
+        if (id is null) throw new ArgumentNullException(nameof(id));
+        return ulong.Parse(id);
+    }
+    private ulong CheckIfIdNotNull(ulong? id)
+    {
+        if (id is null) throw new ArgumentNullException(nameof(id));
+        return id.Value;
+    }
 
     private class AuditLogEntry
     {
         [JsonProperty("user_id")]
-        public ulong UserId { get; set; }
+        public ulong? UserId { get; set; }
         [JsonProperty("target_id")]
-        public ulong TargetId { get; set; }
+        public string? TargetId { get; set; }
         [JsonProperty("reason")]
-        public string Reason { get; set; }
+        public string? Reason { get; set; }
+
         [JsonProperty("id")]
         public ulong AuditLogId { get; set; }
         [JsonProperty("action_type")]
@@ -212,19 +224,19 @@ public class AuditLogManager
         [JsonProperty("guild_id")]
         public ulong GuildId { get; set; }
         [JsonProperty("changes")]
-        public AuditLogChanges[] Changes { get; set; }
+        public AuditLogChanges[]? Changes { get; set; }
         [JsonProperty("options")]
-        public AuditLogOptions Options { get; set; }
+        public AuditLogOptions? Options { get; set; }
     }
 
     private class AuditLogChanges
     {
         [JsonProperty("new_value")]
-        public object NewValue { get; set; }
+        public object? NewValue { get; set; }
         [JsonProperty("old_value")]
-        public object OldValue { get; set; }
-        [JsonProperty("key")]
-        public string Key { get; set; }
+        public object? OldValue { get; set; }
+
+        [JsonProperty("key")] public string Key { get; set; } = null!;
     }
 
     private class AuditLogOptions
@@ -232,25 +244,25 @@ public class AuditLogManager
         [JsonProperty("application_id")]
         public ulong ApplicationId { get; set; }
         [JsonProperty("auto_moderation_rule_name")]
-        public string AutoModerationRuleName { get; set; }
+        public string AutoModerationRuleName { get; set; }=null!;
         [JsonProperty("auto_moderation_rule_trigger_type")]
-        public string AutoModerationRuleTriggerType { get; set; }
+        public string AutoModerationRuleTriggerType { get; set; }=null!;
         [JsonProperty("channel_id")]
         public ulong ChannelId { get; set; }
         [JsonProperty("count")]
-        public string Count { get; set; }
+        public string Count { get; set; } = null!;
         [JsonProperty("delete_member_days")]
-        public string DeleteMemberDays { get; set; }
+        public string DeleteMemberDays { get; set; }=null!;
         [JsonProperty("id")]
         public ulong OverwrittenId { get; set; }
         [JsonProperty("members_removed")]
-        public string MembersRemoved { get; set; }
+        public string MembersRemoved { get; set; }=null!;
         [JsonProperty("message_id")]
         public ulong MessageId { get; set; }
         [JsonProperty("role_name")]
-        public string RoleName { get; set; }
+        public string RoleName { get; set; }=null!;
         [JsonProperty("type")]
-        public string Type { get; set; }
+        public string Type { get; set; }=null!;
     }
 
     private enum AuditLogEvents

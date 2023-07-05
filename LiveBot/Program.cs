@@ -74,7 +74,7 @@ internal sealed class Program
             ReconnectIndefinitely = true,
             MinimumLogLevel = logLevel,
             Intents = DiscordIntents.All,
-            LogUnknownEvents = true
+            LogUnknownEvents = false
         };
         CommandsNextConfiguration cNextConfig = new()
         {
