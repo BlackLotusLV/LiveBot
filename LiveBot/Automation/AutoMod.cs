@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.Collections.Immutable;
+using System.Net.Http;
 using DSharpPlus.Exceptions;
 using System.Text.RegularExpressions;
 using LiveBot.DB;
@@ -241,10 +242,13 @@ namespace LiveBot.Automation
 
         public async Task Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
-            if (e.Author.IsBot || e.Guild == null) return;
-            Guild guild = _databaseContext.Guilds.Include(g=>g.SpamIgnoreChannels).FirstOrDefault(w => w.Id == e.Guild.Id);
+            if (e.Author.IsBot || e.Guild is null) return;
+            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
+            if (guild is null) return;
+            var spamIgnoreChannels =
+                _databaseContext.SpamIgnoreChannels.Where(x => x.GuildId == e.Guild.Id).ToImmutableArray();
 
-            if (guild?.ModerationLogChannelId == null || guild.SpamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
+            if (guild?.ModerationLogChannelId == null || spamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
 
             if (CustomMethod.CheckIfMemberAdmin(member)) return;
