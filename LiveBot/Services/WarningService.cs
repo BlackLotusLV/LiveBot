@@ -92,7 +92,8 @@ namespace LiveBot.Services
                                                 $"- **Infraction level:** {infractionLevel}\n" +
                                                 $"- **Infractions:** {warningCount}\n" +
                                                 $"- **Moderator:** {warningItem.Admin.Mention}\n" +
-                                                $"- **Reason:** {warningItem.Reason}";
+                                                $"- **Reason:** {warningItem.Reason}\n" +
+                                                $"*Infraction ID: {newInfraction.Id}*";
 
                     switch (infractionLevel)
                     {
