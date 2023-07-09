@@ -94,7 +94,7 @@ internal sealed class Program
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
         discordClient.UseInteractivity(interactivityConfiguration);
         
-        discordClient.Ready += Ready;
+        discordClient.SessionCreated += SessionCreated;
         discordClient.GuildAvailable += GuildAvailable;
         discordClient.ClientErrored += ClientErrored;
 
@@ -191,7 +191,7 @@ internal sealed class Program
         await discordClient.ConnectAsync(botActivity);
         await Task.Delay(-1);
     }
-    private static Task Ready(DiscordClient client, ReadyEventArgs e)
+    private static Task SessionCreated(DiscordClient client, SessionReadyEventArgs e)
     {
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
         return Task.CompletedTask;
