@@ -132,7 +132,7 @@ public class AuditLogManager
                          $"- **by:** {modUser.Mention}\n" +
                          $"- **old timeout:**<t:{oldTime.Value.ToUnixTimeSeconds()}:F>(<t:{oldTime.Value.ToUnixTimeSeconds()}:R>)";
         }
-        else if (oldTime < newTime)
+        else if (oldTime < newTime && oldTime > DateTimeOffset.UtcNow)
         {
             modLogType = ModLogType.TimeOutExtended;
             description = $"# User Timeout Extended\n" +
@@ -142,7 +142,7 @@ public class AuditLogManager
                           $"- **until:**<t:{newTime.Value.ToUnixTimeSeconds()}:F>(<t:{newTime.Value.ToUnixTimeSeconds()}:R>)\n" +
                           $"- ***old timeout:**<t:{oldTime.Value.ToUnixTimeSeconds()}:F>(<t:{oldTime.Value.ToUnixTimeSeconds()}:R>)*";
         }
-        else if ((oldTime is null && newTime>DateTimeOffset.UtcNow) || (oldTime < newTime && oldTime>DateTimeOffset.UtcNow))
+        else if ((oldTime is null && newTime>DateTimeOffset.UtcNow) || (oldTime < newTime && oldTime<DateTimeOffset.UtcNow))
         {
             modLogType = ModLogType.TimedOut;
             description ="# User Timed Out\n" +
