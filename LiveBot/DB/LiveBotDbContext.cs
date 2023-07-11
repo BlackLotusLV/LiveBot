@@ -27,6 +27,7 @@ public class LiveBotDbContext : DbContext
     public LiveBotDbContext(DbContextOptions<LiveBotDbContext> options) : base(options)
     {
     }
+    // uncomment this when creating migrations. Comment this out when publishing bot. It overrides runtime initiation of the database.
     /*
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
