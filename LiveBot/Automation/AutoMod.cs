@@ -252,12 +252,10 @@ namespace LiveBot.Automation
         {
             if (e.Author.IsBot || e.Guild is null) return;
 
-            Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(w=>w.Id==e.Guild.Id);
+            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (
-                    guild != null &&
-                    guild.ModerationLogChannelId != null &&
-                    guild.HasEveryoneProtection &&
+                    guild is { ModerationLogChannelId: not null, HasEveryoneProtection: true } &&
                     !member.Permissions.HasPermission(Permissions.MentionEveryone) &&
                     e.Message.Content.Contains("@everyone") &&
                     !EveryoneTagRegex().IsMatch(e.Message.Content)
