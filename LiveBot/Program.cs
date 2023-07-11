@@ -195,7 +195,7 @@ internal sealed class Program
     }
     private static Task SessionCreated(DiscordClient client, SessionReadyEventArgs e)
     {
-        client.Logger.LogInformation(CustomLogEvents.LiveBot, "[LiveBot] Client is ready to process events.");
+        client.Logger.LogInformation(CustomLogEvents.LiveBot, "Client is ready to process events");
         return Task.CompletedTask;
     }
 
@@ -220,7 +220,7 @@ internal sealed class Program
 
     private static Task CommandExecuted(CommandsNextExtension ext, CommandExecutionEventArgs e)
     {
-        ext.Client.Logger.LogInformation("{username} successfully executed '{commandName}' command", e.Context.User.Username,e.Command.QualifiedName);
+        ext.Client.Logger.LogInformation("{Username} successfully executed '{CommandName}' command", e.Context.User.Username,e.Command.QualifiedName);
         return Task.CompletedTask;
     }
 
@@ -249,19 +249,19 @@ internal sealed class Program
 
     private static Task SlashExecuted(SlashCommandsExtension ext, SlashCommandExecutedEventArgs e)
     {
-        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{commandName}-{qualifiedName}' command", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
+        ext.Client.Logger.LogInformation(CustomLogEvents.SlashExecuted, "{Username} successfully executed '{CommandName}-{QualifiedName}' command", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
     private static Task SlashErrored(SlashCommandsExtension ext, SlashCommandErrorEventArgs e)
     {
-        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}-{qualifiedName}' command, but it errored", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
+        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}-{QualifiedName}' command, but it errored", e.Context.User.Username, e.Context.CommandName, e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
     private static Task ContextMenuExecuted(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
     {
-        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{commandName}-{qualifiedName}' menu command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{CommandName}-{QualifiedName}' menu command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
         return Task.CompletedTask;
     }
 
