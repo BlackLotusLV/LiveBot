@@ -24,8 +24,6 @@ namespace LiveBot.Automation
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
 
-        private static List<DiscordMessage> _messageList = new();
-
         public async Task Media_Only_Filter(DiscordClient client, MessageCreateEventArgs e)
         {
             if (MediaOnlyChannelIDs.Any(id => id == e.Channel.Id) &&
@@ -126,11 +124,6 @@ namespace LiveBot.Automation
 
                     await deleteLogChannel.SendMessageAsync(msgBuilder);
                 }
-            }
-            DiscordMessage deletedMsg = _messageList.FirstOrDefault(w => w.Timestamp.Equals(e.Message.Timestamp) && w.Content.Equals(e.Message.Content));
-            if (deletedMsg != null)
-            {
-                _messageList.Remove(deletedMsg);
             }
         }
 
@@ -238,41 +231,6 @@ namespace LiveBot.Automation
                     new DiscordButtonComponent(ButtonStyle.Primary, $"{_warningService.UserInfoButtonPrefix}{e.Member.Id}", "Get User Info")
                 );
             await userTraffic.SendMessageAsync(messageBuilder);
-        }
-
-        public async Task Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
-        {
-            if (e.Author.IsBot || e.Guild is null) return;
-            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
-            if (guild is null) return;
-            var spamIgnoreChannels =
-                _databaseContext.SpamIgnoreChannels.Where(x => x.GuildId == e.Guild.Id).ToImmutableArray();
-
-            if (guild?.ModerationLogChannelId == null || spamIgnoreChannels.Any(x=>x.ChannelId==e.Channel.Id)) return;
-            DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-
-            if (CustomMethod.CheckIfMemberAdmin(member)) return;
-            _messageList.Add(e.Message);
-            var duplicateMessages = _messageList.Where(w => w.Author == e.Author && w.Content == e.Message.Content && e.Guild == w.Channel.Guild).ToList();
-            int i = duplicateMessages.Count;
-            if (i < 5) return;
-
-            TimeSpan time = (duplicateMessages[i - 1].CreationTimestamp - duplicateMessages[i - 5].CreationTimestamp) / 5;
-            if (time >= TimeSpan.FromSeconds(6)) return;
-            
-            List<DiscordChannel> channelList = duplicateMessages.GetRange(i - 5, 5).Select(s => s.Channel).Distinct().ToList();
-            await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
-            foreach (DiscordChannel channel in channelList)
-            {
-                await channel.DeleteMessagesAsync(duplicateMessages.GetRange(i - 5, 5));
-            }
-
-            int infractionLevel = _databaseContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == e.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
-
-            if (infractionLevel < 5)
-            {
-                _warningService.AddToQueue(new WarningItem(e.Author, client.CurrentUser, e.Guild, e.Channel, "Spam protection triggered - flood", true));
-            }
         }
 
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)

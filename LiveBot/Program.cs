@@ -117,6 +117,7 @@ internal sealed class Program
         var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
         var getUserInfoOnButton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
         var auditLogManager = ActivatorUtilities.CreateInstance<AuditLogManager>(serviceProvider);
+        var duplicateMessageCatcher = ActivatorUtilities.CreateInstance<DuplicateMessageCatcher>(serviceProvider);
         
         var warningService = serviceProvider.GetService<IWarningService>();
         var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
@@ -139,7 +140,6 @@ internal sealed class Program
         discordClient.PresenceUpdated += liveStream.Stream_Notification;
 
         discordClient.MessageCreated += autoMod.Media_Only_Filter;
-        discordClient.MessageCreated += autoMod.Spam_Protection;
         discordClient.MessageCreated += autoMod.Link_Spam_Protection;
         discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
         discordClient.MessageDeleted += autoMod.Delete_Log;
@@ -147,6 +147,8 @@ internal sealed class Program
         discordClient.GuildMemberAdded += autoMod.User_Join_Log;
         discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
         discordClient.VoiceStateUpdated += autoMod.Voice_Activity_Log;
+        
+        discordClient.MessageCreated += duplicateMessageCatcher.CheckMessage;
 
         discordClient.ComponentInteractionCreated += getInfractionOnButton.OnPress;
         discordClient.ComponentInteractionCreated += getUserInfoOnButton.OnPress;
