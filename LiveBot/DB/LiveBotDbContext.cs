@@ -20,6 +20,8 @@ public class LiveBotDbContext : DbContext
     public DbSet<UserActivity> UserActivity { get; set; }
     public DbSet<WhiteListSettings> WhiteListSettings { get; set; }
     public DbSet<WhiteList> WhiteLists { get; set; }
+    public DbSet<PhotoCompSettings> PhotoCompSettings { get; set; }
+    public DbSet<PhotoCompEntries> PhotoCompEntries { get; set; }
 
     public LiveBotDbContext()
     {
@@ -28,7 +30,7 @@ public class LiveBotDbContext : DbContext
     {
     }
     // uncomment this when creating migrations. Comment this out when publishing bot. It overrides runtime initiation of the database.
-    /*
+    ///*
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         
@@ -55,6 +57,8 @@ public class LiveBotDbContext : DbContext
         modelBuilder.Entity<UserActivity>().HasKey(ua => ua.Id);
         modelBuilder.Entity<WhiteList>().HasKey(wl => wl.Id);
         modelBuilder.Entity<WhiteListSettings>().HasKey(wls => wls.Id);
+        modelBuilder.Entity<PhotoCompSettings>().HasKey(pcs => pcs.Id);
+        modelBuilder.Entity<PhotoCompEntries>().HasKey(pce => pce.Id);
         
         
         modelBuilder.Entity<User>()
@@ -72,6 +76,10 @@ public class LiveBotDbContext : DbContext
             .WithOne(gu => gu.User)
             .HasForeignKey(gu => gu.UserDiscordId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.PhotoCompEntries)
+            .WithOne(pce => pce.User)
+            .HasForeignKey(pce => pce.UserId);
         
         
         modelBuilder.Entity<Guild>()
@@ -102,6 +110,10 @@ public class LiveBotDbContext : DbContext
             .HasMany(g => g.WhiteListSettings)
             .WithOne(wls => wls.Guild)
             .HasForeignKey(wls => wls.GuildId);
+        modelBuilder.Entity<Guild>()
+            .HasMany(g => g.PhotoCompSettings)
+            .WithOne(pcs => pcs.Guild)
+            .HasForeignKey(pcs => pcs.GuildId);
         
 
         modelBuilder.Entity<GuildUser>()
@@ -121,6 +133,11 @@ public class LiveBotDbContext : DbContext
             .HasMany(wls => wls.WhitelistedUsers)
             .WithOne(wlu => wlu.Settings)
             .HasForeignKey(wlu => wlu.WhiteListSettingsId);
+
+        modelBuilder.Entity<PhotoCompSettings>()
+            .HasMany(pcs => pcs.Entries)
+            .WithOne(e => e.Competition)
+            .HasForeignKey(e => e.CompetitionId);
     }
 
     public async Task<Guild> AddGuildAsync(LiveBotDbContext context, Guild guild)

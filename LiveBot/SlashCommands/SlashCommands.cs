@@ -1,4 +1,6 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using System.Collections.Immutable;
+using System.Net.Http;
+using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using LiveBot.DB;
 using LiveBot.Services;
@@ -300,6 +302,79 @@ namespace LiveBot.SlashCommands
                 .WithContent($"{member.Mention}, {ctx.Member.Username} has given you a :cookie:")
                 .WithAllowedMention(new UserMention())
                 .SendAsync(ctx.Channel);
+        }
+
+        [SlashRequireGuild,
+        SlashCommand("submit-photo", "Submit a photo to the photo competition.")]
+        public async Task SubmitPhoto(InteractionContext ctx,
+            [Autocomplete(typeof (PhotoContestOption)), Option("Competition", "To which competition to submit to.")] long competitionId,
+            [Option("Photo", "The photo to submit.")] DiscordAttachment image)
+        {
+            await ctx.DeferAsync(true);
+            
+            Guild guild = await DatabaseContext.Guilds
+                .Include(x => x.PhotoCompSettings)
+                .ThenInclude(x=>x.Entries)
+                .FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id);
+            PhotoCompSettings competitionSettings = guild.PhotoCompSettings.FirstOrDefault(x=>x.Id == competitionId);
+            if (competitionSettings is null || competitionSettings.IsOpen is false)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"The competition is not open. Or you have provided an invalid competition ID. Please try again."));
+                return;
+            }
+            if (competitionSettings.MaxEntries != 0 && competitionSettings.Entries.Count(x => x.UserId==ctx.User.Id) >= competitionSettings.MaxEntries)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have reached the maximum amount of entries for this competition. You can submit a maximum of {competitionSettings.MaxEntries} entries."));
+                return;
+            }
+            DiscordChannel dumpChannel = ctx.Guild.GetChannel(competitionSettings.DumpChannelId);
+            DiscordMessageBuilder messageBuilder = new();
+            DiscordEmbedBuilder embedBuilder = new()
+            {
+                Description = $"# 📷 {ctx.User.Username} submitted a photo\n" +
+                              $"- User: {ctx.User.Mention}({ctx.User.Id})\n" +
+                              $"- Competition: {competitionSettings.CustomName}\n" +
+                              $"- Date: <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"
+            };
+            
+            using HttpClient client = new();
+            HttpResponseMessage response = await client.GetAsync(image.Url);
+            if (response.IsSuccessStatusCode)
+            {
+                var fileStream = new MemoryStream();
+                await response.Content.CopyToAsync(fileStream);
+                fileStream.Position = 0;
+                string fileName = Guid.NewGuid() + image.FileName;
+                messageBuilder.AddFile(fileName, fileStream);
+                embedBuilder.ImageUrl = $"attachment://{fileName}";
+                messageBuilder.AddEmbed(embedBuilder);
+            }
+            else
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Failed to download image. Please try again."));
+                return;
+            }
+            DiscordMessage message = await messageBuilder.SendAsync(dumpChannel);
+            message = await dumpChannel.GetMessageAsync(message.Id);
+            await DatabaseContext.PhotoCompEntries.AddAsync(new PhotoCompEntries(ctx.User.Id, competitionSettings.Id,
+                message.Embeds[0].Image.Url.ToString(), DateTime.UtcNow));
+            await DatabaseContext.SaveChangesAsync();
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent(
+                    $"Photo submitted to \"{competitionSettings.CustomName}\" competition."));
+        }
+        
+        public sealed class PhotoContestOption : IAutocompleteProvider
+        {
+            public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            {
+                var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
+                Guild guildSettings = await databaseContext.Guilds
+                    .Include(x => x.PhotoCompSettings)
+                    .FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id);
+                var openCompetitions = guildSettings.PhotoCompSettings.Where(x => x.IsOpen).ToImmutableArray();
+                return openCompetitions.Select(photoCompSettings => new DiscordAutoCompleteChoice(photoCompSettings.CustomName, photoCompSettings.Id)).ToList();
+            }
         }
     }
 }

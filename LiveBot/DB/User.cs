@@ -31,5 +31,6 @@ namespace LiveBot.DB
         public ICollection<UbiInfo> UbiInfo { get; set; }
         public ICollection<User> ChildUsers { get; set; }
         public ICollection<GuildUser> UserGuilds { get; set; }
+        public ICollection<PhotoCompEntries> PhotoCompEntries { get; set; }
     }
 }
