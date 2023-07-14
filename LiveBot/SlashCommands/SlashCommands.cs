@@ -373,6 +373,11 @@ namespace LiveBot.SlashCommands
                     .Include(x => x.PhotoCompSettings)
                     .FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id);
                 var openCompetitions = guildSettings.PhotoCompSettings.Where(x => x.IsOpen).ToImmutableArray();
+                if (openCompetitions.Length==0)
+                {
+                    return new DiscordAutoCompleteChoice[]
+                        { new DiscordAutoCompleteChoice("No open competitions", -1) };
+                }
                 return openCompetitions.Select(photoCompSettings => new DiscordAutoCompleteChoice(photoCompSettings.CustomName, photoCompSettings.Id)).ToList();
             }
         }
