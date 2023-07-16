@@ -1,6 +1,8 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using System.Collections.Immutable;
+using DSharpPlus.SlashCommands;
 using LiveBot.DB;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 
 namespace LiveBot.Services
 {
@@ -12,6 +14,7 @@ namespace LiveBot.Services
         public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
         Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
         Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user);
+        Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
         string UserInfoButtonPrefix { get; }
         string InfractionButtonPrefix { get; }
     }
@@ -247,6 +250,83 @@ namespace LiveBot.Services
             return embedBuilder.Build();
         }
 
+        public async Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
+        {
+            GuildUser userStats = await _databaseContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(user.Id, guild.Id));
+            int kickCount = userStats.KickCount;
+            int banCount = userStats.BanCount;
+            var userInfractions = await _databaseContext.Infractions.Where(w => w.UserId == user.Id && w.GuildId == guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
+            if (!adminCommand)
+            {
+                userInfractions.RemoveAll(w => w.InfractionType == InfractionType.Note);
+            }
+            DiscordEmbedBuilder embed = new()
+            {
+                Color = new DiscordColor(0xFF6600),
+                Author = new DiscordEmbedBuilder.EmbedAuthor
+                {
+                    Name = $"{user.Username}({user.Id})",
+                    IconUrl = user.AvatarUrl
+                },
+                Description = $"- **Times warned:** {userInfractions.Count(w => w.InfractionType == InfractionType.Warning)}\n" +
+                              $"- **Times kicked:** {kickCount}\n" +
+                              $"- **Times banned:** {banCount}\n" +
+                              $"- **Infraction level:** {userInfractions.Count(w => w.IsActive)}\n" +
+                              $"- **Infraction count:** {userInfractions.Count(w => w.IsActive)}",
+                Title = "Infraction History",
+                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
+                {
+                    Url = user.AvatarUrl
+                }
+            };
+            const int pageCap = 4;
+
+            var infractions = new string[(int)Math.Ceiling((double)userInfractions.Count / pageCap)];
+            for (var i = 0; i < userInfractions.Count; i+=pageCap)
+            {
+                StringBuilder reason = new();
+                for (int j = i; j < i + pageCap && j < userInfractions.Count; j++)
+                {
+                    Infraction infraction = userInfractions[j];
+                    reason.AppendLine($"**{GetReasonTypeEmote(infraction.InfractionType)}Infraction #{infraction.Id} ({infraction.InfractionType.ToString()})**\n" +
+                                      $"- **By:** <@{infraction.AdminDiscordId}>\n" +
+                                      $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}>\n" +
+                                      $"- **Reason:** {infraction.Reason}");
+                }
+                infractions[i/pageCap]=reason.ToString();
+                Console.WriteLine(reason.ToString().Length);
+            }
+            List<DiscordEmbed> embeds = new();
+
+            for (var i = 0; i < infractions.Length; i++)
+            {
+                embeds.Add(embed.AddField($"Infractions ({i + 1}/{infractions.Length})", infractions[i]).Build());
+                embed.ClearFields();
+            }
+
+            if (embeds.Count == 0)
+            {
+                embeds.Add(embed.AddField("Infractions", "No infractions found").Build());
+            }
+
+            return embeds;
+        }
+        private static string GetReasonTypeEmote(InfractionType infractionType)
+        {
+            return infractionType switch
+            {
+                InfractionType.Ban => "[🔨]",
+                InfractionType.Kick => "[👢]",
+                InfractionType.Note => "[📝]",
+                InfractionType.Warning => "[⚠️]",
+                InfractionType.TimeoutAdded => "[⏳]",
+                InfractionType.TimeoutRemoved => "[⌛]",
+                InfractionType.TimeoutReduced => "[⏳]",
+                InfractionType.TimeoutExtended => "[⏳]",
+                _ => "❓"
+            };
+        }
+
         public async Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
             var splitCount = 1;
@@ -265,28 +345,42 @@ namespace LiveBot.Services
             int infractionCount = warningsList.Count(w => w.InfractionType == InfractionType.Warning);
             foreach (Infraction infraction in warningsList)
             {
+                reason.Append("### ");
                 switch (infraction.InfractionType)
                 {
                     case InfractionType.Ban:
                         reason.Append("[🔨]");
                         break;
-
                     case InfractionType.Kick:
                         reason.Append("[🥾]");
                         break;
-
                     case InfractionType.Note:
                         reason.Append("[❔]");
                         break;
-
                     case InfractionType.Warning:
                         reason.Append(infraction.IsActive ? "[✅] " : "[❌] ");
                         break;
+                    case InfractionType.TimeoutAdded:
+                        reason.Append("[⏳]");
+                        break;
+                    case InfractionType.TimeoutRemoved:
+                        reason.Append("[⌛]");
+                        break;
+                    case InfractionType.TimeoutExtended:
+                        reason.Append("[⏳]");
+                        break;
+                    case InfractionType.TimeoutReduced:
+                        reason.Append("[⏳]");
+                        break;
+                    default:
+                        reason.Append("[-]");
+                        break;
                 }
 
-                var addedInfraction =
-                    $"**ID:**{infraction.Id}\t**By:** <@{infraction.AdminDiscordId}>\t**Date:** <t:{(int)(infraction.TimeCreated - new DateTime(1970, 1, 1)).TotalSeconds}>\n**Reason:** {infraction.Reason}\n **Type:**\t{infraction.InfractionType.ToString()}";
-
+                string addedInfraction = $"Infraction #{infraction.Id} ({infraction.InfractionType.ToString()})\n" +
+                                         $"- **By:** <@{infraction.AdminDiscordId}>\n" +
+                                         $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}>\n" +
+                                         $"- **Reason:** {infraction.Reason}";
                 if (reason.Length + addedInfraction.Length > 1023 * splitCount)
                 {
                     reason.Append("~split~");

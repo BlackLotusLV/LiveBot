@@ -92,21 +92,80 @@ namespace LiveBot.SlashCommands
             }
         }
 
+        private async Task SendUserInfractionsMessageAsync(BaseContext ctx, DiscordUser user, bool isModerator = true)
+        {
+            DiscordWebhookBuilder webhookBuilder = new();
+            var embeds = await WarningService.BuildInfractionsEmbedsAsync(ctx.Guild, user, isModerator);
+            webhookBuilder.AddEmbed(embeds[0]);
+            if (embeds.Count == 1)
+            {
+                await ctx.EditResponseAsync(webhookBuilder);
+                return;
+            }
+            string leftButtonId = $"left_{ctx.User.Id}",
+                rightButtonId = $"right_{ctx.User.Id}",
+                stopButtonId = $"stop_{ctx.User.Id}";
+            var currentPage = 0;
+            DiscordButtonComponent leftButton = new(ButtonStyle.Primary, leftButtonId, "", true, new DiscordComponentEmoji("⬅️")),
+                stopButton = new(ButtonStyle.Danger, stopButtonId, "", false, new DiscordComponentEmoji("⏹️")),
+                rightButton = new(ButtonStyle.Primary, rightButtonId, "", false, new DiscordComponentEmoji("➡️"));
+
+            webhookBuilder.AddComponents(leftButton, stopButton, rightButton);
+            DiscordMessage message = await ctx.EditResponseAsync(webhookBuilder);
+            
+            while (true)
+            {
+                var result = await message.WaitForButtonAsync(ctx.User, TimeSpan.FromSeconds(30));
+                if (result.TimedOut || result.Result.Id == stopButtonId)
+                {
+                    webhookBuilder.ClearComponents();
+                    await ctx.EditResponseAsync(webhookBuilder);
+                    return;
+                }
+                webhookBuilder = new DiscordWebhookBuilder();
+                if (result.Result.Id == leftButtonId)
+                {
+                    currentPage--;
+                    if (currentPage == 0)
+                    {
+                        leftButton.Disable();
+                    }
+                    if (rightButton.Disabled)
+                    {
+                        rightButton.Enable();
+                    }
+
+                }else if (result.Result.Id == rightButtonId)
+                {
+                    currentPage++;
+                    if (currentPage == embeds.Count - 1)
+                    {
+                        rightButton.Disable();
+                    }
+                    if (leftButton.Disabled)
+                    {
+                        leftButton.Enable();
+                    }
+                }
+                webhookBuilder.AddEmbed(embeds[currentPage])
+                    .AddComponents(leftButton, stopButton, rightButton);
+                await ctx.EditResponseAsync(webhookBuilder);
+                await result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
+            }
+        }
+
         [SlashCommand("Infractions", "Shows the infractions of the user")]
         public async Task Infractions(InteractionContext ctx, [Option("user", "User to show the infractions for")] DiscordUser user)
         {
             await ctx.DeferAsync();
-            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, user, true);
-            await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().AddEmbed(embed));
+            await SendUserInfractionsMessageAsync(ctx, user);
         }
 
         [ContextMenu(ApplicationCommandType.UserContextMenu,"Infractions", false)]
         public async Task InfractionsContextMenu(ContextMenuContext ctx)
         {
             await ctx.DeferAsync(true);
-            DiscordEmbed embed = await WarningService.GetInfractionsAsync(ctx.Guild, ctx.TargetUser, true);
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
+            await SendUserInfractionsMessageAsync(ctx, ctx.TargetUser);
         }
 
         [SlashCommand("FAQ", "Creates a new FAQ message")]
