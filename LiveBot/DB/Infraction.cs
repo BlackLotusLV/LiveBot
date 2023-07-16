@@ -35,7 +35,7 @@ namespace LiveBot.DB
         
         public string Reason { get; set; }
         public bool IsActive { get; set; }
-        public DateTime TimeCreated { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset TimeCreated { get; set; } = DateTimeOffset.UtcNow;
 
         public ulong AdminDiscordId
         {
@@ -45,11 +45,16 @@ namespace LiveBot.DB
         public InfractionType InfractionType { get; set; }
         public GuildUser GuildUser { get; set; }
     }
+
     public enum InfractionType
     {
         Warning,
         Kick,
         Ban,
-        Note
+        Note,
+        TimeoutAdded,
+        TimeoutRemoved,
+        TimeoutExtended,
+        TimeoutReduced
     }
 }

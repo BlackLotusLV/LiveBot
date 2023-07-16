@@ -2,6 +2,7 @@
 using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
 namespace LiveBot.Automation;
@@ -124,6 +125,9 @@ public class AuditLogManager
         DiscordUser modUser = await client.GetUserAsync(CheckIfIdNotNull(logEntry.UserId));
         ModLogType modLogType;
         string description;
+        StringBuilder reasonBuilder = new();
+        reasonBuilder.AppendLine(logEntry.Reason ?? "-reason not specified-");
+        var infractionType = InfractionType.TimeoutRemoved;
         if (newTime is null && oldTime is not null)
         {
             modLogType = ModLogType.TimeOutRemoved;
@@ -131,6 +135,7 @@ public class AuditLogManager
                          $"- **User:**{targetUser.Mention}\n" +
                          $"- **by:** {modUser.Mention}\n" +
                          $"- **old timeout:**<t:{oldTime.Value.ToUnixTimeSeconds()}:F>(<t:{oldTime.Value.ToUnixTimeSeconds()}:R>)";
+            reasonBuilder.Append($"- **Old timeout:** <t:{oldTime.Value.ToUnixTimeSeconds()}:F>");
         }
         else if (oldTime < newTime && oldTime > DateTimeOffset.UtcNow)
         {
@@ -138,9 +143,12 @@ public class AuditLogManager
             description = $"# User Timeout Extended\n" +
                           $"- **User:**{targetUser.Mention}\n" +
                           $"- **by:** {modUser.Mention}\n" +
-                          $"- **reason:** {logEntry.Reason}\n" +
+                          $"- **reason:** {logEntry.Reason??"-reason not specified-"}\n" +
                           $"- **until:**<t:{newTime.Value.ToUnixTimeSeconds()}:F>(<t:{newTime.Value.ToUnixTimeSeconds()}:R>)\n" +
                           $"- ***old timeout:**<t:{oldTime.Value.ToUnixTimeSeconds()}:F>(<t:{oldTime.Value.ToUnixTimeSeconds()}:R>)*";
+            infractionType = InfractionType.TimeoutExtended;
+            reasonBuilder.AppendLine($"- **Until:** <t:{newTime.Value.ToUnixTimeSeconds()}:F>)")
+                .Append($"- **Old timeout:** <t:{oldTime.Value.ToUnixTimeSeconds()}:F>)");
         }
         else if ((oldTime is null && newTime>DateTimeOffset.UtcNow) || (oldTime < newTime && oldTime<DateTimeOffset.UtcNow))
         {
@@ -148,8 +156,10 @@ public class AuditLogManager
             description ="# User Timed Out\n" +
                          $"- **User:**{targetUser.Mention}\n" +
                          $"- **by:** {modUser.Mention}\n" +
-                         $"- **reason:** {logEntry.Reason}\n" +
+                         $"- **reason:** {logEntry.Reason??"-reason not specified-"}\n" +
                          $"- **until:**<t:{newTime.Value.ToUnixTimeSeconds()}:F>(<t:{newTime.Value.ToUnixTimeSeconds()}:R>)";
+            infractionType =  InfractionType.TimeoutAdded;
+            reasonBuilder.Append($"- **Until:** <t:{newTime.Value.ToUnixTimeSeconds()}:F>)");
         }
         else if (oldTime > newTime)
         {
@@ -157,12 +167,19 @@ public class AuditLogManager
             description = $"# User Timeout Shortened\n" +
                           $"- **User:**{targetUser.Mention}\n" +
                           $"- **by** {modUser.Mention}\n" +
-                          $"- **reason:** {logEntry.Reason}\n" +
+                          $"- **reason:** {logEntry.Reason??"-reason not specified-"}\n" +
                           $"- **until:**<t:{newTime.Value.ToUnixTimeSeconds()}:F>(<t:{newTime.Value.ToUnixTimeSeconds()}:R>)\n" +
                           $"- ***old timeout:**<t:{oldTime.Value.ToUnixTimeSeconds()}:F>(<t:{oldTime.Value.ToUnixTimeSeconds()}:R>)*";
+            infractionType = InfractionType.TimeoutReduced;
+            reasonBuilder.AppendLine($"- **Until:** <t:{newTime.Value.ToUnixTimeSeconds()}:F>)")
+                .Append($"- **Old timeout:** <t:{oldTime.Value.ToUnixTimeSeconds()}:F>)");
+            
         }
         else return;
         _modLogService.AddToQueue(new ModLogItem(modLogChannel,targetUser,description,modLogType));
+        await _databaseContext.AddInfractionsAsync(_databaseContext,
+            new Infraction(modUser.Id, targetUser.Id, guild.Id, reasonBuilder.ToString(),
+                false, infractionType));
     }
     
     private async Task BanManager(DiscordClient client, AuditLogEntry logEntry)
