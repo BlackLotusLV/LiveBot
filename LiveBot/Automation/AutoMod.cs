@@ -243,7 +243,7 @@ namespace LiveBot.Automation
             if (!CustomMethod.CheckIfMemberAdmin(member) && !e.Message.Content.Contains("?event=") && (e.Message.Content.Contains("discordapp.com/invite/") || e.Message.Content.Contains("discord.gg/")) && !invites.Any(w => e.Message.Content.Contains($"/{w.Code}")))
             {
                 await e.Message.DeleteAsync();
-                await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+                await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1),"Spam protection triggered - invite links");
                 _warningService.AddToQueue(new WarningItem(e.Author, client.CurrentUser, e.Guild, e.Channel, $"Spam protection triggered - invite links", true));
             }
         }
@@ -272,7 +272,7 @@ namespace LiveBot.Automation
                 }
                 if (!msgDeleted)
                 {
-                    await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+                    await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1),"Spam protection triggered - everyone tag");
                     _warningService.AddToQueue(new WarningItem(e.Author, client.CurrentUser, e.Guild, e.Channel, $"Tried to tag everyone", true));
                 }
             }
