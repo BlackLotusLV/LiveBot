@@ -26,7 +26,11 @@ public class GetInfractionOnButton
         var currentPage = 1;
         DiscordWebhookBuilder webhookBuilder = new();
         webhookBuilder.AddEmbed(embeds[0]);
-        if (embeds.Count == 1)
+        if (embeds.Count > 1)
+        {
+            webhookBuilder.AddEmbed(embeds[1]);
+        }
+        if (embeds.Count <= 2)
         {
             await e.Interaction.EditOriginalResponseAsync(webhookBuilder);
             return;

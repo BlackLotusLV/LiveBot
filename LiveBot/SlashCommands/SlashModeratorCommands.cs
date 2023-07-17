@@ -128,7 +128,11 @@ namespace LiveBot.SlashCommands
             DiscordWebhookBuilder webhookBuilder = new();
             var embeds = await WarningService.BuildInfractionsEmbedsAsync(ctx.Guild, user, isModerator);
             webhookBuilder.AddEmbed(embeds[0]);
-            if (embeds.Count == 1)
+            if (embeds.Count > 1)
+            {
+                webhookBuilder.AddEmbed(embeds[1]);
+            }
+            if (embeds.Count <= 2)
             {
                 await ctx.EditResponseAsync(webhookBuilder);
                 return;
@@ -141,9 +145,7 @@ namespace LiveBot.SlashCommands
                 stopButton = new(ButtonStyle.Danger, stopButtonId, "", false, new DiscordComponentEmoji("⏹️")),
                 rightButton = new(ButtonStyle.Primary, rightButtonId, "", false, new DiscordComponentEmoji("➡️"));
 
-            webhookBuilder
-                .AddComponents(leftButton, stopButton, rightButton)
-                .AddEmbed(embeds[currentPage]);
+            webhookBuilder.AddComponents(leftButton, stopButton, rightButton);
             DiscordMessage message = await ctx.EditResponseAsync(webhookBuilder);
             
             while (true)
