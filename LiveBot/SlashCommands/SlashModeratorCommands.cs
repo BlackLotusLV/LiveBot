@@ -32,8 +32,9 @@ namespace LiveBot.SlashCommands
             {
                 member = await ctx.Guild.GetMemberAsync(user.Id);
             }
-            catch (Exception e)
+            catch (Exception)
             {
+                ctx.Client.Logger.LogDebug("Could not find member {MemberId} in guild {GuildId}", user.Id, ctx.Guild.Id);
                 return;
             }
             await member.TimeoutAsync(DateTimeOffset.Now+TimeSpan.FromSeconds((int)timeOut), "Timed out by warning");
@@ -46,9 +47,9 @@ namespace LiveBot.SlashCommands
             [ChoiceName("60 secs")]
             SixtySecs = 60,
             [ChoiceName("5 min")]
-            FiveMins = 300,
+            FiveMin = 300,
             [ChoiceName("10 min")]
-            TenMins = 600,
+            TenMin = 600,
             [ChoiceName("1 hour")]
             OneHour = 3600,
             [ChoiceName("1 day")]
@@ -135,12 +136,14 @@ namespace LiveBot.SlashCommands
             string leftButtonId = $"left_{ctx.User.Id}",
                 rightButtonId = $"right_{ctx.User.Id}",
                 stopButtonId = $"stop_{ctx.User.Id}";
-            var currentPage = 0;
+            var currentPage = 1;
             DiscordButtonComponent leftButton = new(ButtonStyle.Primary, leftButtonId, "", true, new DiscordComponentEmoji("⬅️")),
                 stopButton = new(ButtonStyle.Danger, stopButtonId, "", false, new DiscordComponentEmoji("⏹️")),
                 rightButton = new(ButtonStyle.Primary, rightButtonId, "", false, new DiscordComponentEmoji("➡️"));
 
-            webhookBuilder.AddComponents(leftButton, stopButton, rightButton);
+            webhookBuilder
+                .AddComponents(leftButton, stopButton, rightButton)
+                .AddEmbed(embeds[currentPage]);
             DiscordMessage message = await ctx.EditResponseAsync(webhookBuilder);
             
             while (true)
@@ -156,7 +159,7 @@ namespace LiveBot.SlashCommands
                 if (result.Result.Id == leftButtonId)
                 {
                     currentPage--;
-                    if (currentPage == 0)
+                    if (currentPage == 1)
                     {
                         leftButton.Disable();
                     }
@@ -177,7 +180,8 @@ namespace LiveBot.SlashCommands
                         leftButton.Enable();
                     }
                 }
-                webhookBuilder.AddEmbed(embeds[currentPage])
+                webhookBuilder
+                    .AddEmbeds(new []{embeds[0],embeds[currentPage]})
                     .AddComponents(leftButton, stopButton, rightButton);
                 await ctx.EditResponseAsync(webhookBuilder);
                 await result.Result.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
