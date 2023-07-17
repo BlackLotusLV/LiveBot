@@ -21,10 +21,40 @@ namespace LiveBot.SlashCommands
         public async Task Warning(InteractionContext ctx,
             [Option("user", "User to warn")] DiscordUser user,
             [Option("reason", "Why the user is being warned")] string reason,
+            [Option("TimeOut", "How long the warning will last")] TimeOutOptions timeOut = 0,
             [Option("Image", "Image to attach to the warning")] DiscordAttachment image = null)
         {
             await ctx.DeferAsync(true);
             WarningService.AddToQueue(new WarningItem(user, ctx.User, ctx.Guild, ctx.Channel, reason, false, ctx, image));
+            if (timeOut == 0 )return;
+            DiscordMember member;
+            try
+            {
+                member = await ctx.Guild.GetMemberAsync(user.Id);
+            }
+            catch (Exception e)
+            {
+                return;
+            }
+            await member.TimeoutAsync(DateTimeOffset.Now+TimeSpan.FromSeconds((int)timeOut), "Timed out by warning");
+        }
+
+        public enum TimeOutOptions
+        {
+            [ChoiceName("none")]
+            None = 0,
+            [ChoiceName("60 secs")]
+            SixtySecs = 60,
+            [ChoiceName("5 min")]
+            FiveMins = 300,
+            [ChoiceName("10 min")]
+            TenMins = 600,
+            [ChoiceName("1 hour")]
+            OneHour = 3600,
+            [ChoiceName("1 day")]
+            OneDay = 86400,
+            [ChoiceName("1 week")]
+            OneWeek = 604800,
         }
 
         [SlashCommand("remove-warning", "Removes a warning from the user")]
