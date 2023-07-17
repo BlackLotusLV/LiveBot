@@ -12,7 +12,6 @@ namespace LiveBot.Services
         public void StopService();
         public void AddToQueue(WarningItem value);
         public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
-        Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
         Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user);
         Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
         string UserInfoButtonPrefix { get; }
@@ -155,7 +154,6 @@ namespace LiveBot.Services
                 catch (Exception e)
                 {
                     _client.Logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
-                    continue;
                 }
             }
         }
@@ -260,7 +258,7 @@ namespace LiveBot.Services
             {
                 userInfractions.RemoveAll(w => w.InfractionType == InfractionType.Note);
             }
-            DiscordEmbedBuilder embed = new()
+            DiscordEmbedBuilder statsEmbed = new()
             {
                 Color = new DiscordColor(0xFF6600),
                 Author = new DiscordEmbedBuilder.EmbedAuthor
@@ -274,12 +272,17 @@ namespace LiveBot.Services
                               $"- **Infraction level:** {userInfractions.Count(w => w.IsActive)}\n" +
                               $"- **Infraction count:** {userInfractions.Count(w => w.IsActive)}",
                 Title = "Infraction History",
-                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
+                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail()
                 {
-                    Url = user.AvatarUrl
+                    Url = user.AvatarUrl,
                 }
             };
-            const int pageCap = 4;
+            const int pageCap = 6;
+            DiscordEmbedBuilder infractionEmbed = new()
+            {
+                Color = new DiscordColor(0xFF6600),
+            };
+            List<DiscordEmbed> embeds = new() { statsEmbed.Build() };
 
             var infractions = new string[(int)Math.Ceiling((double)userInfractions.Count / pageCap)];
             for (var i = 0; i < userInfractions.Count; i+=pageCap)
@@ -288,25 +291,16 @@ namespace LiveBot.Services
                 for (int j = i; j < i + pageCap && j < userInfractions.Count; j++)
                 {
                     Infraction infraction = userInfractions[j];
-                    reason.AppendLine($"**{GetReasonTypeEmote(infraction.InfractionType)}Infraction #{infraction.Id} ({infraction.InfractionType.ToString()})**\n" +
+                    reason.AppendLine($"### {GetReasonTypeEmote(infraction.InfractionType)}Infraction #{infraction.Id} *({infraction.InfractionType.ToString()})*\n" +
                                       $"- **By:** <@{infraction.AdminDiscordId}>\n" +
                                       $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}>\n" +
                                       $"- **Reason:** {infraction.Reason}");
                 }
                 infractions[i/pageCap]=reason.ToString();
-                Console.WriteLine(reason.ToString().Length);
-            }
-            List<DiscordEmbed> embeds = new();
-
-            for (var i = 0; i < infractions.Length; i++)
-            {
-                embeds.Add(embed.AddField($"Infractions ({i + 1}/{infractions.Length})", infractions[i]).Build());
-                embed.ClearFields();
-            }
-
-            if (embeds.Count == 0)
-            {
-                embeds.Add(embed.AddField("Infractions", "No infractions found").Build());
+                infractionEmbed
+                    .WithDescription(reason.ToString())
+                    .WithTitle($"Infraction History ({i/pageCap+1}/{infractions.Length})");
+                embeds.Add(infractionEmbed.Build());
             }
 
             return embeds;
@@ -325,102 +319,6 @@ namespace LiveBot.Services
                 InfractionType.TimeoutExtended => "[⏳]",
                 _ => "❓"
             };
-        }
-
-        public async Task<DiscordEmbed> GetInfractionsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
-        {
-            var splitCount = 1;
-            StringBuilder reason = new();
-            GuildUser userStats = await _databaseContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(user.Id, guild.Id));
-
-            int kickCount = userStats.KickCount;
-            int banCount = userStats.BanCount;
-            var warningsList = await _databaseContext.Infractions.Where(w => w.UserId == user.Id && w.GuildId == guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
-            if (!adminCommand)
-            {
-                warningsList.RemoveAll(w => w.InfractionType == InfractionType.Note);
-            }
-
-            int infractionLevel = warningsList.Count(w => w.InfractionType == InfractionType.Warning && w.IsActive);
-            int infractionCount = warningsList.Count(w => w.InfractionType == InfractionType.Warning);
-            foreach (Infraction infraction in warningsList)
-            {
-                reason.Append("### ");
-                switch (infraction.InfractionType)
-                {
-                    case InfractionType.Ban:
-                        reason.Append("[🔨]");
-                        break;
-                    case InfractionType.Kick:
-                        reason.Append("[🥾]");
-                        break;
-                    case InfractionType.Note:
-                        reason.Append("[❔]");
-                        break;
-                    case InfractionType.Warning:
-                        reason.Append(infraction.IsActive ? "[✅] " : "[❌] ");
-                        break;
-                    case InfractionType.TimeoutAdded:
-                        reason.Append("[⏳]");
-                        break;
-                    case InfractionType.TimeoutRemoved:
-                        reason.Append("[⌛]");
-                        break;
-                    case InfractionType.TimeoutExtended:
-                        reason.Append("[⏳]");
-                        break;
-                    case InfractionType.TimeoutReduced:
-                        reason.Append("[⏳]");
-                        break;
-                    default:
-                        reason.Append("[-]");
-                        break;
-                }
-
-                string addedInfraction = $"Infraction #{infraction.Id} ({infraction.InfractionType.ToString()})\n" +
-                                         $"- **By:** <@{infraction.AdminDiscordId}>\n" +
-                                         $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}>\n" +
-                                         $"- **Reason:** {infraction.Reason}";
-                if (reason.Length + addedInfraction.Length > 1023 * splitCount)
-                {
-                    reason.Append("~split~");
-                    splitCount++;
-                }
-
-                reason.AppendLine(addedInfraction);
-            }
-
-            if (warningsList.Count == 0)
-            {
-                reason.AppendLine("User has no warnings.");
-            }
-
-            DiscordEmbedBuilder embed = new()
-            {
-                Color = new DiscordColor(0xFF6600),
-                Author = new DiscordEmbedBuilder.EmbedAuthor
-                {
-                    Name = $"{user.Username}({user.Id})",
-                    IconUrl = user.AvatarUrl
-                },
-                Description = $"",
-                Title = "Infraction Count",
-                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
-                {
-                    Url = user.AvatarUrl
-                }
-            };
-            embed.AddField("Warning level: ", $"{infractionLevel}", true);
-            embed.AddField("Times warned: ", $"{infractionCount}", true);
-            embed.AddField("Times kicked: ", $"{kickCount}", true);
-            embed.AddField("Times banned: ", $"{banCount}", true);
-            string[] splitReason = reason.ToString().Split("~split~");
-            for (var i = 0; i < splitReason.Length; i++)
-            {
-                embed.AddField($"Infraction({i + 1}/{splitReason.Length})", splitReason[i]);
-            }
-
-            return embed;
         }
     }
 
