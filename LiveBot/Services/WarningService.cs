@@ -295,6 +295,10 @@ namespace LiveBot.Services
                                       $"- **By:** <@{infraction.AdminDiscordId}>\n" +
                                       $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}>\n" +
                                       $"- **Reason:** {infraction.Reason}");
+                    if (infraction.InfractionType == InfractionType.Warning)
+                    {
+                        reason.AppendLine($"- **Is active:** {(infraction.IsActive ? "✅" : "❌")}");
+                    }
                 }
                 infractions[i/pageCap]=reason.ToString();
                 infractionEmbed
