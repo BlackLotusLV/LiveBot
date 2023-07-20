@@ -13,13 +13,15 @@ namespace LiveBot.Automation
         
         private readonly IWarningService _warningService;
         private readonly IModLogService _modLogService;
-        private readonly DbContextFactory _dbContextFactory;
+        private readonly IDbContextFactory _dbContextFactory;
+        private readonly IDatabaseMethodService _databaseMethodService;
 
-        public AutoMod(IWarningService warningService, IModLogService modLogService, DbContextFactory dbContextFactory)
+        public AutoMod(IWarningService warningService, IModLogService modLogService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
         {
             _warningService = warningService;
             _modLogService = modLogService;
             _dbContextFactory = dbContextFactory;
+            _databaseMethodService = databaseMethodService;
         }
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
@@ -178,7 +180,7 @@ namespace LiveBot.Automation
         public async Task User_Join_Log(DiscordClient client, GuildMemberAddEventArgs e)
         {
             LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-            Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
+            Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
             if (guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
             DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
@@ -287,7 +289,7 @@ namespace LiveBot.Automation
         public async Task Voice_Activity_Log(DiscordClient client, VoiceStateUpdateEventArgs e)
         {
             LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
 
             if (guild.VoiceActivityLogChannelId == null) return;
             DiscordChannel vcActivityLogChannel = e.Guild.GetChannel(guild.VoiceActivityLogChannelId.Value);

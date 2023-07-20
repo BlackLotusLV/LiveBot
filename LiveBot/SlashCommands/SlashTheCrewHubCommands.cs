@@ -21,6 +21,7 @@ namespace LiveBot.SlashCommands
     {
         public ITheCrewHubService TheCrewHubService { private get; set; }
         public LiveBotDbContext DatabaseService { private get; set; }
+        public IDatabaseMethodService DatabaseMethodService { private get; set; }
         
         [SlashCommand("Summit", "Shows the tiers and current cut offs for the ongoing summit.")]
         public async Task Summit(InteractionContext ctx)
@@ -645,7 +646,7 @@ namespace LiveBot.SlashCommands
         public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))][Option("Locale","Localisation")] string locale)
         {
             await ctx.DeferAsync(true);
-            User userInfo = await DatabaseService.Users.FindAsync(ctx.User.Id) ?? await DatabaseService.AddUserAsync(DatabaseService, new User(ctx.User.Id));
+            User userInfo = await DatabaseService.Users.FindAsync(ctx.User.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.User.Id));
             userInfo.Locale = locale;
             DatabaseService.Users.Update(userInfo);
             await DatabaseService.SaveChangesAsync();

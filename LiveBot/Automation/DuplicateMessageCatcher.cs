@@ -8,13 +8,13 @@ namespace LiveBot.Automation;
 public class DuplicateMessageCatcher
 {
     private readonly IWarningService _warningService;
-    private readonly DbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory _dbContextFactory;
     private readonly IModLogService _modLogService;
     private const int SpamInterval = 6;
     private const int SpamCount = 5;
     private readonly List<DiscordMessage> _messageList = new();
 
-    public DuplicateMessageCatcher(IWarningService warningService, DbContextFactory dbContextFactory, IModLogService modLogService)
+    public DuplicateMessageCatcher(IWarningService warningService, IDbContextFactory dbContextFactory, IModLogService modLogService)
     {
         _warningService = warningService;
         _dbContextFactory = dbContextFactory;

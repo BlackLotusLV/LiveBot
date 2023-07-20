@@ -6,9 +6,9 @@ namespace LiveBot.Automation
 {
     internal class MembershipScreening
     {
-        private readonly DbContextFactory _dbContextFactory;
+        private readonly IDbContextFactory _dbContextFactory;
 
-        public MembershipScreening(DbContextFactory dbContextFactory)
+        public MembershipScreening(IDbContextFactory dbContextFactory)
         {
             _dbContextFactory = dbContextFactory;
         }

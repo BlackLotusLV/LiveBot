@@ -16,6 +16,7 @@ namespace LiveBot.SlashCommands
         public LiveBotDbContext DatabaseContext { private get; set; }
         public IModMailService ModMailService { private get; set; }
         public IModLogService ModLogService { private get; set; }
+        public IDatabaseMethodService DatabaseMethodService { private get; set; }
         
         [SlashCommand("warn", "Warn a user.")]
         public async Task Warning(InteractionContext ctx,
@@ -103,7 +104,7 @@ namespace LiveBot.SlashCommands
             [Option("Image", "Image to attach to the note")] DiscordAttachment image = null)
         {
             await ctx.DeferAsync(true);
-            await DatabaseContext.AddInfractionsAsync(DatabaseContext, new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, InfractionType.Note));
+            await DatabaseMethodService.AddInfractionsAsync(new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, InfractionType.Note));
             
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
             

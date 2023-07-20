@@ -7,9 +7,9 @@ namespace LiveBot.Automation
     internal class LiveStream
     {
         private readonly IStreamNotificationService _streamNotificationService;
-        private readonly DbContextFactory _dbContextFactory;
+        private readonly IDbContextFactory _dbContextFactory;
 
-        public LiveStream(IStreamNotificationService streamNotificationService, DbContextFactory dbContextFactory)
+        public LiveStream(IStreamNotificationService streamNotificationService, IDbContextFactory dbContextFactory)
         {
             _streamNotificationService = streamNotificationService;
             _dbContextFactory = dbContextFactory;

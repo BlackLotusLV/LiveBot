@@ -10,16 +10,15 @@ namespace LiveBot.Services
     }
     public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
     {
-        public LeaderboardService(DbContextFactory dbContextFactory) : base(dbContextFactory){}
+        public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService) : base(dbContextFactory, databaseMethodService) {}
 
         private protected override async Task ProcessQueueAsync()
         {
             foreach (LeaderboardItem value in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
-                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 try
                 {
-                    await liveBotDbContext.AddGuildUsersAsync(liveBotDbContext, new GuildUser(value.User.Id, value.Guild.Id));
+                    await _databaseMethodService.AddGuildUsersAsync(new GuildUser(value.User.Id, value.Guild.Id));
                 }
                 catch (Exception e)
                 {

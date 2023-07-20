@@ -9,10 +9,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.SlashCommands
 {
-    internal class SlashCommands : ApplicationCommandModule
+    internal sealed class SlashCommands : ApplicationCommandModule
     {
         public IModMailService ModMailService { private get; set; }
         public LiveBotDbContext DatabaseContext { private get; set; }
+        public IDatabaseMethodService DatabaseMethodService { private get; set; }
         
         [SlashCommand("LiveBot-info", "Information about live bot")]
         public async Task LiveBotInfo(InteractionContext ctx)
@@ -69,7 +70,7 @@ namespace LiveBot.SlashCommands
             Random r = new();
             var colorId = $"#{r.Next(0x1000000):X6}";
             ModMail newEntry = new(ctx.Guild.Id,ctx.User.Id,DateTime.UtcNow,colorId);
-            await DatabaseContext.AddModMailAsync(DatabaseContext, newEntry);
+            await DatabaseMethodService.AddModMailAsync(newEntry);
 
             DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{ModMailService.CloseButtonPrefix}{newEntry.Id}", "Close", false, new DiscordComponentEmoji("✖️"));
 
@@ -279,8 +280,8 @@ namespace LiveBot.SlashCommands
                 return;
             }
 
-            User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? await DatabaseContext.AddUserAsync(DatabaseContext, new User(ctx.Member.Id));
-            User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? await DatabaseContext.AddUserAsync(DatabaseContext, new User( member.Id));
+            User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.Member.Id));
+            User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? await DatabaseMethodService.AddUserAsync(new User( member.Id));
             await DatabaseContext.SaveChangesAsync();
             
             if (giver.CookieDate.Date == DateTime.UtcNow.Date)

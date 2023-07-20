@@ -21,7 +21,7 @@ namespace LiveBot.Services
     public class WarningService : BaseQueueService<WarningItem>, IWarningService
     {
         private readonly IModLogService _modLogService;
-        public WarningService(DbContextFactory dbContextFactory, IModLogService modLogService) : base(dbContextFactory)
+        public WarningService(IDbContextFactory dbContextFactory,IDatabaseMethodService databaseMethodService, IModLogService modLogService) : base(dbContextFactory, databaseMethodService)
         {
             _modLogService = modLogService;
         }
@@ -72,7 +72,7 @@ namespace LiveBot.Services
                     DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
 
                     Infraction newInfraction = new(warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, InfractionType.Warning);
-                    await liveBotDbContext.AddInfractionsAsync(liveBotDbContext, newInfraction);
+                    await _databaseMethodService.AddInfractionsAsync(newInfraction);
 
                     int warningCount = await liveBotDbContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.InfractionType == InfractionType.Warning);
                     int infractionLevel = await liveBotDbContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
@@ -254,7 +254,7 @@ namespace LiveBot.Services
         public async Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
             LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-            GuildUser userStats = await liveBotDbContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await liveBotDbContext.AddGuildUsersAsync(liveBotDbContext, new GuildUser(user.Id, guild.Id));
+            GuildUser userStats = await liveBotDbContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseMethodService.AddGuildUsersAsync(new GuildUser(user.Id, guild.Id));
             int kickCount = userStats.KickCount;
             int banCount = userStats.BanCount;
             var userInfractions = await liveBotDbContext.Infractions.Where(w => w.UserId == user.Id && w.GuildId == guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();

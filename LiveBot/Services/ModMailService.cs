@@ -17,15 +17,17 @@ public interface IModMailService
 
 public class ModMailService : IModMailService
 {
-    private readonly DbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDatabaseMethodService _databaseMethodService;
     public int TimeoutMinutes => 120;
 
     public string CloseButtonPrefix { get; } = "closeModMail";
     public string OpenButtonPrefix { get; } = "openModMail";
 
-    public ModMailService(DbContextFactory dbContextFactory)
+    public ModMailService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
     {
         _dbContextFactory = dbContextFactory;
+        _databaseMethodService = databaseMethodService;
     }
 
     public async Task ProcessModMailDm(DiscordClient client, MessageCreateEventArgs e)
@@ -157,7 +159,7 @@ public class ModMailService : IModMailService
                 HasChatted = false
             };
 
-            await liveBotDbContext.AddModMailAsync(liveBotDbContext, newEntry);
+            await _databaseMethodService.AddModMailAsync(newEntry);
             
             DiscordButtonComponent closeButton = new(ButtonStyle.Danger, $"{CloseButtonPrefix}{newEntry.Id}", "Close", false, new DiscordComponentEmoji("✖️"));
 

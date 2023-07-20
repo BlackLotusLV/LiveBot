@@ -7,12 +7,14 @@ namespace LiveBot.Automation
     internal class UserActivityTracker
     {
         private readonly ILeaderboardService _leaderboardService;
-        private readonly DbContextFactory _dbContextFactory;
+        private readonly IDbContextFactory _dbContextFactory;
+        private readonly IDatabaseMethodService _databaseMethodService;
 
-        public UserActivityTracker(ILeaderboardService leaderboardService, DbContextFactory dbContextFactory)
+        public UserActivityTracker(ILeaderboardService leaderboardService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
         {
             _leaderboardService = leaderboardService;
             _dbContextFactory = dbContextFactory;
+            _databaseMethodService = databaseMethodService;
         }
         private static List<Cooldown> CoolDowns { get; set; } = new List<Cooldown>();
 
@@ -26,7 +28,7 @@ namespace LiveBot.Automation
             LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             UserActivity userActivity =
                 liveBotDbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
-                await liveBotDbContext.AddUserActivityAsync(liveBotDbContext, new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));
+                await _databaseMethodService.AddUserActivityAsync(new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));
             
             await liveBotDbContext.SaveChangesAsync();
             userActivity.Points += new Random().Next(25, 50);

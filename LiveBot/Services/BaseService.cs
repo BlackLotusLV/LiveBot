@@ -5,16 +5,18 @@ namespace LiveBot.Services;
 
 public abstract class BaseQueueService<T>
 {
-    private protected readonly DbContextFactory _dbContextFactory;
+    private protected readonly IDbContextFactory _dbContextFactory;
+    private protected readonly IDatabaseMethodService _databaseMethodService;
     private protected readonly CancellationTokenSource _cancellationTokenSource;
     private Task _backgroundTask;
     private readonly Type _type;
     private protected BlockingCollection<T> _queue = new();
     private protected DiscordClient _client;
 
-    protected BaseQueueService(DbContextFactory dbContextFactory)
+    protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
     {
         _dbContextFactory = dbContextFactory;
+        _databaseMethodService = databaseMethodService;
         _cancellationTokenSource = new CancellationTokenSource();
         _type = this.GetType();
     }

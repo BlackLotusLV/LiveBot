@@ -9,7 +9,7 @@ namespace LiveBot.SlashCommands
     [SlashCommandGroup("Admin","Administrator commands.", false)]
     [SlashRequireGuild]
     [SlashRequireBotPermissions(Permissions.ManageGuild)]
-    internal class SlashAdministratorCommands : ApplicationCommandModule
+    internal sealed class SlashAdministratorCommands : ApplicationCommandModule
     {
         public LiveBotDbContext DatabaseService { private get; set; }
         public ITheCrewHubService TheCrewHubService { private get; set; }

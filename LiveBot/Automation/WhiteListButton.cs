@@ -6,8 +6,8 @@ namespace LiveBot.Automation;
 
 public class WhiteListButton
 {
-    private readonly DbContextFactory _dbContextFactory;
-    public WhiteListButton(DbContextFactory dbContextFactory)
+    private readonly IDbContextFactory _dbContextFactory;
+    public WhiteListButton(IDbContextFactory dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }

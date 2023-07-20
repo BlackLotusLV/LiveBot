@@ -6,9 +6,9 @@ namespace LiveBot.Automation;
 
 internal class Roles
 {
-    private readonly DbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory _dbContextFactory;
 
-    public Roles(DbContextFactory dbContextFactory)
+    public Roles(IDbContextFactory dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }

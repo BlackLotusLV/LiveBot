@@ -3,7 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveBot.Services;
 
-public class DbContextFactory
+public interface IDbContextFactory
+{
+    public LiveBotDbContext CreateDbContext();
+}
+public class DbContextFactory : IDbContextFactory
 {
     private readonly IServiceProvider _serviceProvider;
     public DbContextFactory(IServiceProvider serviceProvider)
