@@ -7,12 +7,10 @@ public class GetInfractionOnButton
 {
     
     private readonly IWarningService _warningService;
-    private readonly LiveBotDbContext _databaseContext;
 
-    public GetInfractionOnButton(IWarningService warningService, LiveBotDbContext databaseContext)
+    public GetInfractionOnButton(IWarningService warningService)
     {
         _warningService = warningService;
-        _databaseContext = databaseContext;
     }
 
     public async Task OnPress(DiscordClient client, ComponentInteractionCreateEventArgs e)

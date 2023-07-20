@@ -13,7 +13,7 @@ public interface IModLogService
 
 public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
 {
-    public ModLogService(LiveBotDbContext dbContext) : base(dbContext){}
+    public ModLogService(DbContextFactory dbContextFactory) : base(dbContextFactory){}
 
     private protected override async Task ProcessQueueAsync()
     {
@@ -123,8 +123,9 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             if (hasAttachment)
             {
                 DiscordMessage renewed = await item.ModLogChannel.GetMessageAsync(sentMsg.Id);
-                await _databaseContext.AddInfractionsAsync(
-                    _databaseContext,
+                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+                await liveBotDbContext.AddInfractionsAsync(
+                    liveBotDbContext,
                     new Infraction(
                         _client.CurrentUser.Id,
                         item.TargetUser.Id,

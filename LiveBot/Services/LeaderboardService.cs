@@ -8,21 +8,22 @@ namespace LiveBot.Services
         void StopService();
         void AddToQueue(LeaderboardService.LeaderboardItem value);
     }
-    public class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
+    public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
     {
-        public LeaderboardService(LiveBotDbContext dbContext) : base(dbContext){}
+        public LeaderboardService(DbContextFactory dbContextFactory) : base(dbContextFactory){}
 
         private protected override async Task ProcessQueueAsync()
         {
             foreach (LeaderboardItem value in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
+                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 try
                 {
-                    await _databaseContext.AddGuildUsersAsync(_databaseContext, new GuildUser(value.User.Id, value.Guild.Id));
+                    await liveBotDbContext.AddGuildUsersAsync(liveBotDbContext, new GuildUser(value.User.Id, value.Guild.Id));
                 }
                 catch (Exception e)
                 {
-                    _client.Logger.LogError("{} failed to process item in queue/n{error} ", this.GetType().Name,e.Message);
+                    _client.Logger.LogError("{} failed to process item in queue/n{Error} ", this.GetType().Name,e.Message);
                 }
             }
         }

@@ -1,22 +1,24 @@
 ﻿using LiveBot.DB;
+using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation
 {
     internal class MembershipScreening
     {
-        private readonly LiveBotDbContext _dbContext;
+        private readonly DbContextFactory _dbContextFactory;
 
-        public MembershipScreening(LiveBotDbContext dbContext)
+        public MembershipScreening(DbContextFactory dbContextFactory)
         {
-            _dbContext = dbContext;
+            _dbContextFactory = dbContextFactory;
         }
         public async Task AcceptRules(DiscordClient client, GuildMemberUpdateEventArgs e)
         {
             if (e.PendingBefore == null) return;
             if (e.PendingBefore.Value && !e.PendingAfter.Value)
             {
-                Guild guild = await _dbContext.Guilds.FindAsync(e.Guild.Id);
+                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+                Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
                 if (guild?.WelcomeChannelId == null || !guild.HasScreening) return;
                 DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
 

@@ -15,7 +15,7 @@ namespace LiveBot;
 
 internal sealed class Program
 {
-    private ServiceProvider _provider;
+    private ServiceProvider _serviceProvider;
     private static void Main(string[] args)
     {
         Program program = new();
@@ -54,9 +54,10 @@ internal sealed class Program
         }
         
         
-        ServiceProvider serviceProvider = new ServiceCollection()
-            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors(), ServiceLifetime.Transient)
+        _serviceProvider = new ServiceCollection()
+            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
             .AddHttpClient()
+            .AddSingleton<DbContextFactory>()
             .AddSingleton<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
             .AddSingleton<IStreamNotificationService,StreamNotificationService>()
@@ -64,7 +65,6 @@ internal sealed class Program
             .AddSingleton<IModMailService,ModMailService>()
             .AddSingleton<IModLogService,ModLogService>()
             .BuildServiceProvider();
-        _provider = serviceProvider;
 
 
         DiscordConfiguration discordConfig = new()
@@ -81,11 +81,11 @@ internal sealed class Program
             StringPrefixes = new[] { liveBotSettings.CommandPrefix },
             CaseSensitive = false,
             IgnoreExtraArguments = true,
-            Services = serviceProvider
+            Services = _serviceProvider
         };
         SlashCommandsConfiguration slashCommandConfig = new()
         {
-            Services = serviceProvider
+            Services = _serviceProvider
         };
         InteractivityConfiguration interactivityConfiguration = new();
 
@@ -107,24 +107,24 @@ internal sealed class Program
         slashCommandsExtension.ContextMenuExecuted += ContextMenuExecuted;
         slashCommandsExtension.ContextMenuErrored += ContextMenuErrored;
         
-        var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(serviceProvider);
-        var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(serviceProvider);
-        var liveStream = ActivatorUtilities.CreateInstance<LiveStream>(serviceProvider);
-        var userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(serviceProvider);
-        var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(serviceProvider);
-        var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(serviceProvider);
-        var roles = ActivatorUtilities.CreateInstance<Roles>(serviceProvider);
-        var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(serviceProvider);
-        var getUserInfoOnButton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(serviceProvider);
-        var auditLogManager = ActivatorUtilities.CreateInstance<AuditLogManager>(serviceProvider);
-        var duplicateMessageCatcher = ActivatorUtilities.CreateInstance<DuplicateMessageCatcher>(serviceProvider);
+        var memberFlow = ActivatorUtilities.CreateInstance<MemberFlow>(_serviceProvider);
+        var autoMod = ActivatorUtilities.CreateInstance<AutoMod>(_serviceProvider);
+        var liveStream = ActivatorUtilities.CreateInstance<LiveStream>(_serviceProvider);
+        var userActivityTracker = ActivatorUtilities.CreateInstance<UserActivityTracker>(_serviceProvider);
+        var membershipScreening = ActivatorUtilities.CreateInstance<MembershipScreening>(_serviceProvider);
+        var whiteListButton = ActivatorUtilities.CreateInstance<WhiteListButton>(_serviceProvider);
+        var roles = ActivatorUtilities.CreateInstance<Roles>(_serviceProvider);
+        var getInfractionOnButton = ActivatorUtilities.CreateInstance<GetInfractionOnButton>(_serviceProvider);
+        var getUserInfoOnButton = ActivatorUtilities.CreateInstance<GetUserInfoOnButton>(_serviceProvider);
+        var auditLogManager = ActivatorUtilities.CreateInstance<AuditLogManager>(_serviceProvider);
+        var duplicateMessageCatcher = ActivatorUtilities.CreateInstance<DuplicateMessageCatcher>(_serviceProvider);
         
-        var warningService = serviceProvider.GetService<IWarningService>();
-        var streamNotificationService = serviceProvider.GetService<IStreamNotificationService>();
-        var leaderboardService = serviceProvider.GetService<ILeaderboardService>();
-        var modMailService = serviceProvider.GetService<IModMailService>();
-        var theCrewHubService = serviceProvider.GetService<ITheCrewHubService>();
-        var modLogService = serviceProvider.GetService<IModLogService>();
+        var warningService = _serviceProvider.GetService<IWarningService>();
+        var streamNotificationService = _serviceProvider.GetService<IStreamNotificationService>();
+        var leaderboardService = _serviceProvider.GetService<ILeaderboardService>();
+        var modMailService = _serviceProvider.GetService<IModMailService>();
+        var theCrewHubService = _serviceProvider.GetService<ITheCrewHubService>();
+        var modLogService = _serviceProvider.GetService<IModLogService>();
         
         leaderboardService.StartService(discordClient);
         warningService.StartService(discordClient);
@@ -201,15 +201,8 @@ internal sealed class Program
 
     private async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
-        var dbContext = _provider.GetService<LiveBotDbContext>();
-        Guild entry = await dbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
-        if (entry==null)
-        {
-            Guild newEntry = new(e.Guild.Id);
-            await dbContext.Guilds.AddAsync(newEntry);
-            await dbContext.SaveChangesAsync();
-        }
-
+        LiveBotDbContext dbContext = _serviceProvider.GetService<DbContextFactory>().CreateDbContext();
+        _ = await dbContext.Guilds.FindAsync(e.Guild.Id) ?? await dbContext.AddGuildAsync(dbContext, new Guild(e.Guild.Id));
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
     }
     private static Task ClientErrored(DiscordClient client, ClientErrorEventArgs e)

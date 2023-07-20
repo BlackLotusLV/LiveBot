@@ -5,19 +5,19 @@ namespace LiveBot.Automation
 {
     internal  class MemberFlow
     {
-        private readonly LiveBotDbContext _databaseContext;
+        private readonly DbContextFactory _dbContextFactory;
         private readonly IModMailService _modMailService;
 
-        public MemberFlow(LiveBotDbContext databaseContext, IModMailService modMailService)
+        public MemberFlow(IModMailService modMailService, DbContextFactory dbContextFactory)
         {
-            _databaseContext = databaseContext;
             _modMailService = modMailService;
-
+            _dbContextFactory = dbContextFactory;
         }
         public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            Guild guild = _databaseContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
-            if (guild==null || guild.WelcomeChannelId==null || guild.HasScreening) return;
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
+            if (guild?.WelcomeChannelId == null || guild.HasScreening) return;
             DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
 
             if (guild.WelcomeMessage == null) return;
@@ -32,9 +32,10 @@ namespace LiveBot.Automation
 
         public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
             bool pendingCheck = guild != null && !(guild.HasScreening && e.Member.IsPending == true);
-            if (guild != null && guild.WelcomeChannelId != null && pendingCheck)
+            if (guild is { WelcomeChannelId: not null } && pendingCheck)
             {
                 DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
                 if (guild.GoodbyeMessage != null)
@@ -44,7 +45,7 @@ namespace LiveBot.Automation
                     await welcomeChannel.SendMessageAsync(msg);
                 }
             }
-            DB.ModMail modMailEntry = _databaseContext.ModMail.FirstOrDefault(w => w.UserDiscordId == e.Member.Id && w.GuildId == e.Guild.Id && w.IsActive);
+            DB.ModMail modMailEntry = liveBotDbContext.ModMail.FirstOrDefault(w => w.UserDiscordId == e.Member.Id && w.GuildId == e.Guild.Id && w.IsActive);
             if (modMailEntry != null)
             {
                 await _modMailService.CloseModMailAsync(client,modMailEntry, (DiscordUser)e.Member, "Mod Mail entry closed due to user leaving", "**Mod Mail closed!\n----------------------------------------------------**");

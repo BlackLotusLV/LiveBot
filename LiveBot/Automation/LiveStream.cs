@@ -7,12 +7,12 @@ namespace LiveBot.Automation
     internal class LiveStream
     {
         private readonly IStreamNotificationService _streamNotificationService;
-        private readonly LiveBotDbContext _dbContext;
+        private readonly DbContextFactory _dbContextFactory;
 
-        public LiveStream(IStreamNotificationService streamNotificationService, LiveBotDbContext dbContext)
+        public LiveStream(IStreamNotificationService streamNotificationService, DbContextFactory dbContextFactory)
         {
             _streamNotificationService = streamNotificationService;
-            _dbContext = dbContext;
+            _dbContextFactory = dbContextFactory;
         }
 
         public async Task Stream_Notification(object client, PresenceUpdateEventArgs e)
@@ -20,7 +20,8 @@ namespace LiveBot.Automation
             if (e.User is null || e.User.IsBot || e.User.Presence is null) return;
             DiscordGuild guild = e.User.Presence.Guild;
             if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
-            var streamNotifications = _dbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            var streamNotifications = liveBotDbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
             if (streamNotifications.Count < 1) return;
             foreach (StreamNotifications streamNotification in streamNotifications)
             {

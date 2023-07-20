@@ -1,21 +1,23 @@
 ﻿using LiveBot.DB;
+using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 internal class Roles
 {
-    private readonly LiveBotDbContext _dbContext;
+    private readonly DbContextFactory _dbContextFactory;
 
-    public Roles(LiveBotDbContext dbContext)
+    public Roles(DbContextFactory dbContextFactory)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     public async Task Button_Roles(object client, ComponentInteractionCreateEventArgs e)
     {
         if (e.Interaction is not { Type: InteractionType.Component, User.IsBot: false }|| !e.Interaction.Data.CustomId.Contains("ButtonRole-") || e.Interaction.Guild == null) return;
-        var rolesList = await _dbContext.ButtonRoles.Where(x => x.GuildId == e.Interaction.GuildId && x.ChannelId == e.Interaction.ChannelId).ToListAsync();
+        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        var rolesList = await liveBotDbContext.ButtonRoles.Where(x => x.GuildId == e.Interaction.GuildId && x.ChannelId == e.Interaction.ChannelId).ToListAsync();
         if (rolesList.Count == 0) return;
         string buttonCustomId = e.Interaction.Data.CustomId.Replace("ButtonRole-","");
         if (!ulong.TryParse(buttonCustomId,out ulong roleId)) return;

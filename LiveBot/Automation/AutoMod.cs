@@ -12,14 +12,14 @@ namespace LiveBot.Automation
     {
         
         private readonly IWarningService _warningService;
-        private readonly LiveBotDbContext _databaseContext;
         private readonly IModLogService _modLogService;
+        private readonly DbContextFactory _dbContextFactory;
 
-        public AutoMod(IWarningService warningService, LiveBotDbContext databaseContext, IModLogService modLogService)
+        public AutoMod(IWarningService warningService, IModLogService modLogService, DbContextFactory dbContextFactory)
         {
             _warningService = warningService;
-            _databaseContext = databaseContext;
             _modLogService = modLogService;
+            _dbContextFactory = dbContextFactory;
         }
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
@@ -44,9 +44,10 @@ namespace LiveBot.Automation
         public async Task Delete_Log(DiscordClient client, MessageDeleteEventArgs e)
         {
             if (e.Guild == null) return;
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             DiscordMessage msg = e.Message;
             DiscordUser author = msg.Author;
-            Guild guildSettings = _databaseContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
+            Guild guildSettings = liveBotDbContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
 
             if (guildSettings == null || guildSettings.DeleteLogChannelId == null) return;
             bool hasAttachment = e.Message.Attachments.Count > 0;
@@ -129,7 +130,8 @@ namespace LiveBot.Automation
 
         public async Task Bulk_Delete_Log(DiscordClient client, MessageBulkDeleteEventArgs e)
         {
-            Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
             if (guildSettings == null || guildSettings.DeleteLogChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
             DiscordChannel deleteLog = guild.GetChannel(guildSettings.DeleteLogChannelId.Value);
@@ -175,7 +177,8 @@ namespace LiveBot.Automation
 
         public async Task User_Join_Log(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            Guild guildSettings = await _databaseContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseContext.AddGuildAsync(_databaseContext, new Guild(e.Guild.Id));
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
             if (guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
             DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
@@ -191,7 +194,7 @@ namespace LiveBot.Automation
             };
             embed.AddField("User tag", e.Member.Mention);
 
-            var infractions = await _databaseContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
+            var infractions = await liveBotDbContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
             
             embed.AddField("Infraction count", infractions.Count.ToString());
             DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
@@ -205,7 +208,8 @@ namespace LiveBot.Automation
 
         public async Task User_Leave_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            Guild guildSettings = await _databaseContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
             if (guildSettings == null || guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
             DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
@@ -221,7 +225,7 @@ namespace LiveBot.Automation
             };
             embed.AddField("User tag", e.Member.Mention);
 
-            var infractions = await _databaseContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
+            var infractions = await liveBotDbContext.Infractions.Where(infraction => infraction.GuildId == e.Guild.Id && infraction.UserId == e.Member.Id).ToListAsync();
             
             embed.AddField("Infraction count", infractions.Count.ToString());
             DiscordMessageBuilder messageBuilder = new DiscordMessageBuilder()
@@ -236,7 +240,8 @@ namespace LiveBot.Automation
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
             if (e.Guild is null) return;
-            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
             if (e.Author.IsBot || guild == null || guild.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
@@ -252,7 +257,8 @@ namespace LiveBot.Automation
         {
             if (e.Author.IsBot || e.Guild is null) return;
 
-            Guild guild = await _databaseContext.Guilds.FindAsync(e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (
                     guild is { ModerationLogChannelId: not null, HasEveryoneProtection: true } &&
@@ -280,7 +286,8 @@ namespace LiveBot.Automation
 
         public async Task Voice_Activity_Log(DiscordClient client, VoiceStateUpdateEventArgs e)
         {
-            DB.Guild guild = await _databaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == e.Guild.Id);
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await liveBotDbContext.AddGuildAsync(liveBotDbContext, new Guild(e.Guild.Id));
 
             if (guild.VoiceActivityLogChannelId == null) return;
             DiscordChannel vcActivityLogChannel = e.Guild.GetChannel(guild.VoiceActivityLogChannelId.Value);

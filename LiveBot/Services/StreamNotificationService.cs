@@ -12,7 +12,7 @@ namespace LiveBot.Services
     }
     public class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
     {
-        public StreamNotificationService(LiveBotDbContext databaseContext) :base (databaseContext){}
+        public StreamNotificationService(DbContextFactory dbContextFactory) :base (dbContextFactory){}
         
 
         public static List<LiveStreamer> LiveStreamerList { get; set; } = new();

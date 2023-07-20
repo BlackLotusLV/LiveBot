@@ -8,25 +8,26 @@ namespace LiveBot.Automation;
 public class DuplicateMessageCatcher
 {
     private readonly IWarningService _warningService;
-    private readonly LiveBotDbContext _databaseContext;
+    private readonly DbContextFactory _dbContextFactory;
     private readonly IModLogService _modLogService;
     private const int SpamInterval = 6;
     private const int SpamCount = 5;
     private readonly List<DiscordMessage> _messageList = new();
 
-    public DuplicateMessageCatcher(IWarningService warningService, LiveBotDbContext databaseContext, IModLogService modLogService)
+    public DuplicateMessageCatcher(IWarningService warningService, DbContextFactory dbContextFactory, IModLogService modLogService)
     {
         _warningService = warningService;
-        _databaseContext = databaseContext;
+        _dbContextFactory = dbContextFactory;
         _modLogService = modLogService;
     }
     public async Task CheckMessage(DiscordClient client, MessageCreateEventArgs eventArgs)
     {
         if (eventArgs.Author.IsBot || eventArgs.Author.IsCurrent || eventArgs.Guild is null) return;
-        Guild guild = await _databaseContext.Guilds.FindAsync(eventArgs.Guild.Id);
+        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        Guild guild = await liveBotDbContext.Guilds.FindAsync(eventArgs.Guild.Id);
         if (guild is null) return;
         var spamIgnoreChannels =
-            _databaseContext.SpamIgnoreChannels.AsQueryable().Where(x => x.GuildId == eventArgs.Guild.Id).ToImmutableArray();
+            liveBotDbContext.SpamIgnoreChannels.AsQueryable().Where(x => x.GuildId == eventArgs.Guild.Id).ToImmutableArray();
 
         if (guild?.ModerationLogChannelId == null || spamIgnoreChannels.Any(x=>x.ChannelId==eventArgs.Channel.Id)) return;
         DiscordMember member = await eventArgs.Guild.GetMemberAsync(eventArgs.Author.Id);
@@ -47,7 +48,7 @@ public class DuplicateMessageCatcher
             await channel.DeleteMessagesAsync(duplicateMessages.GetRange(i - SpamCount, SpamCount));
         }
 
-        int infractionLevel = _databaseContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == eventArgs.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
+        int infractionLevel = liveBotDbContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == eventArgs.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
 
         if (infractionLevel < 5)
         {

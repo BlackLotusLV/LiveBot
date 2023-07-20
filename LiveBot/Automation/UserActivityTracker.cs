@@ -7,12 +7,12 @@ namespace LiveBot.Automation
     internal class UserActivityTracker
     {
         private readonly ILeaderboardService _leaderboardService;
-        private readonly LiveBotDbContext _dbContext;
+        private readonly DbContextFactory _dbContextFactory;
 
-        public UserActivityTracker(ILeaderboardService leaderboardService, LiveBotDbContext dbContext)
+        public UserActivityTracker(ILeaderboardService leaderboardService, DbContextFactory dbContextFactory)
         {
             _leaderboardService = leaderboardService;
-            _dbContext = dbContext;
+            _dbContextFactory = dbContextFactory;
         }
         private static List<Cooldown> CoolDowns { get; set; } = new List<Cooldown>();
 
@@ -23,23 +23,24 @@ namespace LiveBot.Automation
             Cooldown coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
             
+            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             UserActivity userActivity =
-                _dbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
-                await _dbContext.AddUserActivityAsync(_dbContext, new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));
+                liveBotDbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
+                await liveBotDbContext.AddUserActivityAsync(liveBotDbContext, new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));
             
-            await _dbContext.SaveChangesAsync();
+            await liveBotDbContext.SaveChangesAsync();
             userActivity.Points += new Random().Next(25, 50);
-            _dbContext.UserActivity.Update(userActivity);
-            await _dbContext.SaveChangesAsync();
+            liveBotDbContext.UserActivity.Update(userActivity);
+            await liveBotDbContext.SaveChangesAsync();
 
             CoolDowns.Remove(coolDown);
             CoolDowns.Add(new Cooldown(e.Author, e.Guild, DateTime.UtcNow));
 
-            long userPoints = _dbContext.UserActivity
+            long userPoints = liveBotDbContext.UserActivity
                 .Where(w => w.Date > DateTime.UtcNow.AddDays(-30) && w.GuildId == e.Guild.Id && w.UserDiscordId == e.Author.Id)
                 .Sum(w => w.Points);
-            var rankRole = _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToList();
-            var rankRoleUnder = _dbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
+            var rankRole = liveBotDbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id).ToList();
+            var rankRoleUnder = liveBotDbContext.RankRoles.Where(w => w.GuildId == e.Guild.Id && w.ServerRank <= userPoints).OrderByDescending(w => w.ServerRank).ToList();
             var rankRolesOver = rankRole.Except(rankRoleUnder);
 
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);

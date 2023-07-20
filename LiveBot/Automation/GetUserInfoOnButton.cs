@@ -6,12 +6,10 @@ namespace LiveBot.Automation;
 public class GetUserInfoOnButton
 {
     private readonly IWarningService _warningService;
-    private readonly LiveBotDbContext _databaseContext;
 
-    public GetUserInfoOnButton(IWarningService warningService, LiveBotDbContext databaseContext)
+    public GetUserInfoOnButton(IWarningService warningService)
     {
         _warningService = warningService;
-        _databaseContext = databaseContext;
     }
 
     public async Task OnPress(DiscordClient client, ComponentInteractionCreateEventArgs e)

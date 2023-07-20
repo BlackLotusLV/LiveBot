@@ -1,14 +1,15 @@
 ﻿using LiveBot.DB;
+using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 public class WhiteListButton
 {
-    private readonly LiveBotDbContext _dbContext;
-    public WhiteListButton(LiveBotDbContext dbContext)
+    private readonly DbContextFactory _dbContextFactory;
+    public WhiteListButton(DbContextFactory dbContextFactory)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
     public async Task Activate(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
@@ -17,7 +18,8 @@ public class WhiteListButton
         {
             IsEphemeral = true
         };
-        var settingsList = await _dbContext.WhiteListSettings.Where(x => x.GuildId == e.Guild.Id).ToListAsync();
+        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        var settingsList = await liveBotDbContext.WhiteListSettings.Where(x => x.GuildId == e.Guild.Id).ToListAsync();
         if (settingsList.Count==0)
         {
             responseBuilder.WithContent("Whitelist feature not set up properly. Contact a moderator.");
@@ -25,7 +27,7 @@ public class WhiteListButton
             return;
         }
         var member = (DiscordMember)e.User;
-        var entries = await _dbContext.WhiteLists.Where(x => x.UbisoftName == member.Username || x.UbisoftName == member.Nickname).ToListAsync();
+        var entries = await liveBotDbContext.WhiteLists.Where(x => x.UbisoftName == member.Username || x.UbisoftName == member.Nickname).ToListAsync();
         WhiteList entry = entries.FirstOrDefault(whiteList => settingsList.Any(wls => wls.Id == whiteList.WhiteListSettingsId));
 
         if (entry==null)
@@ -45,8 +47,8 @@ public class WhiteListButton
         DiscordRole role = e.Guild.GetRole(entry.Settings.RoleId);
         await member.GrantRoleAsync(role);
         entry.DiscordId = member.Id;
-        _dbContext.WhiteLists.Update(entry);
-        await _dbContext.SaveChangesAsync();
+        liveBotDbContext.WhiteLists.Update(entry);
+        await liveBotDbContext.SaveChangesAsync();
         
         responseBuilder.WithContent("You have verified successfully!");
         await e.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, responseBuilder);

@@ -37,7 +37,6 @@ public class TheCrewHubService : ITheCrewHubService
 {
     private readonly HttpClient _httpClient;
     private DiscordClient _client;
-    private readonly LiveBotDbContext _dbContext;
     public Summit[] Summit { get;private set; }
     public Mission[] Missions { get;private set; }
     public Skill[] Skills { get; private set; }
@@ -50,10 +49,9 @@ public class TheCrewHubService : ITheCrewHubService
     public FontCollection FontCollection { get; set; } = new();
     
 
-    public TheCrewHubService(HttpClient httpClient,LiveBotDbContext dbContext)
+    public TheCrewHubService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _dbContext = dbContext;
     }
 
     public async Task StartServiceAsync(DiscordClient client)
