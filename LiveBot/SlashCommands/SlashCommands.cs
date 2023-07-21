@@ -372,9 +372,8 @@ namespace LiveBot.SlashCommands
             }
             DiscordMessage message = await messageBuilder.SendAsync(dumpChannel);
             message = await dumpChannel.GetMessageAsync(message.Id);
-            await DatabaseContext.PhotoCompEntries.AddAsync(new PhotoCompEntries(ctx.User.Id, competitionSettings.Id,
+            await DatabaseMethodService.AddPhotoCompEntryAsync(new PhotoCompEntries(ctx.User.Id, competitionSettings.Id,
                 message.Embeds[0].Image.Url.ToString(), DateTime.UtcNow));
-            await DatabaseContext.SaveChangesAsync();
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().WithContent(
                     $"Photo submitted to \"{competitionSettings.CustomName}\" competition."));

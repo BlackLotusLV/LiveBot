@@ -17,6 +17,7 @@ public interface IDatabaseMethodService
     Task AddButtonRolesAsync(ButtonRoles buttonRoles);
     Task AddWhiteListSettingsAsync(WhiteListSettings whiteListSettings);
     Task AddRoleTagSettings(RoleTagSettings roleTagSettings);
+    Task AddPhotoCompEntryAsync(PhotoCompEntries entry);
 
 }
 
@@ -183,6 +184,17 @@ public class DatabaseMethodService : IDatabaseMethodService
         }
         
         await context.RoleTagSettings.AddAsync(roleTagSettings);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task AddPhotoCompEntryAsync(PhotoCompEntries entry)
+    {
+        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        if (await context.Users.FindAsync(entry.UserId)==null)
+        {
+            await AddUserAsync(new User(entry.UserId));
+        }
+        await context.PhotoCompEntries.AddAsync(entry);
         await context.SaveChangesAsync();
     }
 }
