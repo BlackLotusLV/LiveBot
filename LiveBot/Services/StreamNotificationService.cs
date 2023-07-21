@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Threading.Channels;
 using LiveBot.DB;
 
 namespace LiveBot.Services
@@ -26,7 +27,6 @@ namespace LiveBot.Services
                 {
                     DiscordMember streamMember = await streamNotificationItem.Guild.GetMemberAsync(streamNotificationItem.EventArgs.User.Id);
                     if (streamNotificationItem.EventArgs.User == null || streamNotificationItem.EventArgs.User.Presence?.Activities == null) continue;
-                    ;
                     DiscordActivity activity = streamNotificationItem.EventArgs.User.Presence.Activities.FirstOrDefault(w => w.Name.ToLower() == "twitch" || w.Name.ToLower() == "youtube");
                     if (activity?.RichPresence?.State == null || activity.RichPresence?.Details == null || activity.StreamUrl == null) continue;
                     string gameTitle = activity.RichPresence.State;
@@ -61,6 +61,10 @@ namespace LiveBot.Services
                         Title = $"Check out {streamNotificationItem.EventArgs.User.Username} is now Streaming!"
                     };
                     await streamNotificationItem.Channel.SendMessageAsync(embed: embed);
+                    _client.Logger.LogInformation("Stream notification sent for {Username} in {GuildName} in {Channel}",
+                        streamNotificationItem.EventArgs.User.Username,
+                        streamNotificationItem.Guild.Name,
+                        streamNotificationItem.Channel.Name);
                     //adds user to list
                     LiveStreamerList.Add(streamNotificationItem.Streamer);
 
