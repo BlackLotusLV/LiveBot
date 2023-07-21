@@ -247,7 +247,6 @@ namespace LiveBot.Automation
             if (e.Author.IsBot || guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-            Console.WriteLine(!invites.Any(x => e.Message.Content.Contains($"/{x.Code}")) && !e.Message.Content.Contains($"/{e.Guild.VanityUrlCode}"));
             if (!CustomMethod.CheckIfMemberAdmin(member)
                 && !e.Message.Content.Contains("?event=")
                 && (e.Message.Content.Contains("discordapp.com/invite/")
