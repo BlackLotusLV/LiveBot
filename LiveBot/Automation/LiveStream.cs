@@ -22,7 +22,7 @@ namespace LiveBot.Automation
             if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
             LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             var streamNotifications = liveBotDbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
-            if (streamNotifications.Count < 1) return;
+            if (streamNotifications.Count == 0) return;
             foreach (StreamNotifications streamNotification in streamNotifications)
             {
                 DiscordChannel channel = guild.GetChannel(streamNotification.ChannelId);
