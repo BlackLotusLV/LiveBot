@@ -59,7 +59,7 @@ namespace LiveBot.SlashCommands
             OneWeek = 604800,
         }
 
-        [SlashCommand("remove-warning", "Removes a warning from the user")]
+        [SlashCommand("unwarn", "Removes a warning from the user")]
         public async Task RemoveWarning(InteractionContext ctx,
             [Option("user", "User to remove the warning for")] DiscordUser user,
             [Autocomplete(typeof(RemoveWarningOptions))]
