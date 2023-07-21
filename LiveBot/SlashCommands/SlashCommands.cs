@@ -328,6 +328,15 @@ namespace LiveBot.SlashCommands
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have reached the maximum amount of entries for this competition. You can submit a maximum of {competitionSettings.MaxEntries} entries."));
                 return;
             }
+            var excludedParameters = guild.PhotoCompSettings
+                .Where(x=>x.IsOpen && x.Entries.Any(entry=>entry.UserId==ctx.User.Id))
+                .Select(x=>x.CustomParameter).ToImmutableArray();
+            if (excludedParameters.Any(customParameter=>customParameter==competitionSettings.CustomParameter))
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have already submitted to this competition. Please try again."));
+                return;
+            }
+            
             DiscordChannel dumpChannel = ctx.Guild.GetChannel(competitionSettings.DumpChannelId);
             DiscordMessageBuilder messageBuilder = new();
             DiscordEmbedBuilder embedBuilder = new()
@@ -340,12 +349,18 @@ namespace LiveBot.SlashCommands
             
             using HttpClient client = new();
             HttpResponseMessage response = await client.GetAsync(image.Url);
+            string fileName = Guid.NewGuid() + image.FileName;
+            List<string> imageExtensions = new() { ".png", ".jpg", ".jpeg"};
+            if (!imageExtensions.Contains(Path.GetExtension(fileName)))
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Unsupported file format, make sure your image is of type .png, .jpg or .jpeg"));
+                return;
+            }
             if (response.IsSuccessStatusCode)
             {
                 var fileStream = new MemoryStream();
                 await response.Content.CopyToAsync(fileStream);
                 fileStream.Position = 0;
-                string fileName = Guid.NewGuid() + image.FileName;
                 messageBuilder.AddFile(fileName, fileStream);
                 embedBuilder.ImageUrl = $"attachment://{fileName}";
                 messageBuilder.AddEmbed(embedBuilder);
@@ -372,8 +387,15 @@ namespace LiveBot.SlashCommands
                 var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
                 Guild guildSettings = await databaseContext.Guilds
                     .Include(x => x.PhotoCompSettings)
+                    .ThenInclude(x=>x.Entries)
                     .FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id);
-                var openCompetitions = guildSettings.PhotoCompSettings.Where(x => x.IsOpen).ToImmutableArray();
+                var customParameters = guildSettings.PhotoCompSettings
+                    .Where(x=>x.IsOpen && x.Entries.Any(entry=>entry.UserId==ctx.User.Id))
+                    .Select(x=>x.CustomParameter).ToImmutableArray();
+                var openCompetitions = guildSettings.PhotoCompSettings
+                    .Where(x => x.IsOpen && !customParameters.Any(customParameter=>customParameter==x.CustomParameter))
+                    .ToImmutableArray();
+                
                 if (openCompetitions.Length==0)
                 {
                     return new DiscordAutoCompleteChoice[]
