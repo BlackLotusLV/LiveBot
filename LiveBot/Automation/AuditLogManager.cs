@@ -81,6 +81,7 @@ public class AuditLogManager
                 false,
                 InfractionType.Kick)
             );
+        client.Logger.LogInformation(CustomLogEvents.AuditLogManager,"Kick logged for {User} in {Guild} by {ModUser}",targetUser.Username,guild.Name,modUser.Username);
     }
 
     private async Task UnBanManager(DiscordClient client, AuditLogEntry logEntry)
@@ -102,6 +103,7 @@ public class AuditLogManager
             $"- **Moderator:** {modUser.Mention}\n",
             ModLogType.Unban
             ));
+        client.Logger.LogInformation(CustomLogEvents.AuditLogManager,"Unban logged for {User} in {Guild} by {ModUser}",targetUser.Username,guild.Name,modUser.Username);
     }
 
     private async Task TimeOutLogger(DiscordClient client, AuditLogEntry logEntry)
@@ -184,6 +186,7 @@ public class AuditLogManager
         await _databaseMethodService.AddInfractionsAsync(
             new Infraction(modUser.Id, targetUser.Id, guild.Id, reasonBuilder.ToString(),
                 false, infractionType));
+        client.Logger.LogInformation(CustomLogEvents.AuditLogManager,"{ModLogType} logged for {User} in {Guild} by {ModUser}",modLogType,targetUser.Username,guild.Name,modUser.Username);
     }
     
     private async Task BanManager(DiscordClient client, AuditLogEntry logEntry)
@@ -215,6 +218,7 @@ public class AuditLogManager
         await _databaseMethodService.AddInfractionsAsync(
             new Infraction(moderator.Id,targetUser.Id,guild.Id,logEntry.Reason,false,InfractionType.Ban)
             );
+        client.Logger.LogInformation(CustomLogEvents.AuditLogManager,"Ban logged for {User} in {Guild} by {ModUser}",targetUser.Username,guild.Name,moderator.Username);
     }
     
     private ulong CheckIfIdNotNull(string? id)

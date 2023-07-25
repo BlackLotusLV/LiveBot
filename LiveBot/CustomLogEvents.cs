@@ -19,5 +19,6 @@
         public static EventId ModMail { get; } = new EventId(205, "ModMail");
         public static EventId PhotoCleanup { get; } = new EventId(206, "PhotoCleanup");
         public static EventId LiveStream { get; } = new EventId(207, "LiveStream");
+        public static EventId AuditLogManager { get; } = new EventId(208, "AuditLogManager");
     }
 }
