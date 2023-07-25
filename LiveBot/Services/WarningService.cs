@@ -274,7 +274,8 @@ namespace LiveBot.Services
                               $"- **Times kicked:** {kickCount}\n" +
                               $"- **Times banned:** {banCount}\n" +
                               $"- **Infraction level:** {userInfractions.Count(w => w.IsActive)}\n" +
-                              $"- **Infraction count:** {userInfractions.Count(w => w.IsActive)}",
+                              $"- **Infraction count:** {userInfractions.Count(w => w.IsActive)}\n" +
+                              $"- **Mod Mail blocked:** {(userStats.IsModMailBlocked?"Yes":"No")}",
                 Title = "Infraction History",
                 Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail()
                 {
