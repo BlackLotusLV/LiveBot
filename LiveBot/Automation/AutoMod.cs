@@ -119,6 +119,7 @@ namespace LiveBot.Automation
                     
                     await deleteLogChannel.SendMessageAsync(msgBuilder);
                     await Parallel.ForEachAsync(imageStreams.AsEnumerable(),async (MemoryStream stream, CancellationToken token) => await stream.DisposeAsync());
+                    client.Logger.LogInformation(CustomLogEvents.DeleteLog, "{User}'s message was deleted in {Channel}", author.Username, e.Channel.Name);
                 }
                 else
                 {
@@ -132,6 +133,7 @@ namespace LiveBot.Automation
                     msgBuilder.AddFile(upFile);
 
                     await deleteLogChannel.SendMessageAsync(msgBuilder);
+                    client.Logger.LogInformation(CustomLogEvents.DeleteLog,"{User}'s message was deleted in {Channel} - over message cap", author.Username, e.Channel.Name);
                 }
             }
         }
@@ -169,6 +171,7 @@ namespace LiveBot.Automation
                     Description = sb.ToString()
                 };
                 await deleteLog.SendMessageAsync(embed: embed);
+                client.Logger.LogInformation(CustomLogEvents.DeleteLog, "Bulk delete log sent");
             }
             else
             {
@@ -180,6 +183,7 @@ namespace LiveBot.Automation
                 };
                 msgBuilder.AddFile(upFile);
                 await deleteLog.SendMessageAsync(msgBuilder);
+                client.Logger.LogInformation(CustomLogEvents.DeleteLog, "Bulk delete log sent - over message cap");
             }
         }
 
