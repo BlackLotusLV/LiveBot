@@ -24,16 +24,16 @@ public abstract class BaseQueueService<T>
     public void StartService(DiscordClient client)
     {
         _client = client;
-        _client.Logger.LogInformation("{Type} service starting!",_type.Name);
+        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
         _backgroundTask = Task.Run(async ()=>await ProcessQueueAsync(),_cancellationTokenSource.Token);
-        _client.Logger.LogInformation("{Type} service has started!",_type.Name);
+        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
     }
     public void StopService()
     {
-        _client.Logger.LogInformation("{Type} service stopping!",_type.Name);
+        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service stopping!",_type.Name);
         _cancellationTokenSource.Cancel();
         _backgroundTask.Wait();
-        _client.Logger.LogInformation("{Type} service has stopped!",_type.Name);
+        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has stopped!",_type.Name);
     }
 
     private protected abstract Task ProcessQueueAsync();
