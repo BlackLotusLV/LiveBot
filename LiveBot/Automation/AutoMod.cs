@@ -15,13 +15,15 @@ namespace LiveBot.Automation
         private readonly IModLogService _modLogService;
         private readonly IDbContextFactory _dbContextFactory;
         private readonly IDatabaseMethodService _databaseMethodService;
+        private readonly HttpClient _httpClient;
 
-        public AutoMod(IWarningService warningService, IModLogService modLogService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
+        public AutoMod(IWarningService warningService, IModLogService modLogService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, HttpClient httpClient)
         {
             _warningService = warningService;
             _modLogService = modLogService;
             _dbContextFactory = dbContextFactory;
             _databaseMethodService = databaseMethodService;
+            _httpClient = httpClient;
         }
         
         private static readonly ulong[] MediaOnlyChannelIDs = new ulong[] { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
@@ -86,16 +88,17 @@ namespace LiveBot.Automation
 
                     List<DiscordEmbed> attachmentEmbeds = new();
                     List<string> imageExtensions = new() { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".jfif", ".svg", ".ico" };
-                    foreach (DiscordAttachment messageAttachment in e.Message.Attachments.Where(x=>imageExtensions.Contains(Path.GetExtension(x.FileName))))
+                    List<MemoryStream> imageStreams = new();
+                    foreach (DiscordAttachment messageAttachment in e.Message.Attachments.Where(x => imageExtensions.Contains(Path.GetExtension(x.FileName))))
                     {
-                        using HttpClient httpClient = new();
-                        HttpResponseMessage response = await httpClient.GetAsync(messageAttachment.Url);
+                        HttpResponseMessage response = await _httpClient.GetAsync(messageAttachment.Url);
                         if (!response.IsSuccessStatusCode) continue;
-                        var memoryStream = new MemoryStream();
-                        await response.Content.CopyToAsync(memoryStream);
-                        memoryStream.Position = 0;
                         var uniqueFileName = $"{Guid.NewGuid()}-{messageAttachment.FileName}";
-                        msgBuilder.AddFile(uniqueFileName, memoryStream);
+                        MemoryStream ms = new();
+                        await response.Content.CopyToAsync(ms);
+                        ms.Position = 0;
+                        msgBuilder.AddFile(uniqueFileName, ms);
+                        imageStreams.Add(ms);
                         if (embed.ImageUrl is null)
                         {
                             embed.ImageUrl = $"attachment://{uniqueFileName}";
@@ -106,13 +109,16 @@ namespace LiveBot.Automation
                             {
                                 Color = new DiscordColor(0xFF6600),
                                 ImageUrl = $"attachment://{uniqueFileName}"
-                            }.Build());
+                            }.Build()
+                            );
                         }
                     }
+
                     attachmentEmbeds.Insert(0,embed.Build());
                     msgBuilder.AddEmbeds(attachmentEmbeds);
                     
                     await deleteLogChannel.SendMessageAsync(msgBuilder);
+                    await Parallel.ForEachAsync(imageStreams.AsEnumerable(),async (MemoryStream stream, CancellationToken token) => await stream.DisposeAsync());
                 }
                 else
                 {
