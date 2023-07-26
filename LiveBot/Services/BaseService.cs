@@ -11,29 +11,31 @@ public abstract class BaseQueueService<T>
     private Task _backgroundTask;
     private readonly Type _type;
     private protected BlockingCollection<T> _queue = new();
-    private protected DiscordClient _client;
+    private protected ILogger<T> _logger;
+    private protected DiscordUser _botUser;
 
-    protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
+    protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
         _dbContextFactory = dbContextFactory;
         _databaseMethodService = databaseMethodService;
         _cancellationTokenSource = new CancellationTokenSource();
         _type = this.GetType();
+        _logger = loggerFactory.CreateLogger<T>();
     }
 
     public void StartService(DiscordClient client)
     {
-        _client = client;
-        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
+        _botUser = client.CurrentUser;
+        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
         _backgroundTask = Task.Run(async ()=>await ProcessQueueAsync(),_cancellationTokenSource.Token);
-        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
+        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
     }
     public void StopService()
     {
-        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service stopping!",_type.Name);
+        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service stopping!",_type.Name);
         _cancellationTokenSource.Cancel();
         _backgroundTask.Wait();
-        _client.Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has stopped!",_type.Name);
+        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has stopped!",_type.Name);
     }
 
     private protected abstract Task ProcessQueueAsync();

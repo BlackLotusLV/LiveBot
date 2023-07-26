@@ -21,7 +21,7 @@ namespace LiveBot.Services
     public class WarningService : BaseQueueService<WarningItem>, IWarningService
     {
         private readonly IModLogService _modLogService;
-        public WarningService(IDbContextFactory dbContextFactory,IDatabaseMethodService databaseMethodService, IModLogService modLogService) : base(dbContextFactory, databaseMethodService)
+        public WarningService(IDbContextFactory dbContextFactory,IDatabaseMethodService databaseMethodService, IModLogService modLogService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,loggerFactory)
         {
             _modLogService = modLogService;
         }
@@ -155,7 +155,7 @@ namespace LiveBot.Services
                 }
                 catch (Exception e)
                 {
-                    _client.Logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
+                    _logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
                 }
             }
         }
@@ -236,11 +236,11 @@ namespace LiveBot.Services
             }
             catch (DSharpPlus.Exceptions.NotFoundException)
             {
-                _client.Logger.LogDebug("Moderator tried to get info on user {User} in {Guild} but they are not in the server", user.Username, guild.Name);
+                _logger.LogDebug("Moderator tried to get info on user {User} in {Guild} but they are not in the server", user.Username, guild.Name);
             }
             catch (Exception e)
             {
-                _client.Logger.LogError(e, "Failed to get member in GetUserInfoAsync");
+                _logger.LogError(e, "Failed to get member in GetUserInfoAsync");
             }
             embedBuilder
                 .AddField("Nickname", (member is null ? "*User not in this server*" : member.Username??"*None*"), true)

@@ -13,7 +13,7 @@ namespace LiveBot.Services
     }
     public class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
     {
-        public StreamNotificationService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService) :base (dbContextFactory, databaseMethodService){}
+        public StreamNotificationService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) :base (dbContextFactory, databaseMethodService, loggerFactory){}
         
 
         public static List<LiveStreamer> LiveStreamerList { get; set; } = new();
@@ -61,7 +61,7 @@ namespace LiveBot.Services
                         Title = $"Check out {streamNotificationItem.EventArgs.User.Username} is now Streaming!"
                     };
                     await streamNotificationItem.Channel.SendMessageAsync(embed: embed);
-                    _client.Logger.LogInformation("Stream notification sent for {Username} in {GuildName} in {Channel}",
+                    _logger.LogInformation("Stream notification sent for {Username} in {GuildName} in {Channel}",
                         streamNotificationItem.EventArgs.User.Username,
                         streamNotificationItem.Guild.Name,
                         streamNotificationItem.Channel.Name);
@@ -71,7 +71,7 @@ namespace LiveBot.Services
                 }
                 catch (Exception e)
                 {
-                    _client.Logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
+                    _logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
                     continue;
                 }
             }
@@ -83,13 +83,13 @@ namespace LiveBot.Services
             {
                 foreach (LiveStreamer item in LiveStreamerList.Where(item => item.Time.AddHours(StreamCheckDelay) < DateTime.UtcNow && item.User.Presence.Activity.ActivityType != ActivityType.Streaming))
                 {
-                    _client.Logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
+                    _logger.LogDebug(CustomLogEvents.LiveStream, "User {UserName} removed from Live Stream List - {CheckDelay} hours passed.", item.User.Username, StreamCheckDelay);
                     LiveStreamerList.Remove(item);
                 }
             }
             catch (Exception)
             {
-                _client.Logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
+                _logger.LogDebug(CustomLogEvents.LiveStream, "Live Stream list is empty. No-one to remove or check.");
             }
         }
     }

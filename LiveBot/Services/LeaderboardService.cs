@@ -10,7 +10,7 @@ namespace LiveBot.Services
     }
     public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
     {
-        public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService) : base(dbContextFactory, databaseMethodService) {}
+        public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService, loggerFactory) {}
 
         private protected override async Task ProcessQueueAsync()
         {
@@ -22,7 +22,7 @@ namespace LiveBot.Services
                 }
                 catch (Exception e)
                 {
-                    _client.Logger.LogError("{} failed to process item in queue/n{Error} ", this.GetType().Name,e.Message);
+                    _logger.LogError("{} failed to process item in queue/n{Error} ", this.GetType().Name,e.Message);
                 }
             }
         }

@@ -6,6 +6,7 @@ using LiveBot.Json;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog.Core;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -30,13 +31,13 @@ public interface ITheCrewHubService
     Task GetGameDataAsync(bool isForced = false);
     FontCollection FontCollection { get; set; }
 
-    Task StartServiceAsync(DiscordClient client);
+    Task StartServiceAsync();
     Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event summitEvent, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
 }
 public class TheCrewHubService : ITheCrewHubService
 {
     private readonly HttpClient _httpClient;
-    private DiscordClient _client;
+    private readonly ILogger _logger;
     public Summit[] Summit { get;private set; }
     public Mission[] Missions { get;private set; }
     public Skill[] Skills { get; private set; }
@@ -49,14 +50,14 @@ public class TheCrewHubService : ITheCrewHubService
     public FontCollection FontCollection { get; set; } = new();
     
 
-    public TheCrewHubService(HttpClient httpClient)
+    public TheCrewHubService(HttpClient httpClient, ILoggerFactory loggerFactory)
     {
         _httpClient = httpClient;
+        _logger = loggerFactory.CreateLogger<TheCrewHubService>();
     }
 
-    public async Task StartServiceAsync(DiscordClient client)
+    public async Task StartServiceAsync()
     {
-        _client = client;
         await GetGameDataAsync();
         await GetSummitDataAsync();
         await LoadLocaleDataAsync();
@@ -68,7 +69,7 @@ public class TheCrewHubService : ITheCrewHubService
 
     public async Task LoadLocaleDataAsync()
     {
-        _client.Logger.LogInformation("Loading The Crew Hub locale data");
+        _logger.LogInformation(CustomLogEvents.TcHub,"Loading The Crew Hub locale data");
         using var sr = new StreamReader("ConfigFiles/TheCrewHub.json");
         JObject jsonObject = JObject.Parse(await sr.ReadToEndAsync());
         var locales = jsonObject["dictionary"]?.ToObject<Dictionary<string, string>>();
@@ -81,7 +82,7 @@ public class TheCrewHubService : ITheCrewHubService
     
     public async Task GetGameDataAsync(bool isForced = false)
     {
-        _client.Logger.LogInformation("Loading the crew hub game data");
+        _logger.LogInformation(CustomLogEvents.TcHub,"Loading the crew hub game data");
         string json;
         try
         {
@@ -89,7 +90,7 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            _client.Logger.LogError(e,"Error while downloading game data from hub.");
+            _logger.LogError(e,"Error while downloading game data from hub");
             return;
         }
 
@@ -104,7 +105,7 @@ public class TheCrewHubService : ITheCrewHubService
 
     public async Task GetSummitDataAsync(bool isForced = false)
     {
-        _client.Logger.LogInformation("Loading the crew hub summit data");
+        _logger.LogInformation(CustomLogEvents.TcHub,"Loading the crew hub summit data");
         string json;
         var oldSummit = Summit;
         try
@@ -113,7 +114,7 @@ public class TheCrewHubService : ITheCrewHubService
         }
         catch (WebException e)
         {
-            _client.Logger.LogError(e, "Error while getting summit data");
+            _logger.LogError(e, "Error while getting summit data");
             return;
         }
         
@@ -140,7 +141,7 @@ public class TheCrewHubService : ITheCrewHubService
                 }
             }
         }
-        _client.Logger.LogInformation("The Crew Hub information downloaded");
+        _logger.LogInformation(CustomLogEvents.TcHub,"The Crew Hub information downloaded");
     }
 
     public string DictionaryLookup(string id, string locale = "en-GB")

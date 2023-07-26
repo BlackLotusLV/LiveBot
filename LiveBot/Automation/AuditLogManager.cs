@@ -39,7 +39,7 @@ public class AuditLogManager
                 await UnBanManager(client, auditLogEntry);
                 break;
             default:
-                client.Logger.LogDebug("No integration created for AuditLog parser for {ActionType}", auditLogEntry.ActionType);
+                client.Logger.LogDebug(CustomLogEvents.AuditLogManager,"No integration created for AuditLog parser for {ActionType}", auditLogEntry.ActionType);
                 break;
         }
         

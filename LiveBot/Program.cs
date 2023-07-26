@@ -6,10 +6,14 @@ using DSharpPlus.SlashCommands.EventArgs;
 using LiveBot.Automation;
 using LiveBot.DB;
 using LiveBot.Json;
+using LiveBot.LoggerEnrichers;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using Serilog;
+using Microsoft.Extensions.Logging;
+using Serilog.Events;
 
 namespace LiveBot;
 
@@ -25,14 +29,14 @@ internal sealed class Program
     private async Task RunBotAsync(IEnumerable<string> args)
     {
         var botCredentialsLink = "ConfigFiles/DevBot.json";
-        var logLevel = LogLevel.Debug;
+        var logLevel = LogEventLevel.Debug;
         var testBuild = true;
         var databaseConnectionString = "ConfigFiles/DevDatabase.json";
         
         if (args.Any(x=>x.Contains("live")))
         {
             botCredentialsLink = "ConfigFiles/ProdBot.json";
-            logLevel = LogLevel.Information;
+            logLevel = LogEventLevel.Information;
             testBuild = false;
             databaseConnectionString = "ConfigFiles/Database.json";
         }
@@ -52,7 +56,16 @@ internal sealed class Program
             var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
             dbConnectionString = $"Host={database.Host};Username={database.Username};Password={database.Password};Database={database.Database};Port={database.Port}";
         }
-        
+
+        Log.Logger = new LoggerConfiguration()
+            .Enrich.With(new EventIdEnricher())
+            .MinimumLevel.Is(logLevel)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
+            .WriteTo.Console(outputTemplate:"[{Timestamp:yyyy:MM:dd HH:mm:ss} {Level:u3}] [{FormattedEventId}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
+        ILoggerFactory loggerFactory = new LoggerFactory().AddSerilog();
         
         _serviceProvider = new ServiceCollection()
             .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors(), ServiceLifetime.Transient)
@@ -65,17 +78,17 @@ internal sealed class Program
             .AddSingleton<ILeaderboardService,LeaderboardService>()
             .AddSingleton<IModMailService,ModMailService>()
             .AddSingleton<IModLogService,ModLogService>()
+            .AddSingleton(loggerFactory)
             .BuildServiceProvider();
-
-
+        
         DiscordConfiguration discordConfig = new()
         {
             Token = liveBotSettings.Token,
             TokenType = TokenType.Bot,
             ReconnectIndefinitely = true,
-            MinimumLogLevel = logLevel,
             Intents = DiscordIntents.All,
-            LogUnknownEvents = false
+            LogUnknownEvents = false,
+            LoggerFactory = loggerFactory
         };
         CommandsNextConfiguration cNextConfig = new()
         {
@@ -89,7 +102,7 @@ internal sealed class Program
             Services = _serviceProvider
         };
         InteractivityConfiguration interactivityConfiguration = new();
-
+        
         DiscordClient discordClient = new(discordConfig);
         CommandsNextExtension commandsNextExtension = discordClient.UseCommandsNext(cNextConfig);
         SlashCommandsExtension slashCommandsExtension = discordClient.UseSlashCommands(slashCommandConfig);
@@ -118,7 +131,7 @@ internal sealed class Program
         leaderboardService.StartService(discordClient);
         warningService.StartService(discordClient);
         streamNotificationService.StartService(discordClient);
-        await theCrewHubService.StartServiceAsync(discordClient);
+        await theCrewHubService.StartServiceAsync();
         modLogService.StartService(discordClient);
         
         Timer streamCleanupTimer = new(_ => streamNotificationService.StreamListCleanup());
@@ -174,7 +187,7 @@ internal sealed class Program
         
         if (!testBuild)
         {
-            discordClient.Logger.LogInformation("Running live version");
+            discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running live version");
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
@@ -183,7 +196,7 @@ internal sealed class Program
         }
         else
         {
-            discordClient.Logger.LogInformation("Running in test build mode");
+            discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running in test build mode");
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);

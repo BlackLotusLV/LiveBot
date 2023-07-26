@@ -13,7 +13,7 @@ public interface IModLogService
 
 public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
 {
-    public ModLogService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService) : base(dbContextFactory, databaseMethodService){}
+    public ModLogService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,loggerFactory){}
 
     private protected override async Task ProcessQueueAsync()
     {
@@ -25,7 +25,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             }
             catch (Exception e)
             {
-                _client.Logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name, e);
+                _logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name, e);
                 continue;
             }
         }
@@ -126,7 +126,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                 LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 await _databaseMethodService.AddInfractionsAsync(
                     new Infraction(
-                        _client.CurrentUser.Id,
+                        _botUser.Id,
                         item.TargetUser.Id,
                         item.ModLogChannel.Guild.Id,
                         renewed.Embeds[0].Image.Url.ToString(),
