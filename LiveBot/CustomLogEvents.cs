@@ -16,6 +16,7 @@
         public static EventId PhotoCleanup { get; } = new EventId(211, "PhotoCleanup");
         public static EventId LiveStream { get; } = new EventId(212, "LiveStream");
         public static EventId AuditLogManager { get; } = new EventId(213, "AuditLogManager");
+        public static EventId ServiceError { get; } = new EventId(214, "ServiceError");
         public static EventId TcHub { get; } = new EventId(300, "TCHub");
     }
 }

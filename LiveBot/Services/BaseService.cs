@@ -12,7 +12,7 @@ public abstract class BaseQueueService<T>
     private readonly Type _type;
     private protected BlockingCollection<T> _queue = new();
     private protected ILogger<T> _logger;
-    private protected DiscordUser _botUser;
+    private DiscordClient Client;
 
     protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
@@ -25,7 +25,7 @@ public abstract class BaseQueueService<T>
 
     public void StartService(DiscordClient client)
     {
-        _botUser = client.CurrentUser;
+        Client=client;
         _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
         _backgroundTask = Task.Run(async ()=>await ProcessQueueAsync(),_cancellationTokenSource.Token);
         _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
@@ -43,5 +43,9 @@ public abstract class BaseQueueService<T>
     public void AddToQueue(T value)
     {
         _queue.Add(value);
+    }
+    public DiscordUser GetBotUser()
+    {
+        return Client.CurrentUser;
     }
 }

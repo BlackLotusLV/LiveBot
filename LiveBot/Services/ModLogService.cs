@@ -25,7 +25,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             }
             catch (Exception e)
             {
-                _logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name, e);
+                _logger.LogError(CustomLogEvents.ServiceError,e,"{Type} failed to process item in queue", this.GetType().Name);
                 continue;
             }
         }
@@ -102,17 +102,17 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                 }
             };
             discordMessageBuilder.Content = item.Content;
-            bool hasAttachment = false;
+            var hasAttachment = false;
+            MemoryStream memoryStream = new();
             if (item.Attachment!= null)
             {
                 using HttpClient client = new();
                 HttpResponseMessage response = await client.GetAsync(item.Attachment.Url);
                 if (response.IsSuccessStatusCode)
                 {
-                    var fileStream = new MemoryStream();
-                    await response.Content.CopyToAsync(fileStream);
-                    fileStream.Position = 0;
-                    discordMessageBuilder.AddFile(item.Attachment.FileName, fileStream);
+                    await response.Content.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+                    discordMessageBuilder.AddFile(item.Attachment.FileName, memoryStream);
                     discordEmbedBuilder.ImageUrl = $"attachment://{item.Attachment.FileName}";
                     hasAttachment = true;
                 }
@@ -123,10 +123,9 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             if (hasAttachment)
             {
                 DiscordMessage renewed = await item.ModLogChannel.GetMessageAsync(sentMsg.Id);
-                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 await _databaseMethodService.AddInfractionsAsync(
                     new Infraction(
-                        _botUser.Id,
+                        GetBotUser().Id,
                         item.TargetUser.Id,
                         item.ModLogChannel.Guild.Id,
                         renewed.Embeds[0].Image.Url.ToString(),
@@ -134,6 +133,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                         InfractionType.Note)
                 );
             }
+            await memoryStream.DisposeAsync();
     }
 }
 public enum ModLogType
