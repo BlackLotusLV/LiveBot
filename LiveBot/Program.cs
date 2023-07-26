@@ -1,8 +1,5 @@
 ﻿using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
-using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.SlashCommands;
-using DSharpPlus.SlashCommands.EventArgs;
 using LiveBot.Automation;
 using LiveBot.DB;
 using LiveBot.Json;
@@ -12,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Serilog;
-using Microsoft.Extensions.Logging;
 using Serilog.Events;
 
 namespace LiveBot;
