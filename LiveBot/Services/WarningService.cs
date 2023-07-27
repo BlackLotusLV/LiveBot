@@ -37,7 +37,7 @@ namespace LiveBot.Services
             foreach (WarningItem warningItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
             {
                 
-                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+                await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 try
                 {
                     Guild guild = await liveBotDbContext.Guilds.FindAsync(warningItem.Guild.Id);
@@ -162,7 +162,7 @@ namespace LiveBot.Services
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(ctx.Guild.Id);
             var infractions = await liveBotDbContext.Infractions.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserId && w.InfractionType == InfractionType.Warning && w.IsActive).ToListAsync();
             int infractionLevel = infractions.Count;
@@ -253,7 +253,7 @@ namespace LiveBot.Services
 
         public async Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             GuildUser userStats = await liveBotDbContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseMethodService.AddGuildUsersAsync(new GuildUser(user.Id, guild.Id));
             int kickCount = userStats.KickCount;
             int banCount = userStats.BanCount;

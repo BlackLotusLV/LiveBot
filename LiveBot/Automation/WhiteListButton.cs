@@ -18,7 +18,7 @@ public class WhiteListButton
         {
             IsEphemeral = true
         };
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         var settingsList = await liveBotDbContext.WhiteListSettings.Where(x => x.GuildId == e.Guild.Id).ToListAsync();
         if (settingsList.Count==0)
         {

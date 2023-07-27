@@ -25,7 +25,7 @@ namespace LiveBot.Automation
             Cooldown coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
             if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
             
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             UserActivity userActivity =
                 liveBotDbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
                 await _databaseMethodService.AddUserActivityAsync(new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));

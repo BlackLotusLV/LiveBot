@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
-internal class Roles
+internal sealed class Roles
 {
     private readonly IDbContextFactory _dbContextFactory;
 
@@ -16,7 +16,7 @@ internal class Roles
     public async Task Button_Roles(object client, ComponentInteractionCreateEventArgs e)
     {
         if (e.Interaction is not { Type: InteractionType.Component, User.IsBot: false }|| !e.Interaction.Data.CustomId.Contains("ButtonRole-") || e.Interaction.Guild == null) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         var rolesList = await liveBotDbContext.ButtonRoles.Where(x => x.GuildId == e.Interaction.GuildId && x.ChannelId == e.Interaction.ChannelId).ToListAsync();
         if (rolesList.Count == 0) return;
         string buttonCustomId = e.Interaction.Data.CustomId.Replace("ButtonRole-","");

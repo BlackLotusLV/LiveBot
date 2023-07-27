@@ -17,7 +17,7 @@ namespace LiveBot.Automation
         }
         public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
             if (guild?.WelcomeChannelId == null || guild.HasScreening) return;
             DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
@@ -34,7 +34,7 @@ namespace LiveBot.Automation
 
         public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
             bool pendingCheck = guild != null && !(guild.HasScreening && e.Member.IsPending == true);
             if (guild is { WelcomeChannelId: not null } && pendingCheck)

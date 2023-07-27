@@ -17,7 +17,7 @@ namespace LiveBot.Automation
             if (e.PendingBefore == null) return;
             if (e.PendingBefore.Value && !e.PendingAfter.Value)
             {
-                LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+                await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
                 Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
                 if (guild?.WelcomeChannelId == null || !guild.HasScreening) return;
                 DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));

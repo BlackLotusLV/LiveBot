@@ -31,7 +31,7 @@ public class DatabaseMethodService : IDatabaseMethodService
     
     public async Task<Guild> AddGuildAsync(Guild guild)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         Guild guildEntity= (await context.Guilds.AddAsync(guild)).Entity;
         await context.SaveChangesAsync();
         return guildEntity;
@@ -43,7 +43,7 @@ public class DatabaseMethodService : IDatabaseMethodService
         {
             await AddUserAsync(new User(user.ParentDiscordId.Value));
         }
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         User userEntity = (await context.Users.AddAsync(user)).Entity;
         await context.SaveChangesAsync();
         return userEntity;
@@ -51,7 +51,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddUbiInfoAsync(UbiInfo ubiInfo)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Users.FindAsync(ubiInfo.UserDiscordId)==null)
         {
             await AddUserAsync(new User(ubiInfo.UserDiscordId));
@@ -63,7 +63,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task<GuildUser> AddGuildUsersAsync(GuildUser guildUser)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Users.FindAsync(guildUser.UserDiscordId)==null)
         {
             await AddUserAsync(new User(guildUser.UserDiscordId));
@@ -81,7 +81,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task<UserActivity> AddUserActivityAsync(UserActivity userActivity)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.GuildUsers.FindAsync(new object[]{userActivity.UserDiscordId,userActivity.GuildId})==null)
         {
             await AddGuildUsersAsync(new GuildUser(userActivity.UserDiscordId, userActivity.GuildId));
@@ -94,7 +94,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddModMailAsync(ModMail modMail)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.GuildUsers.FindAsync(new object[]{modMail.UserDiscordId,modMail.GuildId})==null)
         {
             await AddGuildUsersAsync(new GuildUser(modMail.UserDiscordId, modMail.GuildId));
@@ -106,7 +106,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddInfractionsAsync(Infraction infraction)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.GuildUsers.FindAsync(new object[]{infraction.UserId,infraction.GuildId})==null)
         {
             await AddGuildUsersAsync(new GuildUser(infraction.UserId, infraction.GuildId));
@@ -118,7 +118,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddRankRolesAsync(RankRoles rankRoles)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(rankRoles.GuildId)==null)
         {
             await AddGuildAsync(new Guild(rankRoles.GuildId));
@@ -130,7 +130,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddSpamIgnoreChannelsAsync(SpamIgnoreChannels spamIgnoreChannels)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(spamIgnoreChannels.GuildId)==null)
         {
             await AddGuildAsync(new Guild(spamIgnoreChannels.GuildId));
@@ -141,7 +141,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddStreamNotificationsAsync(StreamNotifications streamNotifications)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(streamNotifications.GuildId)==null)
         {
             await AddGuildAsync(new Guild(streamNotifications.GuildId));
@@ -153,7 +153,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddButtonRolesAsync(ButtonRoles buttonRoles)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(buttonRoles.GuildId)==null)
         {
             await AddGuildAsync(new Guild(buttonRoles.GuildId));
@@ -165,7 +165,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddWhiteListSettingsAsync(WhiteListSettings whiteListSettings)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(whiteListSettings.GuildId)==null)
         {
             await AddGuildAsync(new Guild(whiteListSettings.GuildId));
@@ -177,7 +177,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddRoleTagSettings(RoleTagSettings roleTagSettings)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Guilds.FindAsync(roleTagSettings.GuildId)==null)
         {
             await AddGuildAsync(new Guild(roleTagSettings.GuildId));
@@ -189,7 +189,7 @@ public class DatabaseMethodService : IDatabaseMethodService
 
     public async Task AddPhotoCompEntryAsync(PhotoCompEntries entry)
     {
-        LiveBotDbContext context = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
         if (await context.Users.FindAsync(entry.UserId)==null)
         {
             await AddUserAsync(new User(entry.UserId));

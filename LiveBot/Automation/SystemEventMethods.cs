@@ -26,7 +26,7 @@ public sealed class SystemEventMethods
 
     public async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
-        LiveBotDbContext dbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext dbContext = _dbContextFactory.CreateDbContext();
         _ = await dbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
     }

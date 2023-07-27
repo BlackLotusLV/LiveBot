@@ -48,7 +48,7 @@ namespace LiveBot.Automation
         public async Task Delete_Log(DiscordClient client, MessageDeleteEventArgs e)
         {
             if (e.Guild == null) return;
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             DiscordMessage msg = e.Message;
             DiscordUser author = msg.Author;
             Guild guildSettings = liveBotDbContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
@@ -140,7 +140,7 @@ namespace LiveBot.Automation
 
         public async Task Bulk_Delete_Log(DiscordClient client, MessageBulkDeleteEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
             if (guildSettings == null || guildSettings.DeleteLogChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
@@ -189,7 +189,7 @@ namespace LiveBot.Automation
 
         public async Task User_Join_Log(DiscordClient client, GuildMemberAddEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
             if (guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
@@ -220,7 +220,7 @@ namespace LiveBot.Automation
 
         public async Task User_Leave_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
             if (guildSettings == null || guildSettings.UserTrafficChannelId == null) return;
             DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
@@ -252,7 +252,7 @@ namespace LiveBot.Automation
         public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
         {
             if (e.Guild is null) return;
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
             if (e.Author.IsBot || guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
             var invites = await e.Guild.GetInvitesAsync();
@@ -276,7 +276,7 @@ namespace LiveBot.Automation
         {
             if (e.Author.IsBot || e.Guild is null) return;
 
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
             DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
             if (
@@ -305,7 +305,7 @@ namespace LiveBot.Automation
 
         public async Task Voice_Activity_Log(DiscordClient client, VoiceStateUpdateEventArgs e)
         {
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
 
             if (guild.VoiceActivityLogChannelId == null) return;

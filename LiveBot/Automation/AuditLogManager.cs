@@ -48,7 +48,7 @@ public class AuditLogManager
     private async Task KickManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberKick) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(new object[] { guild.Id }) ??
                               await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
@@ -87,7 +87,7 @@ public class AuditLogManager
     private async Task UnBanManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberBanRemove) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(new object[] { guild.Id }) ??
                               await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
@@ -122,7 +122,7 @@ public class AuditLogManager
             oldTime = oldTimeParse;
         }
         if (newTime is null && oldTime is null) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings= liveBotDbContext.Guilds.First(w => w.Id == logEntry.GuildId);
         if (guildSettings.ModerationLogChannelId is null) return;
@@ -192,7 +192,7 @@ public class AuditLogManager
     private async Task BanManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberBanAdd) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         GuildUser guildUser = await liveBotDbContext.GuildUsers.FindAsync(new object[] { CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId }) ??
                               await _databaseMethodService.AddGuildUsersAsync(new GuildUser(CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId));
         guildUser.BanCount++;

@@ -23,7 +23,7 @@ public class DuplicateMessageCatcher
     public async Task CheckMessage(DiscordClient client, MessageCreateEventArgs eventArgs)
     {
         if (eventArgs.Author.IsBot || eventArgs.Author.IsCurrent || eventArgs.Guild is null) return;
-        LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(eventArgs.Guild.Id);
         if (guild is null) return;
         var spamIgnoreChannels =

@@ -20,7 +20,7 @@ namespace LiveBot.Automation
             if (e.User is null || e.User.IsBot || e.User.Presence is null) return;
             DiscordGuild guild = e.User.Presence.Guild;
             if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
-            LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
             var streamNotifications = liveBotDbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
             if (streamNotifications.Count == 0) return;
             foreach (StreamNotifications streamNotification in streamNotifications)
