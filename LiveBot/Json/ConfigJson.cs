@@ -1,25 +1,25 @@
 ﻿using Newtonsoft.Json;
 
-namespace LiveBot
-{
-    sealed internal class ConfigJson
+namespace LiveBot.Json;
+
+internal abstract class ConfigJson
     {
         public struct Config
         {
-            [JsonProperty("LiveBot")]
+            [JsonProperty(nameof(LiveBot))]
             public Bot LiveBot { get; private set; }
 
-            [JsonProperty("DevBot")]
+            [JsonProperty(nameof(DevBot))]
             public Bot DevBot { get; private set; }
 
-            [JsonProperty("DataBase")]
-            public DB DataBase { get; private set; }
+            [JsonProperty(nameof(DataBase))]
+            public DataBase DataBase { get; private set; }
 
-            [JsonProperty("TCE")]
-            public TheCrewExchange TCE { get; private set; }
+            [JsonProperty(nameof(Tce))]
+            public TheCrewExchange Tce { get; private set; }
 
-            [JsonProperty("TCHub")]
-            public TheCrewHubApi TCHub { get; private set; }
+            [JsonProperty(nameof(TcHub))]
+            public TheCrewHubApi TcHub { get; private set; }
         }
 
         public struct Bot
@@ -31,7 +31,7 @@ namespace LiveBot
             public string CommandPrefix { get; private set; }
         }
 
-        public struct DB
+        public struct DataBase
         {
             [JsonProperty("host")]
             public string Host { get; private set; }
@@ -72,4 +72,3 @@ namespace LiveBot
             public string News { get; private set; }
         }
     }
-}

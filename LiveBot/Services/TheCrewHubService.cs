@@ -1,12 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http;
-using System.Text.Json.Nodes;
 using LiveBot.DB;
 using LiveBot.Json;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Serilog.Core;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -32,7 +29,7 @@ public interface ITheCrewHubService
     FontCollection FontCollection { get; set; }
 
     Task StartServiceAsync();
-    Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event summitEvent, Rank rank, DB.UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
+    Task<(Image<Rgba32>,bool)> BuildEventImageAsync(Event summitEvent, Rank rank, UbiInfo ubiInfo,User user, byte[] eventImageBytes, bool isCorner = false, bool isSpecial = false);
 }
 public class TheCrewHubService : ITheCrewHubService
 {
@@ -146,7 +143,7 @@ public class TheCrewHubService : ITheCrewHubService
 
     public string DictionaryLookup(string id, string locale = "en-GB")
     {
-        if (locale == null || Locales.TryGetValue(locale, out Dictionary<string, string> dictionary))
+        if (locale == null || Locales.TryGetValue(locale, out var dictionary))
         {
             dictionary = Locales.FirstOrDefault(w => w.Key == "en-GB").Value;
         }
@@ -224,15 +221,7 @@ public class TheCrewHubService : ITheCrewHubService
             else
             {
                 Model model = Models.FirstOrDefault(w => w.Id == entries.VehicleId);
-                Brand brand;
-                if (model != null)
-                {
-                    brand = Brands.FirstOrDefault(w => w.Id == model.BrandId);
-                }
-                else
-                {
-                    brand = null;
-                }
+                Brand brand = model != null ? Brands.FirstOrDefault(w => w.Id == model.BrandId) : null;
                 vehicleInfo = $"{DictionaryLookup(brand != null ? brand.TextId : "not found", locale)} - {DictionaryLookup(model != null ? model.TextId : "not found", locale)}";
             }
             if (leaderboard.ScoreFormat == "time")
@@ -265,7 +254,7 @@ public class TheCrewHubService : ITheCrewHubService
                 Origin = new PointF(5, eventImage.Height - 62),
                 FallbackFontFamilies = new[] { FontCollection.Get("Noto Sans Mono CJK JP Bold"), FontCollection.Get("Noto Sans Arabic") }
             };
-            TextOptions baseTopLelft = new(basefont)
+            TextOptions baseTopLeft = new(basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -286,12 +275,12 @@ public class TheCrewHubService : ITheCrewHubService
                 .DrawImage(scoreBar, new Point(0, eventImage.Height - scoreBar.Height), 0.7f)
                 .DrawImage(titleBar, new Point(0, 0), 0.7f)
                 .DrawText(eventTitleOptions, eventTitle, Color.White)
-                .DrawText(new(baseTopLelft) { Origin = new PointF(5, eventImage.Height - 22) }, $"Rank: {activity.Rank + 1}", Color.White)
-                .DrawText(new(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 42) }, activityResult, Color.White)
-                .DrawText(new(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 22) }, $"Points: {activity.Points}", Color.White)
+                .DrawText(new TextOptions(baseTopLeft) { Origin = new PointF(5, eventImage.Height - 22) }, $"Rank: {activity.Rank + 1}", Color.White)
+                .DrawText(new TextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 42) }, activityResult, Color.White)
+                .DrawText(new TextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 22) }, $"Points: {activity.Points}", Color.White)
                 .DrawText(vehicleTextOptions, vehicleInfo, Color.White)
                 );
-            Parallel.For(0, summitEvent.Modifiers.Length, (i, state) =>
+            Parallel.For(0, summitEvent.Modifiers.Length, (i, _) =>
             {
                 Image<Rgba32> modifierImg = new(1, 1);
                 try
@@ -300,13 +289,13 @@ public class TheCrewHubService : ITheCrewHubService
                 }
                 catch (Exception)
                 {
-                    modifierImg = Image.Load<Rgba32>($"Assets/Summit/Modifiers/unknown.png");
+                    modifierImg = Image.Load<Rgba32>("Assets/Summit/Modifiers/unknown.png");
                 }
-                Image<Rgba32> ModifierBackground = new(modifierImg.Width, modifierImg.Height);
-                ModifierBackground.Mutate(ctx => ctx.Fill(Color.Black));
+                Image<Rgba32> modifierBackground = new(modifierImg.Width, modifierImg.Height);
+                modifierBackground.Mutate(ctx => ctx.Fill(Color.Black));
                 var modifierPoint = new Point(i * modifierImg.Width + 20, titleBar.Height + 10);
                 eventImage.Mutate(ctx => ctx
-                .DrawImage(ModifierBackground, modifierPoint, 0.7f)
+                .DrawImage(modifierBackground, modifierPoint, 0.7f)
                 .DrawImage(modifierImg, modifierPoint, 1f));
             });
 

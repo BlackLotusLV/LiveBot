@@ -79,13 +79,13 @@ public sealed class SystemEventMethods
 
     public Task ContextMenuExecuted(SlashCommandsExtension ext, ContextMenuExecutedEventArgs e)
     {
-        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{CommandName}-{QualifiedName}' menu command", e.Context.User.Username, e.Context.CommandName,e.Context.QualifiedName);
+        ext.Client.Logger.LogInformation(CustomLogEvents.ContextMenuExecuted, "{Username} Successfully executed '{CommandName}' menu command", e.Context.User.Username, e.Context.CommandName);
         return Task.CompletedTask;
     }
 
     public Task ContextMenuErrored(SlashCommandsExtension ext, ContextMenuErrorEventArgs e)
     {
-        ext.Client.Logger.LogError(CustomLogEvents.SlashErrored, e.Exception, "{Username} tried executing '{CommandName}' menu command, but it errored", e.Context.User.Username, e.Context.CommandName);
+        ext.Client.Logger.LogError(CustomLogEvents.ContextMenuErrored, e.Exception, "{Username} tried executing '{CommandName}' menu command, but it errored", e.Context.User.Username, e.Context.CommandName);
         return Task.CompletedTask;
     }
 }

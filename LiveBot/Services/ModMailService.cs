@@ -19,15 +19,17 @@ public class ModMailService : IModMailService
 {
     private readonly IDbContextFactory _dbContextFactory;
     private readonly IDatabaseMethodService _databaseMethodService;
+    private readonly ILogger<ModLogService> _logger;
     public int TimeoutMinutes => 120;
 
-    public string CloseButtonPrefix { get; } = "closeModMail";
-    public string OpenButtonPrefix { get; } = "openModMail";
+    public string CloseButtonPrefix => "closeModMail";
+    public string OpenButtonPrefix => "openModMail";
 
-    public ModMailService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
+    public ModMailService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
         _dbContextFactory = dbContextFactory;
         _databaseMethodService = databaseMethodService;
+        _logger = loggerFactory.CreateLogger<ModLogService>();
     }
 
     public async Task ProcessModMailDm(DiscordClient client, MessageCreateEventArgs e)
@@ -84,7 +86,7 @@ public class ModMailService : IModMailService
         Guild dbGuild = await liveBotDbContext.Guilds.FindAsync(guild.Id) ?? (await liveBotDbContext.Guilds.AddAsync(new Guild(guild.Id))).Entity;
         if (dbGuild.ModMailChannelId == null)
         {
-            client.Logger.LogWarning("User tried to close mod mail, mod mail channel was not found. Something is set up incorrectly. Server ID:{serverId}",guild.Id);
+            client.Logger.LogWarning("User tried to close mod mail, mod mail channel was not found. Something is set up incorrectly. Server ID:{ServerId}",guild.Id);
             return;
         }
         DiscordChannel modMailChannel = guild.GetChannel(dbGuild.ModMailChannelId.Value);
@@ -96,7 +98,7 @@ public class ModMailService : IModMailService
             {
                 Name = $"{closer.Username} ({closer.Id})",
                 IconUrl = closer.AvatarUrl
-            },
+            }
         };
         try
         {
@@ -192,10 +194,12 @@ public class ModMailService : IModMailService
 
     public async Task ModMailCleanupAsync(DiscordClient client)
     {
+        _logger.LogDebug(CustomLogEvents.ModMail, "Mod Mail cleanup started");
         await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
         foreach (ModMail modMail in liveBotDbContext.ModMail.Where(mMail=>mMail.IsActive && mMail.LastMessageTime.AddMinutes(TimeoutMinutes) < DateTime.UtcNow).ToList())
         {
-            await CloseModMailAsync(client, modMail, client.CurrentUser, " Mod Mail timed out.", $"**Mod Mail timed out.**\n----------------------------------------------------");
+            await CloseModMailAsync(client, modMail, client.CurrentUser, " Mod Mail timed out.", "**Mod Mail timed out.**\n----------------------------------------------------");
         }
+        _logger.LogDebug(CustomLogEvents.ModMail, "Mod Mail cleanup finished");
     }
 }

@@ -1,7 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace LiveBot.DB;
+﻿namespace LiveBot.DB;
 
 public class SpamIgnoreChannels
 {

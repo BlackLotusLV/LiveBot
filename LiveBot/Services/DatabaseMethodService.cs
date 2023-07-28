@@ -82,7 +82,7 @@ public class DatabaseMethodService : IDatabaseMethodService
     public async Task<UserActivity> AddUserActivityAsync(UserActivity userActivity)
     {
         await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
-        if (await context.GuildUsers.FindAsync(new object[]{userActivity.UserDiscordId,userActivity.GuildId})==null)
+        if (await context.GuildUsers.FindAsync(userActivity.UserDiscordId, userActivity.GuildId)==null)
         {
             await AddGuildUsersAsync(new GuildUser(userActivity.UserDiscordId, userActivity.GuildId));
         }
@@ -95,7 +95,7 @@ public class DatabaseMethodService : IDatabaseMethodService
     public async Task AddModMailAsync(ModMail modMail)
     {
         await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
-        if (await context.GuildUsers.FindAsync(new object[]{modMail.UserDiscordId,modMail.GuildId})==null)
+        if (await context.GuildUsers.FindAsync(modMail.UserDiscordId, modMail.GuildId)==null)
         {
             await AddGuildUsersAsync(new GuildUser(modMail.UserDiscordId, modMail.GuildId));
         }
@@ -107,7 +107,7 @@ public class DatabaseMethodService : IDatabaseMethodService
     public async Task AddInfractionsAsync(Infraction infraction)
     {
         await using LiveBotDbContext context = _dbContextFactory.CreateDbContext();
-        if (await context.GuildUsers.FindAsync(new object[]{infraction.UserId,infraction.GuildId})==null)
+        if (await context.GuildUsers.FindAsync(infraction.UserId, infraction.GuildId)==null)
         {
             await AddGuildUsersAsync(new GuildUser(infraction.UserId, infraction.GuildId));
         }

@@ -1,24 +1,22 @@
-﻿using System.Collections.Immutable;
-using DSharpPlus.SlashCommands;
+﻿using DSharpPlus.SlashCommands;
 using LiveBot.DB;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Primitives;
 
-namespace LiveBot.Services
+namespace LiveBot.Services;
+
+public interface IWarningService
 {
-    public interface IWarningService
-    {
-        public void StartService(DiscordClient client);
-        public void StopService();
-        public void AddToQueue(WarningItem value);
-        public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
-        Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user);
-        Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
-        string UserInfoButtonPrefix { get; }
-        string InfractionButtonPrefix { get; }
-    }
+    public void StartService(DiscordClient client);
+    public void StopService();
+    public void AddToQueue(WarningItem value);
+    public Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId);
+    Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user);
+    Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false);
+    string UserInfoButtonPrefix { get; }
+    string InfractionButtonPrefix { get; }
+}
 
-    public class WarningService : BaseQueueService<WarningItem>, IWarningService
+public class WarningService : BaseQueueService<WarningItem>, IWarningService
     {
         private readonly IModLogService _modLogService;
         public WarningService(IDbContextFactory dbContextFactory,IDatabaseMethodService databaseMethodService, IModLogService modLogService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,loggerFactory)
@@ -34,10 +32,10 @@ namespace LiveBot.Services
 
         private protected override async Task ProcessQueueAsync()
         {
-            foreach (WarningItem warningItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
+            foreach (WarningItem warningItem in Queue.GetConsumingEnumerable(CancellationTokenSource.Token))
             {
                 
-                await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+                await using LiveBotDbContext liveBotDbContext = DbContextFactory.CreateDbContext();
                 try
                 {
                     Guild guild = await liveBotDbContext.Guilds.FindAsync(warningItem.Guild.Id);
@@ -72,7 +70,7 @@ namespace LiveBot.Services
                     DiscordChannel modLog = warningItem.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
 
                     Infraction newInfraction = new(warningItem.Admin.Id, warningItem.User.Id, warningItem.Guild.Id, warningItem.Reason, true, InfractionType.Warning);
-                    await _databaseMethodService.AddInfractionsAsync(newInfraction);
+                    await DatabaseMethodService.AddInfractionsAsync(newInfraction);
 
                     int warningCount = await liveBotDbContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.InfractionType == InfractionType.Warning);
                     int infractionLevel = await liveBotDbContext.Infractions.CountAsync(w => w.UserId == warningItem.User.Id && w.GuildId == warningItem.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
@@ -155,14 +153,14 @@ namespace LiveBot.Services
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError("{} failed to process item in queue \n{}", this.GetType().Name,e);
+                    Logger.LogError(CustomLogEvents.ServiceError,e,"{} failed to process item in queue", GetType().Name);
                 }
             }
         }
 
         public async Task RemoveWarningAsync(DiscordUser user, InteractionContext ctx, int warningId)
         {
-            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = DbContextFactory.CreateDbContext();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(ctx.Guild.Id);
             var infractions = await liveBotDbContext.Infractions.Where(w => ctx.Guild.Id == w.GuildId && user.Id == w.UserId && w.InfractionType == InfractionType.Warning && w.IsActive).ToListAsync();
             int infractionLevel = infractions.Count;
@@ -175,7 +173,7 @@ namespace LiveBot.Services
 
             StringBuilder modMessageBuilder = new();
             DiscordMember member = null;
-            if (guild == null || guild.ModerationLogChannelId == null)
+            if (guild?.ModerationLogChannelId == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server has not set up this feature."));
                 return;
@@ -213,7 +211,7 @@ namespace LiveBot.Services
                 modMessageBuilder.AppendLine($"{user.Mention} could not be contacted via DM.");
             }
 
-            _modLogService.AddToQueue(new ModLogItem(modLog, user, description, ModLogType.Unwarn, modMessageBuilder.ToString()));
+            _modLogService.AddToQueue(new ModLogItem(modLog, user, description, ModLogType.UnWarn, modMessageBuilder.ToString()));
         }
 
         public async Task<DiscordEmbed> GetUserInfoAsync(DiscordGuild guild, DiscordUser user)
@@ -236,25 +234,25 @@ namespace LiveBot.Services
             }
             catch (DSharpPlus.Exceptions.NotFoundException)
             {
-                _logger.LogDebug("Moderator tried to get info on user {User} in {Guild} but they are not in the server", user.Username, guild.Name);
+                Logger.LogDebug("Moderator tried to get info on user {User} in {Guild} but they are not in the server", user.Username, guild.Name);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Failed to get member in GetUserInfoAsync");
+                Logger.LogError(e, "Failed to get member in GetUserInfoAsync");
             }
             embedBuilder
-                .AddField("Nickname", (member is null ? "*User not in this server*" : member.Username??"*None*"), true)
+                .AddField("Nickname", member is null ? "*User not in this server*" : member.Username??"*None*", true)
                 .AddField("ID", user.Id.ToString(), true)
                 .AddField("Account Created On", $"<t:{user.CreationTimestamp.ToUnixTimeSeconds()}:F>")
-                .AddField("Server Join Date", (member is null ? "User not in this server" : $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>"))
-                .AddField("Accepted rules?", (member is null ? "User not in this server" : member.IsPending == null ? "Guild has no member screening" : member.IsPending.Value ? "No" : "Yes"));
+                .AddField("Server Join Date", member is null ? "User not in this server" : $"<t:{member.JoinedAt.ToUnixTimeSeconds()}:F>")
+                .AddField("Accepted rules?", member is null ? "User not in this server" : member.IsPending == null ? "Guild has no member screening" : member.IsPending.Value ? "No" : "Yes");
             return embedBuilder.Build();
         }
 
         public async Task<List<DiscordEmbed>> BuildInfractionsEmbedsAsync(DiscordGuild guild, DiscordUser user, bool adminCommand = false)
         {
-            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-            GuildUser userStats = await liveBotDbContext.GuildUsers.FindAsync(new object[] { user.Id, guild.Id }) ?? await _databaseMethodService.AddGuildUsersAsync(new GuildUser(user.Id, guild.Id));
+            await using LiveBotDbContext liveBotDbContext = DbContextFactory.CreateDbContext();
+            GuildUser userStats = await liveBotDbContext.GuildUsers.FindAsync(user.Id, guild.Id) ?? await DatabaseMethodService.AddGuildUsersAsync(new GuildUser(user.Id, guild.Id));
             int kickCount = userStats.KickCount;
             int banCount = userStats.BanCount;
             var userInfractions = await liveBotDbContext.Infractions.Where(w => w.UserId == user.Id && w.GuildId == guild.Id).OrderBy(w => w.TimeCreated).ToListAsync();
@@ -277,7 +275,7 @@ namespace LiveBot.Services
                               $"- **Infraction count:** {userInfractions.Count(w => w.IsActive)}\n" +
                               $"- **Mod Mail blocked:** {(userStats.IsModMailBlocked?"Yes":"No")}",
                 Title = "Infraction History",
-                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail()
+                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
                 {
                     Url = user.AvatarUrl,
                 }
@@ -285,7 +283,7 @@ namespace LiveBot.Services
             const int pageCap = 6;
             DiscordEmbedBuilder infractionEmbed = new()
             {
-                Color = new DiscordColor(0xFF6600),
+                Color = new DiscordColor(0xFF6600)
             };
             List<DiscordEmbed> embeds = new() { statsEmbed.Build() };
 
@@ -331,27 +329,27 @@ namespace LiveBot.Services
         }
     }
 
-    public class WarningItem
-    {
-        public DiscordUser User { get; set; }
-        public DiscordUser Admin { get; set; }
-        public DiscordGuild Guild { get; set; }
-        public DiscordChannel Channel { get; set; }
-        public string Reason { get; set; }
-        public bool AutoMessage { get; set; }
-        public InteractionContext InteractionContext { get; set; }
-        public DiscordAttachment Attachment { get; set; }
+public class WarningItem
+{
+    public DiscordUser User { get; set; }
+    public DiscordUser Admin { get; set; }
+    public DiscordGuild Guild { get; set; }
+    public DiscordChannel Channel { get; set; }
+    public string Reason { get; set; }
+    public bool AutoMessage { get; set; }
+    public InteractionContext InteractionContext { get; set; }
+    public DiscordAttachment Attachment { get; set; }
 
-        public WarningItem(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool autoMessage, InteractionContext interactionContext = null, DiscordAttachment attachment = null)
-        {
-            User = user;
-            Admin = admin;
-            Guild = server;
-            Channel = channel;
-            Reason = reason;
-            AutoMessage = autoMessage;
-            InteractionContext = interactionContext;
-            Attachment = attachment;
-        }
+    public WarningItem(DiscordUser user, DiscordUser admin, DiscordGuild server, DiscordChannel channel, string reason, bool autoMessage, InteractionContext interactionContext = null,
+        DiscordAttachment attachment = null)
+    {
+        User = user;
+        Admin = admin;
+        Guild = server;
+        Channel = channel;
+        Reason = reason;
+        AutoMessage = autoMessage;
+        InteractionContext = interactionContext;
+        Attachment = attachment;
     }
 }

@@ -1,51 +1,51 @@
 ﻿using System.Collections.Concurrent;
-using LiveBot.DB;
 
 namespace LiveBot.Services;
 
 public abstract class BaseQueueService<T>
 {
-    private protected readonly IDbContextFactory _dbContextFactory;
-    private protected readonly IDatabaseMethodService _databaseMethodService;
-    private protected readonly CancellationTokenSource _cancellationTokenSource;
+    private protected readonly IDbContextFactory DbContextFactory;
+    private protected readonly IDatabaseMethodService DatabaseMethodService;
+    private protected readonly CancellationTokenSource CancellationTokenSource;
     private Task _backgroundTask;
     private readonly Type _type;
-    private protected BlockingCollection<T> _queue = new();
-    private protected ILogger<T> _logger;
-    private DiscordClient Client;
+    private protected readonly BlockingCollection<T> Queue = new();
+    private protected readonly ILogger<T> Logger;
+    private DiscordClient _client;
 
     protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
-        _dbContextFactory = dbContextFactory;
-        _databaseMethodService = databaseMethodService;
-        _cancellationTokenSource = new CancellationTokenSource();
-        _type = this.GetType();
-        _logger = loggerFactory.CreateLogger<T>();
+        DbContextFactory = dbContextFactory;
+        DatabaseMethodService = databaseMethodService;
+        CancellationTokenSource = new CancellationTokenSource();
+        _type = GetType();
+        Logger = loggerFactory.CreateLogger<T>();
     }
 
     public void StartService(DiscordClient client)
     {
-        Client=client;
-        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
-        _backgroundTask = Task.Run(async ()=>await ProcessQueueAsync(),_cancellationTokenSource.Token);
-        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
+        _client=client;
+        Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service starting!",_type.Name);
+        _backgroundTask = Task.Run(async ()=>await ProcessQueueAsync(),CancellationTokenSource.Token);
+        Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has started!",_type.Name);
     }
     public void StopService()
     {
-        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service stopping!",_type.Name);
-        _cancellationTokenSource.Cancel();
+        Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service stopping!",_type.Name);
+        CancellationTokenSource.Cancel();
         _backgroundTask.Wait();
-        _logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has stopped!",_type.Name);
+        Logger.LogInformation(CustomLogEvents.LiveBot,"{Type} service has stopped!",_type.Name);
     }
 
     private protected abstract Task ProcessQueueAsync();
 
     public void AddToQueue(T value)
     {
-        _queue.Add(value);
+        Queue.Add(value);
     }
-    public DiscordUser GetBotUser()
+
+    protected DiscordUser GetBotUser()
     {
-        return Client.CurrentUser;
+        return _client.CurrentUser;
     }
 }

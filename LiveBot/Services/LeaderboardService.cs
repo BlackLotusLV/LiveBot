@@ -1,42 +1,45 @@
 ﻿using LiveBot.DB;
 
-namespace LiveBot.Services
-{
-    public interface ILeaderboardService
-    {
-        void StartService(DiscordClient client);
-        void StopService();
-        void AddToQueue(LeaderboardService.LeaderboardItem value);
-    }
-    public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
-    {
-        public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService, loggerFactory) {}
+namespace LiveBot.Services;
 
-        private protected override async Task ProcessQueueAsync()
+public interface ILeaderboardService
+{
+    void StartService(DiscordClient client);
+    void StopService();
+    void AddToQueue(LeaderboardService.LeaderboardItem value);
+}
+
+public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
+{
+    public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,
+        loggerFactory)
+    {
+    }
+
+    private protected override async Task ProcessQueueAsync()
+    {
+        foreach (LeaderboardItem value in Queue.GetConsumingEnumerable(CancellationTokenSource.Token))
         {
-            foreach (LeaderboardItem value in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
+            try
             {
-                try
-                {
-                    await _databaseMethodService.AddGuildUsersAsync(new GuildUser(value.User.Id, value.Guild.Id));
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError("{} failed to process item in queue/n{Error} ", this.GetType().Name,e.Message);
-                }
+                await DatabaseMethodService.AddGuildUsersAsync(new GuildUser(value.User.Id, value.Guild.Id));
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(CustomLogEvents.ServiceError, e, "{} failed to process item in queue", GetType().Name);
             }
         }
+    }
 
-        public class LeaderboardItem
+    public class LeaderboardItem
+    {
+        public DiscordGuild Guild { get; set; }
+        public DiscordUser User { get; set; }
+
+        public LeaderboardItem(DiscordUser user, DiscordGuild guild)
         {
-            public DiscordGuild Guild { get; set; }
-            public DiscordUser User { get; set; }
-
-            public LeaderboardItem(DiscordUser user, DiscordGuild guild)
-            {
-                this.Guild = guild;
-                this.User = user;
-            }
+            Guild = guild;
+            User = user;
         }
     }
 }

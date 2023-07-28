@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Http;
+﻿using System.Net.Http;
 using LiveBot.DB;
 
 namespace LiveBot.Services;
@@ -17,7 +16,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
 
     private protected override async Task ProcessQueueAsync()
     {
-        foreach (ModLogItem modLogItem in _queue.GetConsumingEnumerable(_cancellationTokenSource.Token))
+        foreach (ModLogItem modLogItem in Queue.GetConsumingEnumerable(CancellationTokenSource.Token))
         {
             try
             {
@@ -25,8 +24,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             }
             catch (Exception e)
             {
-                _logger.LogError(CustomLogEvents.ServiceError,e,"{Type} failed to process item in queue", this.GetType().Name);
-                continue;
+                Logger.LogError(CustomLogEvents.ServiceError,e,"{Type} failed to process item in queue",GetType().Name);
             }
         }
     }
@@ -57,7 +55,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                     footerText = "User Warned";
                     break;
 
-                case ModLogType.Unwarn:
+                case ModLogType.UnWarn:
                     footerText = "User Unwarned";
                     break;
 
@@ -81,8 +79,8 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
                     color = new DiscordColor(0xFFBA01);
                     footerText = "User Timeout Shortened";
                     break;
-
                 default:
+                    Logger.LogDebug(CustomLogEvents.ModLog, "ModLogType not found: {Type}", item.Type);
                     break;
             }
             DiscordMessageBuilder discordMessageBuilder = new();
@@ -123,7 +121,7 @@ public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
             if (hasAttachment)
             {
                 DiscordMessage renewed = await item.ModLogChannel.GetMessageAsync(sentMsg.Id);
-                await _databaseMethodService.AddInfractionsAsync(
+                await DatabaseMethodService.AddInfractionsAsync(
                     new Infraction(
                         GetBotUser().Id,
                         item.TargetUser.Id,
@@ -142,7 +140,7 @@ public enum ModLogType
     Ban,
     Info,
     Warning,
-    Unwarn,
+    UnWarn,
     Unban,
     TimedOut,
     TimeOutRemoved,
@@ -160,11 +158,11 @@ public class ModLogItem
     public DiscordAttachment Attachment { get; set; }
     public ModLogItem(DiscordChannel modLogChannel, DiscordUser targetUser, string description, ModLogType type, string content=null, DiscordAttachment attachment=null)
     {
-        this.ModLogChannel = modLogChannel;
-        this.TargetUser = targetUser;
-        this.Description = description;
-        this.Type = type;
-        this.Content = content;
-        this.Attachment = attachment;
+        ModLogChannel = modLogChannel;
+        TargetUser = targetUser;
+        Description = description;
+        Type = type;
+        Content = content;
+        Attachment = attachment;
     }
 }

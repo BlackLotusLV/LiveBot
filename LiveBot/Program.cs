@@ -131,7 +131,7 @@ internal sealed class Program
         modLogService.StartService(discordClient);
         
         Timer streamCleanupTimer = new(_ => streamNotificationService.StreamListCleanup());
-        Timer modMailCleanupTimer = new(async _ => await modMailService.ModMailCleanupAsync(discordClient));
+        Timer modMailCleanupTimer = new(_ =>  modMailService.ModMailCleanupAsync(discordClient));
         streamCleanupTimer.Change(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(10));
         modMailCleanupTimer.Change(TimeSpan.FromMinutes(0), TimeSpan.FromMinutes(2));
         
@@ -200,7 +200,7 @@ internal sealed class Program
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
         }
         
-        DiscordActivity botActivity = new($"/send-modmail to open a chat with moderators", ActivityType.Playing);
+        DiscordActivity botActivity = new("/send-modmail to open a chat with moderators", ActivityType.Playing);
         await discordClient.ConnectAsync(botActivity);
         await Task.Delay(-1);
     }

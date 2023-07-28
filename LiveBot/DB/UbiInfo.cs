@@ -3,7 +3,7 @@ namespace LiveBot.DB;
 
 public class UbiInfo
 {
-    public UbiInfo(LiveBotDbContext context, ulong userDiscordId)
+    public UbiInfo(ulong userDiscordId)
     {
         UserDiscordId = userDiscordId;
     }
