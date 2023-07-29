@@ -5,6 +5,7 @@ using LiveBot.DB;
 using LiveBot.Json;
 using LiveBot.LoggerEnrichers;
 using LiveBot.Services;
+using LiveBot.SlashCommands;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -64,9 +65,8 @@ internal sealed class Program
         ILoggerFactory loggerFactory = new LoggerFactory().AddSerilog();
         
         _serviceProvider = new ServiceCollection()
-            .AddDbContext<LiveBotDbContext>( options =>options.UseNpgsql(dbConnectionString).EnableDetailedErrors(), ServiceLifetime.Transient)
+            .AddPooledDbContextFactory<LiveBotDbContext>(options=>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
             .AddHttpClient()
-            .AddSingleton<IDbContextFactory,DbContextFactory>()
             .AddSingleton<IDatabaseMethodService, DatabaseMethodService>()
             .AddSingleton<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
@@ -184,20 +184,20 @@ internal sealed class Program
         if (!testBuild)
         {
             discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running live version");
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(150283740172517376);
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>();
+            slashCommandsExtension.RegisterCommands<SlashTheCrewHubCommands>(150283740172517376);
+            slashCommandsExtension.RegisterCommands<SlashModeratorCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>();
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>();
+            slashCommandsExtension.RegisterCommands<SlashModMailCommands>();
+            slashCommandsExtension.RegisterCommands<SlashAdministratorCommands>();
         }
         else
         {
             discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running in test build mode");
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashTheCrewHubCommands>(282478449539678210);
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModeratorCommands>(282478449539678210);
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashAdministratorCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashTheCrewHubCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashModeratorCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashAdministratorCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
-            slashCommandsExtension.RegisterCommands<SlashCommands.SlashModMailCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashModMailCommands>(282478449539678210);
         }
         
         DiscordActivity botActivity = new("/send-modmail to open a chat with moderators", ActivityType.Playing);

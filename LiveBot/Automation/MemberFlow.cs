@@ -1,15 +1,16 @@
 ﻿using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 internal class MemberFlow
 {
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IModMailService _modMailService;
     private readonly IDatabaseMethodService _databaseMethodService;
 
-    public MemberFlow(IModMailService modMailService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
+    public MemberFlow(IModMailService modMailService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService)
     {
         _modMailService = modMailService;
         _dbContextFactory = dbContextFactory;
@@ -18,7 +19,7 @@ internal class MemberFlow
 
     public async Task Welcome_Member(DiscordClient client, GuildMemberAddEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
         if (guild?.WelcomeChannelId == null || guild.HasScreening) return;
         DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));
@@ -35,7 +36,7 @@ internal class MemberFlow
 
     public async Task Say_Goodbye(DiscordClient client, GuildMemberRemoveEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
         bool pendingCheck = guild != null && !(guild.HasScreening && e.Member.IsPending == true);
         if (guild is { WelcomeChannelId: not null } && pendingCheck)

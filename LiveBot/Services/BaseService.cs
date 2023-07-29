@@ -1,10 +1,12 @@
 ﻿using System.Collections.Concurrent;
+using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Services;
 
 public abstract class BaseQueueService<T>
 {
-    private protected readonly IDbContextFactory DbContextFactory;
+    private protected readonly IDbContextFactory<LiveBotDbContext> DbContextFactory;
     private protected readonly IDatabaseMethodService DatabaseMethodService;
     private protected readonly CancellationTokenSource CancellationTokenSource;
     private Task _backgroundTask;
@@ -13,7 +15,7 @@ public abstract class BaseQueueService<T>
     private protected readonly ILogger<T> Logger;
     private DiscordClient _client;
 
-    protected BaseQueueService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
+    protected BaseQueueService(IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
         DbContextFactory = dbContextFactory;
         DatabaseMethodService = databaseMethodService;

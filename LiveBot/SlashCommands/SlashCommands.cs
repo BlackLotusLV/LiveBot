@@ -12,7 +12,7 @@ namespace LiveBot.SlashCommands;
 internal sealed class SlashCommands : ApplicationCommandModule
 {
     public IModMailService ModMailService { private get; set; }
-    public LiveBotDbContext DatabaseContext { private get; set; }
+    public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
     public IDatabaseMethodService DatabaseMethodService { private get; set; }
 
     [SlashCommand("LiveBot-info", "Information about live bot")]
@@ -47,15 +47,16 @@ internal sealed class SlashCommands : ApplicationCommandModule
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command requires to be executed in the server you wish to contact."));
             return;
         }
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
 
-        GuildUser userRanks = await DatabaseContext.GuildUsers.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id && w.UserDiscordId == ctx.User.Id);
+        GuildUser userRanks = await dbContext.GuildUsers.FirstOrDefaultAsync(w => w.GuildId == ctx.Guild.Id && w.UserDiscordId == ctx.User.Id);
         if (userRanks == null || userRanks.IsModMailBlocked)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
             return;
         }
 
-        Guild guild = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
+        Guild guild = await dbContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
 
         if (guild?.ModMailChannelId == null)
         {
@@ -63,7 +64,7 @@ internal sealed class SlashCommands : ApplicationCommandModule
             return;
         }
 
-        if (await DatabaseContext.ModMail.AnyAsync(w => w.UserDiscordId == ctx.User.Id && w.IsActive))
+        if (await dbContext.ModMail.AnyAsync(w => w.UserDiscordId == ctx.User.Id && w.IsActive))
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You already have an existing Mod Mail open, please close it before starting a new one."));
             return;
@@ -106,7 +107,8 @@ internal sealed class SlashCommands : ApplicationCommandModule
     public async Task RoleTag(InteractionContext ctx, [Autocomplete(typeof(RoleTagOptions))] [Option("Role", "Which role to tag")] long id)
     {
         await ctx.DeferAsync(true);
-        RoleTagSettings roleTagSettings = await DatabaseContext.RoleTagSettings.FindAsync(id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        RoleTagSettings roleTagSettings = await dbContext.RoleTagSettings.FindAsync(id);
         if (roleTagSettings == null || roleTagSettings.GuildId != ctx.Guild.Id || roleTagSettings.ChannelId != ctx.Channel.Id)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The role you tried to select does not exist or can't be tagged in this channel."));
@@ -131,8 +133,8 @@ internal sealed class SlashCommands : ApplicationCommandModule
         await ctx.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent("Role Tagged"));
         roleTagSettings.LastTimeUsed = DateTime.UtcNow;
 
-        DatabaseContext.RoleTagSettings.Update(roleTagSettings);
-        await DatabaseContext.SaveChangesAsync();
+        dbContext.RoleTagSettings.Update(roleTagSettings);
+        await dbContext.SaveChangesAsync();
     }
 
     private sealed class RoleTagOptions : IAutocompleteProvider
@@ -155,13 +157,14 @@ internal sealed class SlashCommands : ApplicationCommandModule
     public async Task Rank(InteractionContext ctx)
     {
         await ctx.DeferAsync();
-        var activityList = await DatabaseContext.UserActivity
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        var activityList = await dbContext.UserActivity
             .Where(x => x.Date > DateTime.UtcNow.AddDays(-30) && x.GuildId == ctx.Guild.Id)
             .GroupBy(x => x.UserDiscordId)
             .Select(g => new { UserID = g.Key, Points = g.Sum(x => x.Points) })
             .OrderByDescending(x => x.Points)
             .ToListAsync();
-        User userInfo = await DatabaseContext.Users.FindAsync(ctx.User.Id);
+        User userInfo = await dbContext.Users.FindAsync(ctx.User.Id);
         if (userInfo == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find your rank in the database"));
@@ -242,7 +245,8 @@ internal sealed class SlashCommands : ApplicationCommandModule
 
     private async Task<string> GenerateLeaderboardAsync(BaseContext ctx, int page)
     {
-        var activityList = await DatabaseContext.UserActivity
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        var activityList = await dbContext.UserActivity
             .Where(x => x.Date > DateTime.UtcNow.AddDays(-30) && x.GuildId == ctx.Guild.Id)
             .GroupBy(x => x.UserDiscordId)
             .Select(g => new { UserID = g.Key, Points = g.Sum(x => x.Points) })
@@ -253,7 +257,7 @@ internal sealed class SlashCommands : ApplicationCommandModule
         for (int i = page * 10 - 10; i < page * 10; i++)
         {
             DiscordUser user = await ctx.Client.GetUserAsync(activityList[i].UserID);
-            User userInfo = await DatabaseContext.Users.FindAsync(user.Id);
+            User userInfo = await dbContext.Users.FindAsync(user.Id);
             stringBuilder.Append($"[{i + 1}]\t# {user.Username}\n\t\t\tPoints:{activityList[i].Points}");
             if (userInfo != null)
             {
@@ -272,7 +276,7 @@ internal sealed class SlashCommands : ApplicationCommandModule
         {
             rank++;
             if (item.UserID != ctx.User.Id) continue;
-            User userInfo = await DatabaseContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
+            User userInfo = await dbContext.Users.FirstOrDefaultAsync(w => w.DiscordId == ctx.User.Id);
             personalScore.Append($"⭐Rank: {rank}\t Points: {item.Points}");
             if (userInfo == null) continue;
             personalScore.AppendLine($"\t🍪:{userInfo.CookiesTaken}/{userInfo.CookiesGiven}");
@@ -293,10 +297,10 @@ internal sealed class SlashCommands : ApplicationCommandModule
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You can't give yourself a cookie"));
             return;
         }
-
-        User giver = await DatabaseContext.Users.FindAsync(ctx.Member.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.Member.Id));
-        User receiver = await DatabaseContext.Users.FindAsync(member.Id) ?? await DatabaseMethodService.AddUserAsync(new User(member.Id));
-        await DatabaseContext.SaveChangesAsync();
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        User giver = await dbContext.Users.FindAsync(ctx.Member.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.Member.Id));
+        User receiver = await dbContext.Users.FindAsync(member.Id) ?? await DatabaseMethodService.AddUserAsync(new User(member.Id));
+        await dbContext.SaveChangesAsync();
 
         if (giver.CookieDate.Date == DateTime.UtcNow.Date)
         {
@@ -309,8 +313,8 @@ internal sealed class SlashCommands : ApplicationCommandModule
         giver.CookiesGiven++;
         receiver.CookiesTaken++;
 
-        DatabaseContext.Users.UpdateRange(giver, receiver);
-        await DatabaseContext.SaveChangesAsync();
+        dbContext.Users.UpdateRange(giver, receiver);
+        await dbContext.SaveChangesAsync();
 
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Cookie given."));
 
@@ -329,8 +333,8 @@ internal sealed class SlashCommands : ApplicationCommandModule
         DiscordAttachment image)
     {
         await ctx.DeferAsync(true);
-
-        Guild guild = await DatabaseContext.Guilds
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Guild guild = await dbContext.Guilds
             .Include(x => x.PhotoCompSettings)
             .ThenInclude(x => x.Entries)
             .FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id);

@@ -6,8 +6,8 @@ namespace LiveBot.Automation;
 
 public class WhiteListButton
 {
-    private readonly IDbContextFactory _dbContextFactory;
-    public WhiteListButton(IDbContextFactory dbContextFactory)
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
+    public WhiteListButton(IDbContextFactory<LiveBotDbContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }
@@ -18,7 +18,7 @@ public class WhiteListButton
         {
             IsEphemeral = true
         };
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         var settingsList = await liveBotDbContext.WhiteListSettings.Where(x => x.GuildId == e.Guild.Id).ToListAsync();
         if (settingsList.Count==0)
         {

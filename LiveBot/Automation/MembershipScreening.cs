@@ -1,13 +1,14 @@
 ﻿using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 internal class MembershipScreening
 {
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
 
-    public MembershipScreening(IDbContextFactory dbContextFactory)
+    public MembershipScreening(IDbContextFactory<LiveBotDbContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }
@@ -17,7 +18,7 @@ internal class MembershipScreening
         if (e.PendingBefore == null) return;
         if (e.PendingBefore.Value && !e.PendingAfter.Value)
         {
-            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
             Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
             if (guild?.WelcomeChannelId == null || !guild.HasScreening) return;
             DiscordChannel welcomeChannel = e.Guild.GetChannel(Convert.ToUInt64(guild.WelcomeChannelId));

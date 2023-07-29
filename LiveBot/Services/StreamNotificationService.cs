@@ -1,4 +1,5 @@
 ﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Services;
 
@@ -12,7 +13,7 @@ public interface IStreamNotificationService
 
 public class StreamNotificationService : BaseQueueService<StreamNotificationItem>, IStreamNotificationService
 {
-    public StreamNotificationService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,
+    public StreamNotificationService(IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,
         loggerFactory)
     {
     }

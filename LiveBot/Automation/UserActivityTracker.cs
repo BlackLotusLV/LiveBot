@@ -1,15 +1,16 @@
 ﻿using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 internal class UserActivityTracker
 {
     private readonly ILeaderboardService _leaderboardService;
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IDatabaseMethodService _databaseMethodService;
 
-    public UserActivityTracker(ILeaderboardService leaderboardService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService)
+    public UserActivityTracker(ILeaderboardService leaderboardService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService)
     {
         _leaderboardService = leaderboardService;
         _dbContextFactory = dbContextFactory;
@@ -25,7 +26,7 @@ internal class UserActivityTracker
         Cooldown coolDown = CoolDowns.FirstOrDefault(w => w.User == e.Author && w.Guild == e.Guild);
         if (coolDown != null && coolDown.Time.ToUniversalTime().AddMinutes(2) >= DateTime.UtcNow) return;
 
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         UserActivity userActivity =
             liveBotDbContext.UserActivity.FirstOrDefault(activity => activity.UserDiscordId == e.Author.Id && activity.GuildId == e.Guild.Id && activity.Date == DateTime.UtcNow.Date) ??
             await _databaseMethodService.AddUserActivityAsync(new UserActivity(e.Author.Id, e.Guild.Id, 0, DateTime.UtcNow.Date));

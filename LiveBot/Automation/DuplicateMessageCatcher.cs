@@ -1,32 +1,39 @@
 ﻿using System.Collections.Immutable;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 public class DuplicateMessageCatcher
 {
     private readonly IWarningService _warningService;
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IModLogService _modLogService;
+    private readonly IDatabaseMethodService _databaseMethodService;
     private const int SpamInterval = 6;
     private const int SpamCount = 5;
     private readonly List<DiscordMessage> _messageList = new();
 
-    public DuplicateMessageCatcher(IWarningService warningService, IDbContextFactory dbContextFactory, IModLogService modLogService)
+    public DuplicateMessageCatcher(IWarningService warningService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IModLogService modLogService, IDatabaseMethodService databaseMethodService)
     {
         _warningService = warningService;
         _dbContextFactory = dbContextFactory;
         _modLogService = modLogService;
+        _databaseMethodService = databaseMethodService;
     }
     public async Task CheckMessage(DiscordClient client, MessageCreateEventArgs eventArgs)
     {
         if (eventArgs.Author.IsBot || eventArgs.Author.IsCurrent || eventArgs.Guild is null) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-        Guild guild = await liveBotDbContext.Guilds.FindAsync(eventArgs.Guild.Id);
-        if (guild is null) return;
-        var spamIgnoreChannels =
-            liveBotDbContext.SpamIgnoreChannels.AsQueryable().Where(x => x.GuildId == eventArgs.Guild.Id).ToImmutableArray();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
+        Guild guild = await liveBotDbContext.Guilds.Include(x => x.SpamIgnoreChannels).FirstOrDefaultAsync(x => x.Id == eventArgs.Guild.Id);
+        if (guild is null)
+        {
+            await _databaseMethodService.AddGuildAsync(new Guild(eventArgs.Guild.Id));
+            return;
+        }
+        if (guild.SpamIgnoreChannels.Count == 0) return;
+        var spamIgnoreChannels = guild.SpamIgnoreChannels.ToImmutableArray();
 
         if (guild?.ModerationLogChannelId == null || spamIgnoreChannels.Any(x=>x.ChannelId==eventArgs.Channel.Id)) return;
         DiscordMember member = await eventArgs.Guild.GetMemberAsync(eventArgs.Author.Id);
@@ -48,7 +55,6 @@ public class DuplicateMessageCatcher
         }
 
         int infractionLevel = liveBotDbContext.Infractions.Count(w => w.UserId == member.Id && w.GuildId == eventArgs.Guild.Id && w.InfractionType == InfractionType.Warning && w.IsActive);
-
         if (infractionLevel < 5)
         {
             _warningService.AddToQueue(new WarningItem(eventArgs.Author, client.CurrentUser, eventArgs.Guild, eventArgs.Channel, "Spam protection triggered - flood", true));

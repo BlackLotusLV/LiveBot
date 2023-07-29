@@ -9,10 +9,10 @@ namespace LiveBot.Automation;
 public sealed class AuditLogManager
 {
     private readonly IModLogService _modLogService;
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IDatabaseMethodService _databaseMethodService;
 
-    public AuditLogManager(IDbContextFactory dbContextFactory, IModLogService modLogService, IDatabaseMethodService databaseMethodService)
+    public AuditLogManager(IDbContextFactory<LiveBotDbContext> dbContextFactory, IModLogService modLogService, IDatabaseMethodService databaseMethodService)
     {
         _modLogService = modLogService;
         _dbContextFactory = dbContextFactory;
@@ -48,7 +48,7 @@ public sealed class AuditLogManager
     private async Task KickManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberKick) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(guild.Id) ??
                               await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
@@ -87,7 +87,7 @@ public sealed class AuditLogManager
     private async Task UnBanManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberBanRemove) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(guild.Id) ??
                               await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
@@ -122,7 +122,7 @@ public sealed class AuditLogManager
             oldTime = oldTimeParse;
         }
         if (newTime is null && oldTime is null) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Key == logEntry.GuildId).Value;
         Guild guildSettings= liveBotDbContext.Guilds.First(w => w.Id == logEntry.GuildId);
         if (guildSettings.ModerationLogChannelId is null) return;
@@ -192,7 +192,7 @@ public sealed class AuditLogManager
     private async Task BanManager(DiscordClient client, AuditLogEntry logEntry)
     {
         if (logEntry.ActionType != AuditLogEvents.MemberBanAdd) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         GuildUser guildUser = await liveBotDbContext.GuildUsers.FindAsync(CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId) ??
                               await _databaseMethodService.AddGuildUsersAsync(new GuildUser(CheckIfIdNotNull(logEntry.TargetId), logEntry.GuildId));
         guildUser.BanCount++;

@@ -1,4 +1,5 @@
 ﻿using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Services;
 
@@ -11,7 +12,7 @@ public interface ILeaderboardService
 
 public sealed class LeaderboardService : BaseQueueService<LeaderboardService.LeaderboardItem>, ILeaderboardService
 {
-    public LeaderboardService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,
+    public LeaderboardService(IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,
         loggerFactory)
     {
     }

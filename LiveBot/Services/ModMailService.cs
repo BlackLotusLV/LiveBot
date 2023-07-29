@@ -17,7 +17,7 @@ public interface IModMailService
 
 public class ModMailService : IModMailService
 {
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IDatabaseMethodService _databaseMethodService;
     private readonly ILogger<ModLogService> _logger;
     public int TimeoutMinutes => 120;
@@ -25,7 +25,7 @@ public class ModMailService : IModMailService
     public string CloseButtonPrefix => "closeModMail";
     public string OpenButtonPrefix => "openModMail";
 
-    public ModMailService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
+    public ModMailService(IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory)
     {
         _dbContextFactory = dbContextFactory;
         _databaseMethodService = databaseMethodService;
@@ -35,7 +35,7 @@ public class ModMailService : IModMailService
     public async Task ProcessModMailDm(DiscordClient client, MessageCreateEventArgs e)
     {
         if (e.Guild is not null) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         ModMail mmEntry = await liveBotDbContext.ModMail.FirstOrDefaultAsync(w => w.UserDiscordId == e.Author.Id && w.IsActive);
         if (mmEntry == null) return;
         DiscordGuild guild = client.Guilds.First(w => w.Value.Id == mmEntry.GuildId).Value;
@@ -79,7 +79,7 @@ public class ModMailService : IModMailService
 
     public async Task CloseModMailAsync(DiscordClient client,ModMail modMail, DiscordUser closer, string closingText, string closingTextToUser)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         modMail.IsActive = false;
         var notificationMessage = string.Empty;
         DiscordGuild guild = await client.GetGuildAsync(modMail.GuildId);
@@ -113,12 +113,13 @@ public class ModMailService : IModMailService
         liveBotDbContext.ModMail.Update(modMail);
         await liveBotDbContext.SaveChangesAsync();
         await modMailChannel.SendMessageAsync(notificationMessage, embed: embed);
+        _logger.LogInformation(CustomLogEvents.ModMail,"Mod Mail #{ModMailId} closed by {Username}({UserId}) in {GuildName}",modMail.Id,closer.Username,closer.Id,guild.Name);
     }
 
     public async Task CloseButton(DiscordClient client, ComponentInteractionCreateEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains(CloseButtonPrefix)) return;
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
+        if (e.Interaction.Type != InteractionType.Component || e.Interaction.User.IsBot || !e.Interaction.Data.CustomId.Contains(CloseButtonPrefix))return;
         ModMail mmEntry = await liveBotDbContext.ModMail.FindAsync(Convert.ToInt64(e.Interaction.Data.CustomId.Replace(CloseButtonPrefix, "")));
         DiscordInteractionResponseBuilder discordInteractionResponseBuilder = new();
         if (e.Message.Embeds.Count>0)
@@ -141,7 +142,7 @@ public class ModMailService : IModMailService
             await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
             DiscordGuild guild = await client.GetGuildAsync(Convert.ToUInt64(e.Interaction.Data.CustomId.Replace(OpenButtonPrefix,"")));
-            await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+            await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
             if (liveBotDbContext.GuildUsers.First(w=>w.GuildId == guild.Id && w.UserDiscordId == e.User.Id).IsModMailBlocked)
             {
                 await e.Interaction.EditOriginalResponseAsync(new DiscordWebhookBuilder().WithContent("You are blocked from using the Mod Mail feature in this server."));
@@ -195,11 +196,12 @@ public class ModMailService : IModMailService
     public async Task ModMailCleanupAsync(DiscordClient client)
     {
         _logger.LogDebug(CustomLogEvents.ModMail, "Mod Mail cleanup started");
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         foreach (ModMail modMail in liveBotDbContext.ModMail.Where(mMail=>mMail.IsActive && mMail.LastMessageTime.AddMinutes(TimeoutMinutes) < DateTime.UtcNow).ToList())
         {
             await CloseModMailAsync(client, modMail, client.CurrentUser, " Mod Mail timed out.", "**Mod Mail timed out.**\n----------------------------------------------------");
         }
+
         _logger.LogDebug(CustomLogEvents.ModMail, "Mod Mail cleanup finished");
     }
 }

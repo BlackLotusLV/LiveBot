@@ -1,5 +1,6 @@
 ﻿using System.Net.Http;
 using LiveBot.DB;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Services;
 
@@ -12,7 +13,7 @@ public interface IModLogService
 
 public class ModLogService : BaseQueueService<ModLogItem>,IModLogService
 {
-    public ModLogService(IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,loggerFactory){}
+    public ModLogService(IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, ILoggerFactory loggerFactory) : base(dbContextFactory, databaseMethodService,loggerFactory){}
 
     private protected override async Task ProcessQueueAsync()
     {

@@ -20,7 +20,7 @@ namespace LiveBot.SlashCommands;
 public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
 {
     public ITheCrewHubService TheCrewHubService { private get; set; }
-    public LiveBotDbContext DatabaseService { private get; set; }
+    public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
     public IDatabaseMethodService DatabaseMethodService { private get; set; }
 
     [SlashCommand("Summit", "Shows the tiers and current cut offs for the ongoing summit.")]
@@ -178,8 +178,8 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
         var sendImage = false;
 
         string search;
-
-        var ubiInfoList = await DatabaseService.UbiInfo.Where(w => w.UserDiscordId == ctx.User.Id).ToListAsync();
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        var ubiInfoList = await dbContext.UbiInfo.Where(w => w.UserDiscordId == ctx.User.Id).ToListAsync();
         if (ubiInfoList.Count == 0)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find any profile data, please link your ubisoft account with Live bot."));
@@ -228,7 +228,7 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
             };
 
             Image<Rgba32> baseImage = new(1127, 765);
-            User user = await DatabaseService.Users.FindAsync(ctx.User.Id);
+            User user = await dbContext.Users.FindAsync(ctx.User.Id);
 
             await Parallel.ForEachAsync(jSummit[0].Events, new ParallelOptions(), async (summitEvent, _) =>
             {
@@ -338,7 +338,8 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
         using Image<Rgba32> baseImage = new(1127, 735);
 
         var ubiInfo = new UbiInfo(6969);
-        User user = await DatabaseService.Users.FindAsync(ctx.User.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        User user = await dbContext.Users.FindAsync(ctx.User.Id);
 
         await Parallel.ForEachAsync(jSummit[0].Events, new ParallelOptions(), async (summitEvent, _) =>
         {
@@ -436,7 +437,8 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
         long weekNumber = 0)
     {
         var locale = "en-GB";
-        User userInfo = await DatabaseService.Users.FindAsync(ctx.User.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        User userInfo = await dbContext.Users.FindAsync(ctx.User.Id);
         if (userInfo != null)
             locale = userInfo.Locale;
         var week = (Week)weekNumber;
@@ -608,7 +610,8 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
             Platforms.X1 => "x1",
             _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, null)
         };
-        UbiInfo info = await DatabaseService.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId == link);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        UbiInfo info = await dbContext.UbiInfo.FirstOrDefaultAsync(w => w.Platform == search && w.ProfileId == link);
         if (info != null)
         {
             if (info.UserDiscordId != ctx.User.Id)
@@ -627,8 +630,8 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
             Platform = search
         };
 
-        await DatabaseService.UbiInfo.AddAsync(newEntry);
-        await DatabaseService.SaveChangesAsync();
+        await dbContext.UbiInfo.AddAsync(newEntry);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Your Discord account has been linked with {link} account ID on {search} platform."));
     }
 
@@ -636,15 +639,16 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
     public async Task UnlinkHub(InteractionContext ctx, [Autocomplete(typeof(LinkedAccountOptions))] [Option("Account", "The account to unlink")] long id)
     {
         await ctx.DeferAsync(true);
-        UbiInfo entry = await DatabaseService.UbiInfo.FindAsync((int)id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        UbiInfo entry = await dbContext.UbiInfo.FindAsync((int)id);
         if (entry == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find a listing with this ID, please make sure you select from provided items in the list"));
             return;
         }
 
-        DatabaseService.UbiInfo.Remove(entry);
-        await DatabaseService.SaveChangesAsync();
+        dbContext.UbiInfo.Remove(entry);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"You have unlinked **{entry.ProfileId}** - **{entry.Platform}** from your Discord account"));
     }
 
@@ -667,10 +671,11 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
     public async Task SetLocale(InteractionContext ctx, [Autocomplete(typeof(LocaleOptions))] [Option("Locale", "Localisation")] string locale)
     {
         await ctx.DeferAsync(true);
-        User userInfo = await DatabaseService.Users.FindAsync(ctx.User.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.User.Id));
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        User userInfo = await dbContext.Users.FindAsync(ctx.User.Id) ?? await DatabaseMethodService.AddUserAsync(new User(ctx.User.Id));
         userInfo.Locale = locale;
-        DatabaseService.Users.Update(userInfo);
-        await DatabaseService.SaveChangesAsync();
+        dbContext.Users.Update(userInfo);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Your locale has been set"));
     }
 

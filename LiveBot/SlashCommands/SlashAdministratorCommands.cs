@@ -2,6 +2,7 @@
 using DSharpPlus.SlashCommands.Attributes;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.SlashCommands;
 
@@ -10,7 +11,7 @@ namespace LiveBot.SlashCommands;
 [SlashRequireBotPermissions(Permissions.ManageGuild)]
 internal sealed class SlashAdministratorCommands : ApplicationCommandModule
 {
-    public LiveBotDbContext DatabaseService { private get; set; }
+    public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
     public ITheCrewHubService TheCrewHubService { private get; set; }
 
     [SlashCommand("Say", "Bot says a something")]
@@ -27,7 +28,7 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message has been sent"));
     }
 
-    [SlashCommand("update-hub", "Force updates the crew hub cache")]
+    [SlashCommand("update-hub", "Force updates the crew hub cache"),SlashRequireOwner]
     public async Task UpdateHub(InteractionContext ctx)
     {
         await ctx.DeferAsync(true);
@@ -59,8 +60,9 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
             DumpChannelId = channel.Id,
             IsOpen = true
         };
-        await DatabaseService.PhotoCompSettings.AddAsync(photoCompSettings);
-        await DatabaseService.SaveChangesAsync();
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        await dbContext.PhotoCompSettings.AddAsync(photoCompSettings);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Photo competition started"));
     }
 
@@ -70,7 +72,9 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
         long photoCompId)
     {
         await ctx.DeferAsync(true);
-        PhotoCompSettings photoCompSettings = await DatabaseService.PhotoCompSettings.FindAsync((int)photoCompId);
+        
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        PhotoCompSettings photoCompSettings = await dbContext.PhotoCompSettings.FindAsync((int)photoCompId);
         if (photoCompSettings == null || photoCompSettings.GuildId != ctx.Guild.Id || photoCompSettings.IsOpen == false)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("No photo competition found"));
@@ -78,7 +82,7 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
         }
 
         photoCompSettings.IsOpen = false;
-        await DatabaseService.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Photo competition ended"));
     }
 }

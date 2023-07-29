@@ -5,14 +5,15 @@ using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.EventArgs;
 using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 public sealed class SystemEventMethods
 {
     private readonly IDatabaseMethodService _databaseMethodService;
-    private readonly IDbContextFactory _dbContextFactory;
-    public SystemEventMethods(IDatabaseMethodService databaseMethodService, IDbContextFactory dbContextFactory)
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
+    public SystemEventMethods(IDatabaseMethodService databaseMethodService, IDbContextFactory<LiveBotDbContext> dbContextFactory)
     {
         _databaseMethodService = databaseMethodService;
         _dbContextFactory = dbContextFactory;
@@ -26,7 +27,7 @@ public sealed class SystemEventMethods
 
     public async Task GuildAvailable(DiscordClient client, GuildCreateEventArgs e)
     {
-        await using LiveBotDbContext dbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext dbContext = await _dbContextFactory.CreateDbContextAsync();
         _ = await dbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
         client.Logger.LogInformation(CustomLogEvents.LiveBot, "Guild available: {GuildName}", e.Guild.Name);
     }

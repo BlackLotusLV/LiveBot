@@ -9,7 +9,7 @@ namespace LiveBot.SlashCommands;
 [SlashCommandGroup("ModMail", "Moderator commands for mod mail", false)]
 internal sealed class SlashModMailCommands : ApplicationCommandModule
 {
-    public LiveBotDbContext DatabaseContext { private get; set; }
+    public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
     public IModMailService ModMailService { private get; set; }
 
     [SlashCommand("Reply", "Replies to a specific mod mail")]
@@ -17,7 +17,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
         [Option("Response", "The message to send to the user")] string reply)
     {
         await ctx.DeferAsync(true);
-        ModMail entry = await DatabaseContext.ModMail.FirstOrDefaultAsync(x => x.Id == id && x.IsActive);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        ModMail entry = await dbContext.ModMail.FirstOrDefaultAsync(x => x.Id == id && x.IsActive);
         if (entry == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find an active entry with this ID."));
@@ -47,11 +48,11 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
             Console.WriteLine(e.InnerException);
         }
 
-        await DatabaseContext.ModMail
+        await dbContext.ModMail
             .Where(x => x.Id == entry.Id)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.LastMessageTime, x => DateTime.UtcNow));
 
-        Guild guild = await DatabaseContext.Guilds.FindAsync(ctx.Guild.Id);
+        Guild guild = await dbContext.Guilds.FindAsync(ctx.Guild.Id);
 
         if (guild?.ModMailChannelId != null)
         {
@@ -88,7 +89,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
     public async Task Close(InteractionContext ctx, [Autocomplete(typeof(ActiveModMailOption))] [Option("ID", "Mod Mail Entry ID")] long id)
     {
         await ctx.DeferAsync(true);
-        ModMail entry = await DatabaseContext.ModMail.FindAsync(id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        ModMail entry = await dbContext.ModMail.FindAsync(id);
         if (entry is not { IsActive: true })
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find an active entry with this ID."));
@@ -104,7 +106,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
     public async Task ModMailBlock(InteractionContext ctx, [Option("user", "User to block")] DiscordUser user)
     {
         await ctx.DeferAsync(true);
-        GuildUser guildUser = await DatabaseContext.GuildUsers.FindAsync(user.Id, ctx.Guild.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        GuildUser guildUser = await dbContext.GuildUsers.FindAsync(user.Id, ctx.Guild.Id);
         if (guildUser == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is not a member of this server"));
@@ -118,8 +121,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
         }
 
         guildUser.IsModMailBlocked = true;
-        DatabaseContext.GuildUsers.Update(guildUser);
-        await DatabaseContext.SaveChangesAsync();
+        dbContext.GuildUsers.Update(guildUser);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) has been blocked from using modmail"));
     }
 
@@ -127,7 +130,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
     public async Task ModMailUnblock(InteractionContext ctx, [Option("user", "User to unblock")] DiscordUser user)
     {
         await ctx.DeferAsync(true);
-        GuildUser guildUser = await DatabaseContext.GuildUsers.FindAsync(user.Id, ctx.Guild.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        GuildUser guildUser = await dbContext.GuildUsers.FindAsync(user.Id, ctx.Guild.Id);
         if (guildUser == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) is not a member of this server"));
@@ -141,8 +145,8 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
         }
 
         guildUser.IsModMailBlocked = false;
-        DatabaseContext.GuildUsers.Update(guildUser);
-        await DatabaseContext.SaveChangesAsync();
+        dbContext.GuildUsers.Update(guildUser);
+        await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{user.Username}({user.Id}) has been unblocked from using modmail"));
     }
 }

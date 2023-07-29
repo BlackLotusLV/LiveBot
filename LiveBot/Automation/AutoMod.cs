@@ -12,11 +12,11 @@ public partial class AutoMod
 
     private readonly IWarningService _warningService;
     private readonly IModLogService _modLogService;
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
     private readonly IDatabaseMethodService _databaseMethodService;
     private readonly HttpClient _httpClient;
 
-    public AutoMod(IWarningService warningService, IModLogService modLogService, IDbContextFactory dbContextFactory, IDatabaseMethodService databaseMethodService, HttpClient httpClient)
+    public AutoMod(IWarningService warningService, IModLogService modLogService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService, HttpClient httpClient)
     {
         _warningService = warningService;
         _modLogService = modLogService;
@@ -47,7 +47,7 @@ public partial class AutoMod
     public async Task Delete_Log(DiscordClient client, MessageDeleteEventArgs e)
     {
         if (e.Guild == null) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         DiscordMessage msg = e.Message;
         DiscordUser author = msg.Author;
         Guild guildSettings = liveBotDbContext.Guilds.FirstOrDefault(x => x.Id == e.Guild.Id);
@@ -139,9 +139,9 @@ public partial class AutoMod
 
     public async Task Bulk_Delete_Log(DiscordClient client, MessageBulkDeleteEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
-        Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
-        if (guildSettings?.DeleteLogChannelId == null) return;
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
+        Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
+        if (guildSettings.DeleteLogChannelId == null) return;
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
         DiscordChannel deleteLog = guild.GetChannel(guildSettings.DeleteLogChannelId.Value);
         StringBuilder sb = new();
@@ -189,9 +189,9 @@ public partial class AutoMod
 
     public async Task User_Join_Log(DiscordClient client, GuildMemberAddEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
-        if (guildSettings.UserTrafficChannelId == null) return;
+        if (guildSettings.UserTrafficChannelId == null)return;
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
         DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
         DiscordEmbedBuilder embed = new()
@@ -220,9 +220,9 @@ public partial class AutoMod
 
     public async Task User_Leave_Log(DiscordClient client, GuildMemberRemoveEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(x => x.Id == e.Guild.Id);
-        if (guildSettings?.UserTrafficChannelId == null) return;
+        if (guildSettings?.UserTrafficChannelId == null)return;
         DiscordGuild guild = client.Guilds.FirstOrDefault(w => w.Value.Id == guildSettings.Id).Value;
         DiscordChannel userTraffic = guild.GetChannel(guildSettings.UserTrafficChannelId.Value);
         DiscordEmbedBuilder embed = new()
@@ -252,7 +252,7 @@ public partial class AutoMod
     public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
     {
         if (e.Guild is null) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
         if (e.Author.IsBot || guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
         var invites = await e.Guild.GetInvitesAsync();
@@ -276,7 +276,7 @@ public partial class AutoMod
     {
         if (e.Author.IsBot || e.Guild is null) return;
 
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
         DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
         if (
@@ -306,7 +306,7 @@ public partial class AutoMod
 
     public async Task Voice_Activity_Log(DiscordClient client, VoiceStateUpdateEventArgs e)
     {
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(e.Guild.Id));
 
         if (guild.VoiceActivityLogChannelId == null) return;

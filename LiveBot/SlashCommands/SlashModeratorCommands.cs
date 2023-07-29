@@ -13,7 +13,7 @@ namespace LiveBot.SlashCommands;
 internal sealed class SlashModeratorCommands : ApplicationCommandModule
 {
     public IWarningService WarningService { private get; set; }
-    public LiveBotDbContext DatabaseContext { private get; set; }
+    public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
     public IModMailService ModMailService { private get; set; }
     public IModLogService ModLogService { private get; set; }
     public IDatabaseMethodService DatabaseMethodService { private get; set; }
@@ -112,8 +112,8 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
         await DatabaseMethodService.AddInfractionsAsync(new Infraction(ctx.User.Id, user.Id, ctx.Guild.Id, note, false, InfractionType.Note));
 
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{ctx.User.Mention}, a note has been added to {user.Username}({user.Id})"));
-
-        Guild guild = await DatabaseContext.Guilds.FindAsync(ctx.Guild.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Guild guild = await dbContext.Guilds.FindAsync(ctx.Guild.Id);
         if (guild != null)
         {
             DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
@@ -284,7 +284,8 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
     public async Task Message(InteractionContext ctx, [Option("User", "Specify the user who to mention")] DiscordUser user, [Option("Message", "Message to send to the user.")] string message)
     {
         await ctx.DeferAsync(true);
-        Guild guildSettings = await DatabaseContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Guild guildSettings = await dbContext.Guilds.FirstOrDefaultAsync(w => w.Id == ctx.Guild.Id);
         if (guildSettings?.ModMailChannelId == null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The Mod Mail feature has not been enabled in this server. Contact an Admin to resolve the issue."));
@@ -390,7 +391,8 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
     public async Task Stats(InteractionContext ctx)
     {
         await ctx.DeferAsync(true);
-        var leaderboard = await DatabaseContext.Infractions.Where(x => x.GuildId == ctx.Guild.Id).Select(x => new { UserId = x.AdminDiscordId, Type = x.InfractionType }).ToListAsync();
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        var leaderboard = await dbContext.Infractions.Where(x => x.GuildId == ctx.Guild.Id).Select(x => new { UserId = x.AdminDiscordId, Type = x.InfractionType }).ToListAsync();
         var groupedLeaderboard = leaderboard
             .GroupBy(x => x.UserId)
             .Select(x => new

@@ -1,14 +1,15 @@
 ﻿using LiveBot.DB;
 using LiveBot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
 
 internal class LiveStream
 {
     private readonly IStreamNotificationService _streamNotificationService;
-    private readonly IDbContextFactory _dbContextFactory;
+    private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
 
-    public LiveStream(IStreamNotificationService streamNotificationService, IDbContextFactory dbContextFactory)
+    public LiveStream(IStreamNotificationService streamNotificationService, IDbContextFactory<LiveBotDbContext> dbContextFactory)
     {
         _streamNotificationService = streamNotificationService;
         _dbContextFactory = dbContextFactory;
@@ -19,7 +20,7 @@ internal class LiveStream
         if (e.User is null || e.User.IsBot || e.User.Presence is null) return;
         DiscordGuild guild = e.User.Presence.Guild;
         if (e.User.Presence.Activities.All(x => x.ActivityType != ActivityType.Streaming)) return;
-        await using LiveBotDbContext liveBotDbContext = _dbContextFactory.CreateDbContext();
+        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         var streamNotifications = liveBotDbContext.StreamNotifications.Where(w => w.GuildId == guild.Id).ToList();
         if (streamNotifications.Count == 0) return;
         foreach (StreamNotifications streamNotification in streamNotifications)
@@ -67,7 +68,5 @@ internal class LiveStream
                     break;
             }
         }
-
-        await Task.Delay(1);
     }
 }
