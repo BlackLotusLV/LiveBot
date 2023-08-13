@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Threading.Channels;
-using LiveBot.DB;
+﻿using LiveBot.DB;
 using Microsoft.EntityFrameworkCore;
 
 namespace LiveBot.Automation;
