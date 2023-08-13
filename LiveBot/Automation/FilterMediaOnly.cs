@@ -24,7 +24,7 @@ public class FilterMediaOnly
         MediaOnlyChannels channel = guild.MediaOnlyChannels.FirstOrDefault(x => x.ChannelId == args.Channel.Id);
         if (channel is null) return;
         await args.Message.DeleteAsync();
-        string response = channel.ResponseMessage ?? "This channel is for sharing media only, please use the content comment channel for discussions. If this is a mistake please contact a moderator.";
+        string response = channel.ResponseMessage ?? "This channel is for sharing media only, please use the appropriate channel for discussions. If this is a mistake please contact a moderator.";
         
         DiscordMessage msg = await args.Channel.SendMessageAsync(response);
         await Task.Delay(9000);
