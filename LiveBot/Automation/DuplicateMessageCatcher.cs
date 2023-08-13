@@ -9,17 +9,15 @@ public class DuplicateMessageCatcher
 {
     private readonly IWarningService _warningService;
     private readonly IDbContextFactory<LiveBotDbContext> _dbContextFactory;
-    private readonly IModLogService _modLogService;
     private readonly IDatabaseMethodService _databaseMethodService;
     private const int SpamInterval = 6;
     private const int SpamCount = 5;
     private readonly List<DiscordMessage> _messageList = new();
 
-    public DuplicateMessageCatcher(IWarningService warningService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IModLogService modLogService, IDatabaseMethodService databaseMethodService)
+    public DuplicateMessageCatcher(IWarningService warningService, IDbContextFactory<LiveBotDbContext> dbContextFactory, IDatabaseMethodService databaseMethodService)
     {
         _warningService = warningService;
         _dbContextFactory = dbContextFactory;
-        _modLogService = modLogService;
         _databaseMethodService = databaseMethodService;
     }
     public async Task CheckMessage(DiscordClient client, MessageCreateEventArgs eventArgs)
