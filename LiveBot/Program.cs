@@ -116,6 +116,7 @@ internal sealed class Program
         var auditLogManager = ActivatorUtilities.CreateInstance<AuditLogManager>(_serviceProvider);
         var duplicateMessageCatcher = ActivatorUtilities.CreateInstance<DuplicateMessageCatcher>(_serviceProvider);
         var systemEventMethods = ActivatorUtilities.CreateInstance<SystemEventMethods>(_serviceProvider);
+        var filterMediaOnly = ActivatorUtilities.CreateInstance<FilterMediaOnly>(_serviceProvider);
         
         var warningService = _serviceProvider.GetService<IWarningService>();
         var streamNotificationService = _serviceProvider.GetService<IStreamNotificationService>();
@@ -150,7 +151,8 @@ internal sealed class Program
         
         discordClient.PresenceUpdated += liveStream.Stream_Notification;
 
-        discordClient.MessageCreated += autoMod.Media_Only_Filter;
+        discordClient.MessageCreated += filterMediaOnly.OnMessageSent;
+        
         discordClient.MessageCreated += autoMod.Link_Spam_Protection;
         discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
         discordClient.MessageDeleted += autoMod.Delete_Log;

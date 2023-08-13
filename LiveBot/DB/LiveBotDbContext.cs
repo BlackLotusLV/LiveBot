@@ -33,7 +33,6 @@ public class LiveBotDbContext : DbContext
     /*
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        
         using StreamReader sr  = new(File.OpenRead("ConfigFiles/DevDatabase.json"));
         string databaseString = sr.ReadToEnd();
         var database = JsonConvert.DeserializeObject<DatabaseJson>(databaseString);
@@ -59,6 +58,7 @@ public class LiveBotDbContext : DbContext
         modelBuilder.Entity<WhiteListSettings>().HasKey(wls => wls.Id);
         modelBuilder.Entity<PhotoCompSettings>().HasKey(pcs => pcs.Id);
         modelBuilder.Entity<PhotoCompEntries>().HasKey(pce => pce.Id);
+        modelBuilder.Entity<MediaOnlyChannels>().HasKey(moc => moc.ChannelId);
         
         
         modelBuilder.Entity<User>()
@@ -114,6 +114,10 @@ public class LiveBotDbContext : DbContext
             .HasMany(g => g.PhotoCompSettings)
             .WithOne(pcs => pcs.Guild)
             .HasForeignKey(pcs => pcs.GuildId);
+        modelBuilder.Entity<Guild>()
+            .HasMany(g=>g.MediaOnlyChannels)
+            .WithOne(moc=>moc.Guild)
+            .HasForeignKey(moc=>moc.GuildId);
         
 
         modelBuilder.Entity<GuildUser>()

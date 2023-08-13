@@ -100,6 +100,6 @@ public class Guild
     public ICollection<StreamNotifications> StreamNotifications { get; set; }
     public ICollection<SpamIgnoreChannels> SpamIgnoreChannels { get; set; }
     public ICollection<WhiteListSettings> WhiteListSettings { get; set; }
-
+    public ICollection<MediaOnlyChannels> MediaOnlyChannels { get; set; }
     public ICollection<PhotoCompSettings> PhotoCompSettings { get; set; }
 }

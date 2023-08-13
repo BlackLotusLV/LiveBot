@@ -25,25 +25,6 @@ public partial class AutoMod
         _httpClient = httpClient;
     }
 
-    private static readonly ulong[] MediaOnlyChannelIDs = { 191567033064751104, 447134224349134848, 404613175024025601, 195095947871518721, 469920292374970369 };
-
-    public async Task Media_Only_Filter(DiscordClient client, MessageCreateEventArgs e)
-    {
-        if (MediaOnlyChannelIDs.Any(id => id == e.Channel.Id) &&
-            !e.Author.IsBot &&
-            e.Message.Attachments.Count == 0 &&
-            !e.Message.Content.Split(' ').Any(a => Uri.TryCreate(a, UriKind.Absolute, out _)))
-        {
-            await e.Message.DeleteAsync();
-            DiscordMessage m = await e.Channel.SendMessageAsync(
-                "This channel is for sharing media only, please use the content comment channel for discussions. If this is a mistake please contact a moderator.");
-            await Task.Delay(9000);
-            await m.DeleteAsync();
-            client.Logger.LogInformation(CustomLogEvents.PhotoCleanup,
-                "User tried to send text in PhotoMode channel. Message deleted");
-        }
-    }
-
     public async Task Delete_Log(DiscordClient client, MessageDeleteEventArgs e)
     {
         if (e.Guild == null) return;
