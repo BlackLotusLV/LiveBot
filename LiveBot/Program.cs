@@ -117,6 +117,7 @@ internal sealed class Program
         var duplicateMessageCatcher = ActivatorUtilities.CreateInstance<DuplicateMessageCatcher>(_serviceProvider);
         var systemEventMethods = ActivatorUtilities.CreateInstance<SystemEventMethods>(_serviceProvider);
         var filterMediaOnly = ActivatorUtilities.CreateInstance<FilterMediaOnly>(_serviceProvider);
+        var logDeletedMessage = ActivatorUtilities.CreateInstance<LogDeletedMessage>(_serviceProvider);
         
         var warningService = _serviceProvider.GetService<IWarningService>();
         var streamNotificationService = _serviceProvider.GetService<IStreamNotificationService>();
@@ -153,9 +154,10 @@ internal sealed class Program
 
         discordClient.MessageCreated += filterMediaOnly.OnMessageSent;
         
+        discordClient.MessageDeleted += logDeletedMessage.OnMessageDeleted;
+        
         discordClient.MessageCreated += autoMod.Link_Spam_Protection;
         discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
-        discordClient.MessageDeleted += autoMod.Delete_Log;
         discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
         discordClient.GuildMemberAdded += autoMod.User_Join_Log;
         discordClient.GuildMemberRemoved += autoMod.User_Leave_Log;
