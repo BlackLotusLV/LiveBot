@@ -59,7 +59,7 @@ public class LogDeletedMessage
         string msgContent = args.Message.Content==""?"*message didn't contain any text*":$"*{args.Message.Content}*";
         StringBuilder sb = new();
         sb.Append($"# Message Deleted\n" +
-                  $"- **Author:** {args.Message.Author.Mention}({args.Message.Author.Mention})\n" +
+                  $"- **Author:** {args.Message.Author.Mention}({args.Message.Author.Id})\n" +
                   $"- **Channel:** {args.Channel.Mention}\n" +
                   $"- **Attachment Count:** {args.Message.Attachments.Count}\n" +
                   $"- **Time posted:** <t:{args.Message.CreationTimestamp.ToUnixTimeSeconds()}:F>\n" +
