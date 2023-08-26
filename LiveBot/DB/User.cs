@@ -33,4 +33,5 @@ public sealed class User
     public ICollection<User> ChildUsers { get; set; }
     public ICollection<GuildUser> UserGuilds { get; set; }
     public ICollection<PhotoCompEntries> PhotoCompEntries { get; set; }
+    public ICollection<Tag> Tags { get; set; }
 }

@@ -19,4 +19,5 @@ internal static class CustomLogEvents
     public static EventId ServiceError { get; } = new(214, "ServiceError");
     public static EventId TcHub { get; } = new(300, "TCHub");
     public static EventId ModLog { get; } = new(215, "ModLog");
+    public static EventId TagCommand { get; } = new(216, "TagCommand");
 }

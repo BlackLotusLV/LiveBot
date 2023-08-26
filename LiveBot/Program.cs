@@ -193,6 +193,7 @@ internal sealed class Program
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
             slashCommandsExtension.RegisterCommands<SlashModMailCommands>();
             slashCommandsExtension.RegisterCommands<SlashAdministratorCommands>();
+            slashCommandsExtension.RegisterCommands<SlashTagCommands>();
         }
         else
         {
@@ -202,6 +203,7 @@ internal sealed class Program
             slashCommandsExtension.RegisterCommands<SlashAdministratorCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashModMailCommands>(282478449539678210);
+            slashCommandsExtension.RegisterCommands<SlashTagCommands>(282478449539678210);
         }
         
         DiscordActivity botActivity = new("/send-modmail to open a chat with moderators", ActivityType.Playing);

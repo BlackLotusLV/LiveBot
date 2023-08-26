@@ -22,6 +22,7 @@ public class LiveBotDbContext : DbContext
     public DbSet<WhiteList> WhiteLists { get; set; }
     public DbSet<PhotoCompSettings> PhotoCompSettings { get; set; }
     public DbSet<PhotoCompEntries> PhotoCompEntries { get; set; }
+    public DbSet<Tag> Tags { get; set; }
 
     public LiveBotDbContext()
     {
@@ -59,6 +60,7 @@ public class LiveBotDbContext : DbContext
         modelBuilder.Entity<PhotoCompSettings>().HasKey(pcs => pcs.Id);
         modelBuilder.Entity<PhotoCompEntries>().HasKey(pce => pce.Id);
         modelBuilder.Entity<MediaOnlyChannels>().HasKey(moc => moc.ChannelId);
+        modelBuilder.Entity<Tag>().HasKey(t=>t.Id);
         
         
         modelBuilder.Entity<User>()
@@ -79,7 +81,13 @@ public class LiveBotDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasMany(u => u.PhotoCompEntries)
             .WithOne(pce => pce.User)
-            .HasForeignKey(pce => pce.UserId);
+            .HasForeignKey(pce => pce.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.Tags)
+            .WithOne(t => t.Owner)
+            .HasForeignKey(t => t.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
         
         
         modelBuilder.Entity<Guild>()
@@ -118,6 +126,10 @@ public class LiveBotDbContext : DbContext
             .HasMany(g=>g.MediaOnlyChannels)
             .WithOne(moc=>moc.Guild)
             .HasForeignKey(moc=>moc.GuildId);
+        modelBuilder.Entity<Guild>()
+            .HasMany(g => g.Tags)
+            .WithOne(t => t.Guild)
+            .HasForeignKey(t => t.GuildId);
         
 
         modelBuilder.Entity<GuildUser>()

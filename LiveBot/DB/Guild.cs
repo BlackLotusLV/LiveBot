@@ -102,4 +102,5 @@ public class Guild
     public ICollection<WhiteListSettings> WhiteListSettings { get; set; }
     public ICollection<MediaOnlyChannels> MediaOnlyChannels { get; set; }
     public ICollection<PhotoCompSettings> PhotoCompSettings { get; set; }
+    public ICollection<Tag> Tags { get; set; }
 }
