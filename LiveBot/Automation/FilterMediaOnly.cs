@@ -12,6 +12,7 @@ public class FilterMediaOnly
     }
     public async Task OnMessageSent(DiscordClient client, MessageCreateEventArgs args)
     {
+        if (args.Guild is null) return;
         LiveBotDbContext context = await _contextFactory.CreateDbContextAsync();
         Guild guild = await context.Guilds.Include(x => x.MediaOnlyChannels).FirstOrDefaultAsync(x => x.Id == args.Guild.Id);
         if (guild is null)
