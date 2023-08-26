@@ -187,7 +187,7 @@ public class TheCrewHubService : ITheCrewHubService
             if (activity == null)
             {
                 Image<Rgba32> notComplete = new(eventImage.Width, eventImage.Height);
-                TextOptions textOptions = new(basefont)
+                RichTextOptions textOptions = new(basefont)
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Top,
@@ -236,7 +236,7 @@ public class TheCrewHubService : ITheCrewHubService
             {
                 activityResult = $"Distance: {activity.Score}m";
             }
-            TextOptions eventTitleOptions = new(summitCaps15)
+            RichTextOptions eventTitleOptions = new(summitCaps15)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -245,7 +245,7 @@ public class TheCrewHubService : ITheCrewHubService
                 Origin = new PointF(5, 0),
                 FallbackFontFamilies = new[] { FontCollection.Get("Noto Sans Mono CJK JP Bold"), FontCollection.Get("Noto Sans Arabic") }
             };
-            TextOptions vehicleTextOptions = new(vehicleFont)
+            RichTextOptions vehicleTextOptions = new(vehicleFont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -254,13 +254,13 @@ public class TheCrewHubService : ITheCrewHubService
                 Origin = new PointF(5, eventImage.Height - 62),
                 FallbackFontFamilies = new[] { FontCollection.Get("Noto Sans Mono CJK JP Bold"), FontCollection.Get("Noto Sans Arabic") }
             };
-            TextOptions baseTopLeft = new(basefont)
+            RichTextOptions baseTopLeft = new(basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
                 FallbackFontFamilies = new[] { FontCollection.Get("Noto Sans Mono CJK JP Bold"), FontCollection.Get("Noto Sans Arabic") }
             };
-            TextOptions baseTopRight = new(basefont)
+            RichTextOptions baseTopRight = new(basefont)
             {
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -275,9 +275,9 @@ public class TheCrewHubService : ITheCrewHubService
                 .DrawImage(scoreBar, new Point(0, eventImage.Height - scoreBar.Height), 0.7f)
                 .DrawImage(titleBar, new Point(0, 0), 0.7f)
                 .DrawText(eventTitleOptions, eventTitle, Color.White)
-                .DrawText(new TextOptions(baseTopLeft) { Origin = new PointF(5, eventImage.Height - 22) }, $"Rank: {activity.Rank + 1}", Color.White)
-                .DrawText(new TextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 42) }, activityResult, Color.White)
-                .DrawText(new TextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 22) }, $"Points: {activity.Points}", Color.White)
+                .DrawText(new RichTextOptions(baseTopLeft) { Origin = new PointF(5, eventImage.Height - 22) }, $"Rank: {activity.Rank + 1}", Color.White)
+                .DrawText(new RichTextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 42) }, activityResult, Color.White)
+                .DrawText(new RichTextOptions(baseTopRight) { Origin = new PointF(eventImage.Width - 5, eventImage.Height - 22) }, $"Points: {activity.Points}", Color.White)
                 .DrawText(vehicleTextOptions, vehicleInfo, Color.White)
                 );
             Parallel.For(0, summitEvent.Modifiers.Length, (i, _) =>

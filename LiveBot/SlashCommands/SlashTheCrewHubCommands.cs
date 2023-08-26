@@ -80,7 +80,7 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
             {
                 basePlate.Mutate(ipc => ipc
                     .DrawText(
-                        new TextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 17))
+                        new RichTextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 17))
                         {
                             Origin = new PointF(295, 340 + i * 70),
                             HorizontalAlignment = HorizontalAlignment.Right,
@@ -92,17 +92,17 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
                 );
             });
             basePlate.Mutate(ipc => ipc
-                .DrawLines(Color.Black, 1.5f, new PointF(0, 0), new PointF(basePlate.Width, 0), new PointF(basePlate.Width, basePlate.Height), new PointF(0, basePlate.Height)));
+                .DrawLine(Color.Black, 1.5f, new PointF(0, 0), new PointF(basePlate.Width, 0), new PointF(basePlate.Width, basePlate.Height), new PointF(0, basePlate.Height)));
             footerImg.Mutate(ipc => ipc
                 .Fill(Color.Black)
-                .DrawText(new TextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {rank.PlayerCount}",
+                .DrawText(new RichTextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15)) { Origin = new PointF(10, 10) }, $"TOTAL PARTICIPANTS: {rank.PlayerCount}",
                     textColour)
             );
             Parallel.For(0, rank.TierEntries.Length, i=>
             {
                 basePlate.Mutate(ipc => ipc
                     .DrawText(
-                        new TextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 30))
+                        new RichTextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 30))
                         {
                             Origin = new PointF(80, 575 - i * 70)
                         },
@@ -214,13 +214,13 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
         if (events.Points != 0)
         {
             var widthHeight = new[,] { { 0, 0 }, { 249, 0 }, { 498, 0 }, { 0, 249 }, { 373, 249 }, { 0, 493 }, { 373, 493 }, { 747, 0 }, { 747, 249 } };
-            var alignTopLeft12 = new TextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 12.5f))
+            var alignTopLeft12 = new RichTextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 12.5f))
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
                 FallbackFontFamilies = new[] { TheCrewHubService.FontCollection.Get("Noto Sans Mono CJK JP Bold"), TheCrewHubService.FontCollection.Get("Noto Sans Arabic") }
             };
-            var alignTopLeft15 = new TextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15))
+            var alignTopLeft15 = new RichTextOptions(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 15))
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -267,13 +267,13 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
                     }
 
                     tierBar.Mutate(imageProcessingContext => imageProcessingContext
-                        .DrawText(new TextOptions(alignTopLeft12) { Origin = new PointF(tierXPos[i] + 5, 15) }, $"Points Needed: {events.TierEntries[i].Points}", Color.White)
+                        .DrawText(new RichTextOptions(alignTopLeft12) { Origin = new PointF(tierXPos[i] + 5, 15) }, $"Points Needed: {events.TierEntries[i].Points}", Color.White)
                     );
                 }
             });
 
             tierBar.Mutate(imageProcessingContext => imageProcessingContext
-                .DrawText(new TextOptions(alignTopLeft15) { Origin = new PointF(tierXPos[tier.Count(c => c) - 1] + 5, 0) }, $"Summit Rank: {events.UserRank + 1} Score: {events.Points}",
+                .DrawText(new RichTextOptions(alignTopLeft15) { Origin = new PointF(tierXPos[tier.Count(c => c) - 1] + 5, 0) }, $"Summit Rank: {events.UserRank + 1} Score: {events.Points}",
                     Color.White)
             );
 
@@ -555,7 +555,7 @@ public sealed partial class SlashTheCrewHubCommands : ApplicationCommandModule
             Image<Rgba32> topBar = new(rewardImage.Width, 20);
             topBar.Mutate(imageProcessingContext => imageProcessingContext.Fill(rewardColours[i])
             );
-            TextOptions textOptions = new(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 25))
+            RichTextOptions textOptions = new(new Font(TheCrewHubService.FontCollection.Get("HurmeGeometricSans4 Black"), 25))
             {
                 WrappingLength = rewardWidth,
                 Origin = new PointF((4 - rewards[i].Level) * rewardWidth + 5, 15),
