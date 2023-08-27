@@ -156,7 +156,6 @@ public sealed class SlashTagCommands : ApplicationCommandModule
 
     private async Task SendTagAsync(BaseContext ctx, string tagId, bool isEphemeral, DiscordUser target = null)
     {
-        await ctx.DeferAsync(isEphemeral);
         ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} started sending a tag", ctx.User.Id, ctx.Guild.Id);
         await using LiveBotDbContext liveBotDbContext = await DbContextFactory.CreateDbContextAsync();
         Tag tag = await liveBotDbContext.Tags.FindAsync(Guid.Parse(tagId));
@@ -166,7 +165,13 @@ public sealed class SlashTagCommands : ApplicationCommandModule
             ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} tried to send a tag but it was not found", ctx.User.Id, ctx.Guild.Id);
             return;
         }
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{(target is not null ? $"{target.Mention}, " : "")}{tag.Content}").AddMention(new UserMention()));
+
+        DiscordInteractionResponseBuilder interactionBuilder = new DiscordInteractionResponseBuilder()
+            .WithContent($"{(target is not null ? $"{target.Mention}, " : "")}{tag.Content}")
+            .AddMention(new UserMention())
+            .AsEphemeral(isEphemeral);
+
+        await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, interactionBuilder);
     }
 
     private sealed class TagOptions : IAutocompleteProvider
