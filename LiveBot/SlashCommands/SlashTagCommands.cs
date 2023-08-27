@@ -139,9 +139,10 @@ public sealed class SlashTagCommands : ApplicationCommandModule
      SlashRequireGuild]
     public async Task SendTag(InteractionContext ctx,
         [Autocomplete(typeof(TagOptions)), Option("Tag", "Tag to send.")]
-        string tagId)
+        string tagId,
+        [Option("Target", "Target to send the tag to.")] DiscordUser target = null)
     {
-        await SendTagAsync(ctx, tagId, false);
+        await SendTagAsync(ctx, tagId, false, target);
     }
 
     [SlashCommand("Preview", "Previews a tag"),
@@ -153,7 +154,7 @@ public sealed class SlashTagCommands : ApplicationCommandModule
         await SendTagAsync(ctx, tagId, true);
     }
 
-    private async Task SendTagAsync(BaseContext ctx, string tagId, bool isEphemeral)
+    private async Task SendTagAsync(BaseContext ctx, string tagId, bool isEphemeral, DiscordUser target = null)
     {
         await ctx.DeferAsync(isEphemeral);
         ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} started sending a tag", ctx.User.Id, ctx.Guild.Id);
@@ -165,7 +166,7 @@ public sealed class SlashTagCommands : ApplicationCommandModule
             ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} tried to send a tag but it was not found", ctx.User.Id, ctx.Guild.Id);
             return;
         }
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(tag.Content));
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"{(target is not null ? $"{target.Mention}, " : "")}{tag.Content}").AddMention(new UserMention()));
     }
 
     private sealed class TagOptions : IAutocompleteProvider
