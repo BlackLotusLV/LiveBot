@@ -167,7 +167,7 @@ public sealed class SlashTagCommands : ApplicationCommandModule
         }
 
         DiscordInteractionResponseBuilder interactionBuilder = new DiscordInteractionResponseBuilder()
-            .WithContent($"{(target is not null ? $"{target.Mention}, " : "")}{tag.Content}")
+            .WithContent($"{(target is not null ? $"{target.Mention},\n" : "")}{tag.Content}")
             .AddMention(new UserMention())
             .AsEphemeral(isEphemeral);
 
