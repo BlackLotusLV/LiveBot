@@ -70,16 +70,16 @@ public sealed class SlashTagCommands : ApplicationCommandModule
         await ctx.DeferAsync(true);
         ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} started deleting a tag", ctx.User.Id, ctx.Guild.Id);
         await using LiveBotDbContext liveBotDbContext = await DbContextFactory.CreateDbContextAsync();
-        Tag tag = await liveBotDbContext.Tags.FindAsync(Guid.Parse(tagId));
+        Tag tag = await GetTagAsync(Guid.Parse(tagId));
         if (tag is null)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Tag not found"));
+            await EditResponseAsync(ctx, "Tag not found");
             ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} tried to delete a tag but it was not found", ctx.User.Id, ctx.Guild.Id);
             return;
         }
         liveBotDbContext.Tags.Remove(tag);
         await liveBotDbContext.SaveChangesAsync();
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Tag {tag.Name} deleted"));
+        await EditResponseAsync(ctx, $"Tag {tag.Name} deleted");
         ctx.Client.Logger.LogInformation(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} deleted tag named {Tag}", ctx.User.Id, ctx.Guild.Id, tag.Name);
     }
 
@@ -98,6 +98,7 @@ public sealed class SlashTagCommands : ApplicationCommandModule
         if (tag is null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Tag not found"));
+            await EditResponseAsync(ctx, "Tag not found");
             ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} tried to edit a tag but it was not found", ctx.User.Id, ctx.Guild.Id);
             return;
         }
@@ -157,11 +158,10 @@ public sealed class SlashTagCommands : ApplicationCommandModule
     private async Task SendTagAsync(BaseContext ctx, string tagId, bool isEphemeral, DiscordUser target = null)
     {
         ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} started sending a tag", ctx.User.Id, ctx.Guild.Id);
-        await using LiveBotDbContext liveBotDbContext = await DbContextFactory.CreateDbContextAsync();
-        Tag tag = await liveBotDbContext.Tags.FindAsync(Guid.Parse(tagId));
+        Tag tag = await GetTagAsync(Guid.Parse(tagId));
         if (tag is null)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Tag not found"));
+            await EditResponseAsync(ctx, "Tag not found");
             ctx.Client.Logger.LogDebug(CustomLogEvents.TagCommand, "User {User} in Guild {Guild} tried to send a tag but it was not found", ctx.User.Id, ctx.Guild.Id);
             return;
         }
@@ -172,6 +172,17 @@ public sealed class SlashTagCommands : ApplicationCommandModule
             .AsEphemeral(isEphemeral);
 
         await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, interactionBuilder);
+    }
+    
+    private async Task<Tag> GetTagAsync(Guid tagId)
+    {
+        await using LiveBotDbContext liveBotDbContext = await DbContextFactory.CreateDbContextAsync();
+        return await liveBotDbContext.Tags.FindAsync(tagId);
+    }
+    
+    private static async Task EditResponseAsync(BaseContext ctx, string content)
+    {
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(content));
     }
 
     private sealed class TagOptions : IAutocompleteProvider
