@@ -139,10 +139,10 @@ public partial class AutoMod
 
     public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
     {
-        if (e.Guild is null) return;
+        if (e.Guild is null || e.Author.IsBot) return;
         await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
         Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
-        if (e.Author.IsBot || guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
+        if (guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
         var invites = await e.Guild.GetInvitesAsync();
         DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
         if (!CustomMethod.CheckIfMemberAdmin(member)
