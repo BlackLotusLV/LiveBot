@@ -84,6 +84,7 @@ internal sealed class Program
             ReconnectIndefinitely = true,
             Intents = DiscordIntents.All,
             LogUnknownEvents = false,
+            LogUnknownAuditlogs = false,
             LoggerFactory = loggerFactory
         };
         CommandsNextConfiguration cNextConfig = new()
