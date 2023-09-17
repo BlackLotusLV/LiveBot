@@ -419,4 +419,32 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
         leaderboardBuilder.AppendLine("```");
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(leaderboardBuilder.ToString()));
     }
+
+    [SlashCommand("WhitelistInvite", "Whitelists an invite link code")]
+    public async Task WhitelistInvite(InteractionContext ctx, [Option("Code", "The invite code to be whitelisted")] string code)
+    {
+        await ctx.DeferAsync(true);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Guild guild = await dbContext.Guilds.Include(x=>x.WhitelistedVanities).FirstOrDefaultAsync(x=>x.Id==ctx.Guild.Id);
+        if (guild is null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This guild is not in the database"));
+            return;
+        }
+
+        if (guild.WhitelistedVanities.Any(x=>x.VanityCode==code))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This code is already whitelisted"));
+            return;
+        }
+        await dbContext.VanityWhitelist.AddAsync(new VanityWhitelist
+        {
+            GuildId = ctx.Guild.Id,
+            VanityCode = code
+        });
+        await dbContext.SaveChangesAsync();
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Invite code {code} has been whitelisted"));
+        ctx.Client.Logger.LogInformation(CustomLogEvents.InviteLinkFilter, "Invite code {Code} has been whitelisted in {GuildName}({GuildId}) by {Username}({UserId})",
+            code, ctx.Guild.Name, ctx.Guild.Id, ctx.User.Username, ctx.User.Id);
+    }
 }
