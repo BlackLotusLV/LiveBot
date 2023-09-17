@@ -1,4 +1,5 @@
-﻿using DSharpPlus.SlashCommands;
+﻿using System.Collections.Immutable;
+using DSharpPlus.SlashCommands;
 using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -72,16 +73,19 @@ internal sealed class SlashModMailCommands : ApplicationCommandModule
 
     private sealed class ActiveModMailOption : IAutocompleteProvider
     {
-        public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
         {
-            var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
+            var dbContextFactory = ctx.Services.GetService<IDbContextFactory<LiveBotDbContext>>();
+            await using LiveBotDbContext liveBotDbContext = await dbContextFactory.CreateDbContextAsync();
+            Guild guild = liveBotDbContext.Guilds.Include(x=>x.GuildUsers).ThenInclude(x=>x.ModMails.Where(y=>y.IsActive)).First(x=>x.Id==ctx.Guild.Id);
+            var activeModMails = guild.GuildUsers.SelectMany(x => x.ModMails).ToImmutableList();
             List<DiscordAutoCompleteChoice> result = new();
-            foreach (long item in databaseContext.ModMail.Where(w => w.GuildId == ctx.Guild.Id && w.IsActive).Select(item => item.Id))
+            foreach (ModMail modMail in activeModMails)
             {
-                result.Add(new DiscordAutoCompleteChoice($"#{item}", item));
+                DiscordMember member = await ctx.Guild.GetMemberAsync(modMail.UserDiscordId);
+                result.Add(new DiscordAutoCompleteChoice($"#{modMail.Id} - {member.Username}", modMail.Id));
             }
-
-            return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            return result;
         }
     }
 
