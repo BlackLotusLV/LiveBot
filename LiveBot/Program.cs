@@ -182,10 +182,10 @@ internal sealed class Program
         discordClient.MessageCreated += modMailService.ProcessModMailDm;
         discordClient.ComponentInteractionCreated += modMailService.CloseButton;
         discordClient.ComponentInteractionCreated += modMailService.OpenButton;
-
-        discordClient.UnknownEvent += auditLogManager.UnknownEventToAuditLog;
         
         discordClient.MessageCreated += inviteLinkFilter.OnMessageSend;
+
+        discordClient.GuildAuditLogCreated += auditLogManager.OnAuditLogCreated;
         
         if (!testBuild)
         {
