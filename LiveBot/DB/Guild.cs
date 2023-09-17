@@ -103,4 +103,5 @@ public class Guild
     public ICollection<MediaOnlyChannels> MediaOnlyChannels { get; set; }
     public ICollection<PhotoCompSettings> PhotoCompSettings { get; set; }
     public ICollection<Tag> Tags { get; set; }
+    public ICollection<VanityWhitelist> WhitelistedVanities { get; set; }
 }

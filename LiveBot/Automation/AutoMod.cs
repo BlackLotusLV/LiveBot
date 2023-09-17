@@ -136,30 +136,6 @@ public partial class AutoMod
             );
         await userTraffic.SendMessageAsync(messageBuilder);
     }
-
-    public async Task Link_Spam_Protection(DiscordClient client, MessageCreateEventArgs e)
-    {
-        if (e.Guild is null || e.Author.IsBot) return;
-        await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
-        Guild guild = await liveBotDbContext.Guilds.FindAsync(e.Guild.Id);
-        if (guild?.ModerationLogChannelId == null || !guild.HasLinkProtection) return;
-        var invites = await e.Guild.GetInvitesAsync();
-        DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-        if (!CustomMethod.CheckIfMemberAdmin(member)
-            && !e.Message.Content.Contains("?event=")
-            && (e.Message.Content.Contains("discordapp.com/invite/")
-                || e.Message.Content.Contains("discord.gg/"))
-            && !invites.Any(x => e.Message.Content.Contains($"/{x.Code}"))
-            && !e.Message.Content.Contains($"/{e.Guild.VanityUrlCode}"))
-        {
-            await e.Message.DeleteAsync();
-            await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1), "Spam protection triggered - invite links");
-            _warningService.AddToQueue(new WarningItem(e.Author, client.CurrentUser, e.Guild, e.Channel, "Spam protection triggered - invite links", true));
-            client.Logger.LogInformation("User {Username}({UserId}) tried to post an invite link in {GuildName}({GuildId})",
-                e.Author.Username, e.Author.Id, e.Guild.Name, e.Guild.Id);
-        }
-    }
-
     public async Task Everyone_Tag_Protection(DiscordClient client, MessageCreateEventArgs e)
     {
         if (e.Author.IsBot || e.Guild is null) return;

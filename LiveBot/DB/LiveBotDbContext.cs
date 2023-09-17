@@ -23,6 +23,7 @@ public class LiveBotDbContext : DbContext
     public DbSet<PhotoCompSettings> PhotoCompSettings { get; set; }
     public DbSet<PhotoCompEntries> PhotoCompEntries { get; set; }
     public DbSet<Tag> Tags { get; set; }
+    public DbSet<VanityWhitelist> VanityWhitelist { get; set; }
 
     public LiveBotDbContext()
     {
@@ -61,6 +62,7 @@ public class LiveBotDbContext : DbContext
         modelBuilder.Entity<PhotoCompEntries>().HasKey(pce => pce.Id);
         modelBuilder.Entity<MediaOnlyChannels>().HasKey(moc => moc.ChannelId);
         modelBuilder.Entity<Tag>().HasKey(t=>t.Id);
+        modelBuilder.Entity<VanityWhitelist>().HasKey(vw=>vw.Id);
         
         
         modelBuilder.Entity<User>()
@@ -130,6 +132,10 @@ public class LiveBotDbContext : DbContext
             .HasMany(g => g.Tags)
             .WithOne(t => t.Guild)
             .HasForeignKey(t => t.GuildId);
+        modelBuilder.Entity<Guild>()
+            .HasMany(g => g.WhitelistedVanities)
+            .WithOne(vw => vw.Guild)
+            .HasForeignKey(vw => vw.GuildId);
         
 
         modelBuilder.Entity<GuildUser>()

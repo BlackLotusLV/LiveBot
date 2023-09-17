@@ -118,6 +118,7 @@ internal sealed class Program
         var systemEventMethods = ActivatorUtilities.CreateInstance<SystemEventMethods>(_serviceProvider);
         var filterMediaOnly = ActivatorUtilities.CreateInstance<FilterMediaOnly>(_serviceProvider);
         var logDeletedMessage = ActivatorUtilities.CreateInstance<LogDeletedMessage>(_serviceProvider);
+        var inviteLinkFilter = ActivatorUtilities.CreateInstance<InviteLinkFilter>(_serviceProvider);
         
         var warningService = _serviceProvider.GetService<IWarningService>();
         var streamNotificationService = _serviceProvider.GetService<IStreamNotificationService>();
@@ -156,7 +157,6 @@ internal sealed class Program
         
         discordClient.MessageDeleted += logDeletedMessage.OnMessageDeleted;
         
-        discordClient.MessageCreated += autoMod.Link_Spam_Protection;
         discordClient.MessageCreated += autoMod.Everyone_Tag_Protection;
         discordClient.MessagesBulkDeleted += autoMod.Bulk_Delete_Log;
         discordClient.GuildMemberAdded += autoMod.User_Join_Log;
@@ -184,6 +184,8 @@ internal sealed class Program
         discordClient.ComponentInteractionCreated += modMailService.OpenButton;
 
         discordClient.UnknownEvent += auditLogManager.UnknownEventToAuditLog;
+        
+        discordClient.MessageCreated += inviteLinkFilter.OnMessageSend;
         
         if (!testBuild)
         {
