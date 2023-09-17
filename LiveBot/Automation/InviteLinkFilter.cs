@@ -32,9 +32,9 @@ public partial class InviteLinkFilter
 
         var matches = InviteRegex().Matches(eventArgs.Message.Content).Select(x=>x.Value).ToImmutableList();
         if (matches.Any(match => 
-                guildInvites.Any(x=>match.Contains($"/{x.Code}")) ||
-                (eventArgs.Guild.VanityUrlCode is not null && match.Contains($"/{eventArgs.Guild.VanityUrlCode}"))||
-                guild.WhitelistedVanities.Any(x=>match.Contains(x.VanityCode)))) 
+                guildInvites.Any(x=>Regex.IsMatch(match, $"/{x.Code}(\\s|$)")) ||
+                (eventArgs.Guild.VanityUrlCode is not null && Regex.IsMatch(match, $"/{eventArgs.Guild.VanityUrlCode}(\\s|$)"))|
+                guild.WhitelistedVanities.Any(x => Regex.IsMatch(match, $"/{x.VanityCode}(\\s|$)")))) 
             return;
 
         await eventArgs.Message.DeleteAsync("Invite link detected");
