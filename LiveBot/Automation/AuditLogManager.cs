@@ -1,5 +1,4 @@
-﻿#nullable enable
-using DSharpPlus.Entities.AuditLogs;
+﻿using DSharpPlus.Entities.AuditLogs;
 using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -173,8 +172,8 @@ public sealed class AuditLogManager
         liveBotDbContext.Update(guildUser);
         await liveBotDbContext.SaveChangesAsync();
         
-        Guild? guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(w => w.Id == guild.Id);
-        if (guildSettings?.ModerationLogChannelId is null) return;
+        Guild guildSettings = await liveBotDbContext.Guilds.FirstOrDefaultAsync(w => w.Id == guild.Id) ?? await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
+        if (guildSettings.ModerationLogChannelId is null) return;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
         DiscordUser targetUser = await client.GetUserAsync(logEntry.Target.Id);
         _modLogService.AddToQueue(new ModLogItem(
