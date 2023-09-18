@@ -85,4 +85,30 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
         await dbContext.SaveChangesAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Photo competition ended"));
     }
+
+    [SlashCommand("add-role-tag", "Adds a role tag")]
+    public async Task AddRoleTag(InteractionContext ctx,
+        [Option("Role", "What role to tag")] DiscordRole role,
+        [Option("Cooldown","How long to wait before the role can be tagged again(minutes)")] long cooldown,
+        [Option("Message","What message to send when the role is tagged")] string message,
+        [Option("Description","What description to show for the role")] string description,
+        [Option("Channel","What channel to send the message to")] DiscordChannel channel = null)
+    {
+        await ctx.DeferAsync(true);
+        
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        var newEntry = new RoleTagSettings()
+        {
+            GuildId = ctx.Guild.Id,
+            RoleId = role.Id,
+            Cooldown = (int)cooldown,
+            Message = message,
+            Description = description,
+            ChannelId = channel?.Id,
+            LastTimeUsed = DateTime.MinValue
+        };
+        await dbContext.RoleTagSettings.AddAsync(newEntry);
+        await dbContext.SaveChangesAsync();
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Role tag added for `{role.Name}`"));
+    }
 }

@@ -2,46 +2,33 @@
 
 public class RoleTagSettings
 {
-    public RoleTagSettings(ulong guildId)
-    {
-        GuildId = guildId;
-    }
-
     private ulong _guildId;
     private ulong _roleId;
-    private ulong _channelId;
-    private ulong _emojiId;
+    private ulong? _channelId;
     public long Id { get; set; }
 
-    public ulong GuildId
+    public required ulong GuildId
     {
         get => _guildId;
         set => _guildId = Convert.ToUInt64(value);
     }
 
-    public ulong RoleId
+    public required ulong RoleId
     {
         get => _roleId;
         set => _roleId = Convert.ToUInt64(value);
     }
 
-    public ulong ChannelId
+    public ulong? ChannelId
     {
         get => _channelId;
-        set => _channelId = Convert.ToUInt64(value);
+        set => _channelId = value.HasValue ? Convert.ToUInt64(value) : default(ulong?);
     }
 
-    public int Cooldown { get; set; }
-    public DateTime LastTimeUsed { get; set; }
-
-    public ulong EmojiId
-    {
-        get => _emojiId;
-        set => _emojiId = Convert.ToUInt64(value);
-    }
-
-    public string Message { get; set; }
-    public string Description { get; set; }
+    public required int Cooldown { get; set; }
+    public required DateTime LastTimeUsed { get; set; }
+    public required string Message { get; set; }
+    public required string Description { get; set; }
 
     public Guild Guild { get; set; }
 }

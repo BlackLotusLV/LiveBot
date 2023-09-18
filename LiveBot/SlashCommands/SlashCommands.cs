@@ -108,8 +108,16 @@ internal sealed class SlashCommands : ApplicationCommandModule
     {
         await ctx.DeferAsync(true);
         await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
-        RoleTagSettings roleTagSettings = await dbContext.RoleTagSettings.FindAsync(id);
-        if (roleTagSettings == null || roleTagSettings.GuildId != ctx.Guild.Id || roleTagSettings.ChannelId != ctx.Channel.Id)
+        Guild guild = await dbContext.Guilds.Include(x => x.RoleTagSettings).FirstOrDefaultAsync(x => x.Id == ctx.Guild.Id) ?? await DatabaseMethodService.AddGuildAsync(new Guild(ctx.Guild.Id));
+        if (guild.RoleTagSettings.Count == 0)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("There are no roles to tag in this server."));
+            return;
+        }
+
+        RoleTagSettings roleTagSettings = guild.RoleTagSettings.FirstOrDefault(x=>x.Id==id);
+        
+        if (roleTagSettings == null || roleTagSettings.GuildId != ctx.Guild.Id || roleTagSettings.ChannelId is not null && roleTagSettings.ChannelId != ctx.Channel.Id)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The role you tried to select does not exist or can't be tagged in this channel."));
             return;
@@ -139,16 +147,16 @@ internal sealed class SlashCommands : ApplicationCommandModule
 
     private sealed class RoleTagOptions : IAutocompleteProvider
     {
-        public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
         {
-            var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
+            var dbContextFactory = ctx.Services.GetService<IDbContextFactory<LiveBotDbContext>>();
+            await using LiveBotDbContext liveBotDbContext = await dbContextFactory.CreateDbContextAsync();
             List<DiscordAutoCompleteChoice> result = new();
-            foreach (RoleTagSettings item in databaseContext.RoleTagSettings.Where(w => w.GuildId == ctx.Guild.Id && w.ChannelId == ctx.Channel.Id))
+            foreach (RoleTagSettings item in liveBotDbContext.RoleTagSettings.Where(w => w.GuildId == ctx.Guild.Id && (w.ChannelId == ctx.Channel.Id || w.ChannelId == null)))
             {
                 result.Add(new DiscordAutoCompleteChoice($"{(item.LastTimeUsed > DateTime.UtcNow - TimeSpan.FromMinutes(item.Cooldown) ? "(On cooldown) " : "")}{item.Description}", item.Id));
             }
-
-            return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            return result;
         }
     }
 
