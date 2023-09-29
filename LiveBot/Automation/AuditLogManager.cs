@@ -20,7 +20,7 @@ public sealed class AuditLogManager
 
     public async Task OnAuditLogCreated(DiscordClient client, GuildAuditLogCreatedEventArgs eventArgs)
     {
-        switch (eventArgs.AuditLogEntry.ActionType)
+        switch (eventArgs.AuditLogEntry?.ActionType)
         {
             case AuditLogActionType.Ban:
                 await BanManager(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogBanEntry);
@@ -33,6 +33,9 @@ public sealed class AuditLogManager
                 break;
             case AuditLogActionType.Unban:
                 await UnBanManager(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogBanEntry);
+                break;
+            default:
+                client.Logger.LogDebug(CustomLogEvents.AuditLogManager,"Audit log entry not handled: {AuditLogEntry}",eventArgs.AuditLogEntry.ActionType);
                 break;
         }
     }
