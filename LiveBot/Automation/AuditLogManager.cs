@@ -20,7 +20,8 @@ public sealed class AuditLogManager
 
     public async Task OnAuditLogCreated(DiscordClient client, GuildAuditLogCreatedEventArgs eventArgs)
     {
-        switch (eventArgs.AuditLogEntry?.ActionType)
+        if (eventArgs.AuditLogEntry is null) return;
+        switch (eventArgs.AuditLogEntry.ActionType)
         {
             case AuditLogActionType.Ban:
                 await BanManager(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogBanEntry);
