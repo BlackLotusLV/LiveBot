@@ -69,9 +69,10 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
 
     private sealed class RemoveWarningOptions : IAutocompleteProvider
     {
-        public Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
         {
-            var databaseContext = ctx.Services.GetService<LiveBotDbContext>();
+            var dbContextFactory = ctx.Services.GetService<IDbContextFactory<LiveBotDbContext>>();
+            await using LiveBotDbContext databaseContext = await dbContextFactory.CreateDbContextAsync();
             List<DiscordAutoCompleteChoice> result = new();
             var userId = (ulong)ctx.Options.First(x => x.Name == "user").Value;
             foreach (Infraction item in databaseContext.Infractions.Where(w => w.GuildId == ctx.Guild.Id && w.UserId == userId && w.InfractionType == InfractionType.Warning && w.IsActive))
@@ -79,7 +80,7 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
                 result.Add(new DiscordAutoCompleteChoice($"#{item.Id} - {item.Reason}", item.Id));
             }
 
-            return Task.FromResult((IEnumerable<DiscordAutoCompleteChoice>)result);
+            return result;
         }
     }
 
@@ -126,6 +127,129 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
                 $"- **Note:** {note}",
                 ModLogType.Info,
                 attachment: image));
+        }
+    }
+
+    [SlashCommand("EditNote", "Edits a not of a user, that you have added")]
+    public async Task EditNote(InteractionContext ctx,
+        [Option("User", "User who's note to edit")]
+        DiscordUser user,
+        [Option("Note_ID", "The ID of the note to edit"), Autocomplete(typeof(UserNotesOptions))]
+        long noteId)
+    {
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Infraction infraction = await dbContext.Infractions.FindAsync(noteId);
+        if (infraction == null || infraction.UserId != user.Id || infraction.AdminDiscordId != ctx.User.Id || infraction.InfractionType != InfractionType.Note)
+        {
+            await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,new DiscordInteractionResponseBuilder().WithContent("Could not find a note with that ID"));
+            return;
+        }
+
+        string oldNote = infraction.Reason;
+        var customId = $"EditNote-{ctx.User.Id}";
+        DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder().WithTitle("Edit users note").WithCustomId(customId)
+            .AddComponents(new TextInputComponent("Content", "Content", null, infraction.Reason, true, TextInputStyle.Paragraph));
+        await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
+
+        InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+        var response = await interactivity.WaitForModalAsync(customId, ctx.User);
+        if (response.TimedOut) return;
+        infraction.Reason = response.Result.Values["Content"];
+        dbContext.Infractions.Update(infraction);
+        await dbContext.SaveChangesAsync();
+        await response.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
+            new DiscordInteractionResponseBuilder().WithContent($"Note `#{infraction.Id}` content changed\nFrom:`{oldNote}`\nTo:`{infraction.Reason}`").AsEphemeral());
+        Guild guild = await dbContext.Guilds.FindAsync(ctx.Guild.Id);
+        if (guild is null) return;
+        DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
+        ModLogService.AddToQueue(new ModLogItem(
+            channel,
+            user,
+            "# Note Edited\n" +
+            $"- **User:** {user.Mention}\n" +
+            $"- **Moderator:** {ctx.Member.Mention}\n" +
+            $"- **Old Note:** {oldNote}\n" +
+            $"- **New Note:** {infraction.Reason}",
+            ModLogType.Info));
+    }
+
+    [SlashCommand("DeleteNote", "Deletes a note of a user, that you have added")]
+    public async Task DeleteNote(InteractionContext ctx,
+        [Option("User", "User who's note to delete")]
+        DiscordUser user,
+        [Option("Note_ID", "The ID of the note to delete"), Autocomplete(typeof(UserNotesOptions))]
+        long noteId)
+    {
+        await ctx.DeferAsync(true);
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Infraction infraction = await dbContext.Infractions.FindAsync(noteId);
+        if (infraction == null || infraction.UserId != user.Id || infraction.AdminDiscordId != ctx.User.Id || infraction.InfractionType != InfractionType.Note)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Could not find a note with that ID"));
+            return;
+        }
+        DiscordEmbedBuilder embed = new()
+        {
+            Author = new DiscordEmbedBuilder.EmbedAuthor
+            {
+                IconUrl = user.AvatarUrl,
+                Name = user.Username
+            },
+            Title = $"Do you want to delete this note?",
+            Description = $"- **Note:** {infraction.Reason}\n" +
+                          $"- **Date:** <t:{infraction.TimeCreated.ToUnixTimeSeconds()}:f>"
+        };
+        DiscordWebhookBuilder responseBuilder = new DiscordWebhookBuilder()
+            .AddEmbed(embed)
+            .AddComponents(new DiscordButtonComponent(ButtonStyle.Success, $"yes", "Yes"),
+                new DiscordButtonComponent(ButtonStyle.Danger, $"no", "No"));
+        
+        DiscordMessage message = await ctx.EditResponseAsync(responseBuilder);
+        InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+        var response = await interactivity.WaitForButtonAsync(message, ctx.Member, TimeSpan.FromSeconds(30));
+        if (response.TimedOut) return;
+        if (response.Result.Id == "no")
+        {
+            await response.Result.Interaction.CreateResponseAsync(
+                InteractionResponseType.ChannelMessageWithSource,
+                new DiscordInteractionResponseBuilder()
+                    .WithContent("Note not deleted")
+                    .AsEphemeral()
+            );
+            return;
+        }
+        
+        dbContext.Infractions.Remove(infraction);
+        await dbContext.SaveChangesAsync();
+        await response.Result.Interaction.CreateResponseAsync(
+            InteractionResponseType.ChannelMessageWithSource,
+            new DiscordInteractionResponseBuilder()
+                .WithContent($"Note `{infraction.Id}` deleted")
+                .AsEphemeral()
+            );
+        Guild guild = await dbContext.Guilds.FindAsync(ctx.Guild.Id);
+        if (guild is null) return;
+        DiscordChannel channel = ctx.Guild.GetChannel(Convert.ToUInt64(guild.ModerationLogChannelId));
+        ModLogService.AddToQueue(new ModLogItem(
+            channel,
+            user,
+            "# Note Deleted\n" +
+            $"- **User:** {user.Mention}\n" +
+            $"- **Moderator:** {ctx.Member.Mention}\n" +
+            $"- **Note:** {infraction.Reason}",
+            ModLogType.Info));
+    }
+    
+    private sealed class UserNotesOptions : IAutocompleteProvider
+    {
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        {
+            var dbContextFactory = ctx.Services.GetService<IDbContextFactory<LiveBotDbContext>>();
+            await using LiveBotDbContext dbContext = await dbContextFactory.CreateDbContextAsync();
+            var user = (ulong)ctx.Options.First(x => x.Name == "user").Value;
+            var infractions = await dbContext.Infractions
+                .Where(x => x.InfractionType == InfractionType.Note && x.AdminDiscordId == ctx.User.Id && x.UserId == user).ToListAsync();
+            return infractions.Select(infraction => new DiscordAutoCompleteChoice($"#{infraction.Id} - {infraction.Reason}", infraction.Id)).ToList();
         }
     }
 
