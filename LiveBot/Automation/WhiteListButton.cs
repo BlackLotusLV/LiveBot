@@ -27,7 +27,13 @@ public class WhiteListButton
             return;
         }
         var member = (DiscordMember)e.User;
-        var entries = await liveBotDbContext.WhiteLists.Where(x => x.UbisoftName == member.Username || x.UbisoftName == member.Nickname).ToListAsync();
+        var entries = await liveBotDbContext.WhiteLists.Where(x => 
+                x.UbisoftName == member.Username ||
+                x.UbisoftName == member.Nickname ||
+                x.UbisoftName ==  member.DisplayName ||
+                x.UbisoftName == member.GlobalName
+                )
+            .ToListAsync();
         WhiteList entry = entries.FirstOrDefault(whiteList => settingsList.Any(wls => wls.Id == whiteList.WhiteListSettingsId));
 
         if (entry==null)
