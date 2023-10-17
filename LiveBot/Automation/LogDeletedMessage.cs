@@ -56,12 +56,27 @@ public class LogDeletedMessage
             return;
         }
         if (args.Message.Author.IsBot) return;
-        string msgContent = args.Message.Content==""?"*message didn't contain any text*":$"*{args.Message.Content}*";
+        string msgContent = args.Message.Content == "" ? "*message didn't contain any text*" : $"*{args.Message.Content}*",
+            replyInfo = "*not a reply*";
         StringBuilder sb = new();
+        if (args.Message.MessageType == MessageType.Reply)
+        {
+            replyInfo = $"[Reply to {args.Message.Reference.Message.Author.Username}](<{args.Message.Reference.Message.JumpLink}>)";
+        }
+
+        StringBuilder mentionedUserBuilder = new();
+        foreach (DiscordUser mentionedUser in args.Message.MentionedUsers)
+        {
+            mentionedUserBuilder.Append($"{mentionedUser.Mention};");
+        }
+        var mentionedUsers = mentionedUserBuilder.ToString();
+
         sb.Append($"# Message Deleted\n" +
                   $"- **Author:** {args.Message.Author.Mention}({args.Message.Author.Id})\n" +
                   $"- **Channel:** {args.Channel.Mention}\n" +
                   $"- **Attachment Count:** {args.Message.Attachments.Count}\n" +
+                  $"- **Reply:** {replyInfo}\n" +
+                  $"- **Mentioned:** {mentionedUsers}\n" +
                   $"- **Time posted:** <t:{args.Message.CreationTimestamp.ToUnixTimeSeconds()}:F>\n" +
                   $"- **Message:** ");
         if (sb.ToString().Length + msgContent.Length > MaxDescriptionLength)
@@ -83,6 +98,10 @@ public class LogDeletedMessage
                 Name = $"{args.Message.Author.Username}'s message deleted"
             }
         };
+        if (args.Message.Stickers.Count>0)
+        {
+            embedBuilder.AddField("Sticker", $"[{args.Message.Stickers[0].Name}]({args.Message.Stickers[0].StickerUrl})");
+        }
         DiscordMessageBuilder messageBuilder = new();
         List<DiscordEmbed> attachmentEmbeds = new();
         List<MemoryStream> imageStreams = new();
