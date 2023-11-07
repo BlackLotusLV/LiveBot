@@ -12,7 +12,6 @@ namespace LiveBot.SlashCommands;
 internal sealed class SlashAdministratorCommands : ApplicationCommandModule
 {
     public IDbContextFactory<LiveBotDbContext> DbContextFactory { private get; set; }
-    public ITheCrewHubService TheCrewHubService { private get; set; }
 
     [SlashCommand("Say", "Bot says a something")]
     public async Task Say(InteractionContext ctx, [Option("Message", "The message what the bot should say.")] string message,
@@ -26,15 +25,6 @@ internal sealed class SlashAdministratorCommands : ApplicationCommandModule
 
         await channel.SendMessageAsync(message);
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message has been sent"));
-    }
-
-    [SlashCommand("update-hub", "Force updates the crew hub cache"),SlashRequireOwner]
-    public async Task UpdateHub(InteractionContext ctx)
-    {
-        await ctx.DeferAsync(true);
-        await TheCrewHubService.GetSummitDataAsync(true);
-        await TheCrewHubService.GetGameDataAsync();
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Hub info updated"));
     }
 
     [SlashCommand("start-photo-comp", "Starts a photo competition")]

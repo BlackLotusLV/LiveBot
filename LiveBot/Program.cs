@@ -68,7 +68,6 @@ internal sealed class Program
             .AddPooledDbContextFactory<LiveBotDbContext>(options=>options.UseNpgsql(dbConnectionString).EnableDetailedErrors())
             .AddHttpClient()
             .AddSingleton<IDatabaseMethodService, DatabaseMethodService>()
-            .AddSingleton<ITheCrewHubService,TheCrewHubService>()
             .AddSingleton<IWarningService,WarningService>()
             .AddSingleton<IStreamNotificationService,StreamNotificationService>()
             .AddSingleton<ILeaderboardService,LeaderboardService>()
@@ -125,13 +124,11 @@ internal sealed class Program
         var streamNotificationService = _serviceProvider.GetService<IStreamNotificationService>();
         var leaderboardService = _serviceProvider.GetService<ILeaderboardService>();
         var modMailService = _serviceProvider.GetService<IModMailService>();
-        var theCrewHubService = _serviceProvider.GetService<ITheCrewHubService>();
         var modLogService = _serviceProvider.GetService<IModLogService>();
         
         leaderboardService.StartService(discordClient);
         warningService.StartService(discordClient);
         streamNotificationService.StartService(discordClient);
-        await theCrewHubService.StartServiceAsync();
         modLogService.StartService(discordClient);
         
         Timer streamCleanupTimer = new(_ => streamNotificationService.StreamListCleanup());
@@ -191,7 +188,6 @@ internal sealed class Program
         if (!testBuild)
         {
             discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running live version");
-            slashCommandsExtension.RegisterCommands<SlashTheCrewHubCommands>(150283740172517376);
             slashCommandsExtension.RegisterCommands<SlashModeratorCommands>();
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>();
             slashCommandsExtension.RegisterCommands<SlashModMailCommands>();
@@ -201,7 +197,6 @@ internal sealed class Program
         else
         {
             discordClient.Logger.LogInformation(CustomLogEvents.LiveBot,"Running in test build mode");
-            slashCommandsExtension.RegisterCommands<SlashTheCrewHubCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashModeratorCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashAdministratorCommands>(282478449539678210);
             slashCommandsExtension.RegisterCommands<SlashCommands.SlashCommands>(282478449539678210);
