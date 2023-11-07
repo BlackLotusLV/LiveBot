@@ -32,11 +32,11 @@ public partial class InviteLinkFilter
 
         var matches = InviteRegex().Matches(eventArgs.Message.Content).Select(x=>x.Value).ToImmutableList();
         if (matches.Any(match => 
-                guildInvites.Any(x=>Regex.IsMatch(match, $"/{x.Code}(\\s|$)")) ||
-                (eventArgs.Guild.VanityUrlCode is not null && Regex.IsMatch(match, $"/{eventArgs.Guild.VanityUrlCode}(\\s|$)"))|
-                guild.WhitelistedVanities.Any(x => Regex.IsMatch(match, $"/{x.VanityCode}(\\s|$)")))) 
+                guildInvites.Any(x=>Regex.IsMatch(match, $@"/{x.Code}(\s|$|\?event=)")) ||
+                (eventArgs.Guild.VanityUrlCode is not null && Regex.IsMatch(match, $@"/{eventArgs.Guild.VanityUrlCode}(\s|$|\?event=)"))|
+                guild.WhitelistedVanities.Any(x => Regex.IsMatch(match, $@"/{x.VanityCode}(\s|$|\?event=)")))) 
             return;
-
+        
         await eventArgs.Message.DeleteAsync("Invite link detected");
         await member.TimeoutAsync(DateTimeOffset.UtcNow + TimeSpan.FromHours(1), "Spam protection triggered - invite links");
         _warningService.AddToQueue(new WarningItem(eventArgs.Author, client.CurrentUser, eventArgs.Guild, eventArgs.Channel, "Spam protection triggered - invite links", true));
