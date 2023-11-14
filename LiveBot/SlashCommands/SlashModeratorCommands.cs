@@ -101,6 +101,65 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
         await ctx.Channel.DeleteMessagesAsync(messageList);
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
     }
+    
+    [ContextMenu(ApplicationCommandType.MessageContextMenu, "Prune", false)]
+    public async Task PruneContextMenu(ContextMenuContext ctx)
+    {
+        await ctx.DeferAsync(true);
+        if (ctx.TargetMessage.Timestamp.UtcDateTime < DateTime.UtcNow.AddDays(-14))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message is older than 14 days, cannot prune"));
+            return;
+        }
+        List<DiscordMessage> messages= new() {ctx.TargetMessage};
+        var end = false;
+        while (!end)
+        {
+            var temp = ctx.Channel.GetMessagesAfterAsync(messages.Last().Id)
+                .ToBlockingEnumerable()
+                .ToList();
+            messages.AddRange(temp);
+            if (temp.Count < 100)
+            {
+                end = true;
+            }
+        }
+        
+        await ctx.Channel.DeleteMessagesAsync(messages);
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
+    }
+    [ContextMenu(ApplicationCommandType.MessageContextMenu, "Prune User", false)]
+    public async Task PruneUserContextMenu(ContextMenuContext ctx)
+    {
+        const int messageAgeLimit = 14;
+        const int batchSize = 100;
+        await ctx.DeferAsync(true);
+        if (ctx.TargetMessage.Timestamp.UtcDateTime < DateTime.UtcNow.AddDays(-messageAgeLimit))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Message is older than 14 days, cannot prune"));
+            return;
+        }
+        List<DiscordMessage> messages= new() {ctx.TargetMessage};
+        while (true)
+        {
+            var messageCount = 0;
+            await foreach (DiscordMessage message in ctx.Channel.GetMessagesAfterAsync(messages.Last().Id))
+            {
+                messageCount++;
+                if (message.Author == ctx.TargetMessage.Author)
+                {
+                    messages.Add(message);
+                }
+            }
+            if (messageCount < batchSize)
+            {
+                break;
+            }
+        }
+
+        await ctx.Channel.DeleteMessagesAsync(messages);
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
+    }
 
     [SlashCommand("AddNote", "Adds a note in the database without warning the user")]
     public async Task AddNote(InteractionContext ctx,

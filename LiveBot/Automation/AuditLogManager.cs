@@ -1,4 +1,5 @@
 ﻿using DSharpPlus.Entities.AuditLogs;
+using DSharpPlus.Entities;
 using LiveBot.DB;
 using LiveBot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -23,16 +24,16 @@ public sealed class AuditLogManager
         if (eventArgs.AuditLogEntry is null) return;
         switch (eventArgs.AuditLogEntry.ActionType)
         {
-            case AuditLogActionType.Ban:
+            case DiscordAuditLogActionType.Ban:
                 await BanManager(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogBanEntry);
                 break;
-            case AuditLogActionType.MemberUpdate:
+            case DiscordAuditLogActionType.MemberUpdate:
                 await TimeOutLogger(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogMemberUpdateEntry);
                 break;
-            case AuditLogActionType.Kick:
+            case DiscordAuditLogActionType.Kick:
                 await KickManager(client,eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogKickEntry);
                 break;
-            case AuditLogActionType.Unban:
+            case DiscordAuditLogActionType.Unban:
                 await UnBanManager(client, eventArgs.Guild, eventArgs.AuditLogEntry as DiscordAuditLogBanEntry);
                 break;
             default:
