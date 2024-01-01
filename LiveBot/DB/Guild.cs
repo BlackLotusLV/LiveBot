@@ -92,6 +92,13 @@ public class Guild
     }
 
     private ulong? _whiteListRoleId;
+    
+    public ulong? UserReportsChannelId
+    {
+        get => _userReportsChannelId;
+        set => _userReportsChannelId = value.HasValue ? Convert.ToUInt64(value) : default(ulong?);
+    }
+    private ulong? _userReportsChannelId;
 
     public ICollection<GuildUser> GuildUsers { get; set; }
     public ICollection<RankRoles> RankRoles { get; set; }

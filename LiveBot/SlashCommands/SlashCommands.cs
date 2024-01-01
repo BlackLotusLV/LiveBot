@@ -438,4 +438,48 @@ internal sealed class SlashCommands : ApplicationCommandModule
             return openCompetitions.Select(photoCompSettings => new DiscordAutoCompleteChoice(photoCompSettings.CustomName, photoCompSettings.Id)).ToList();
         }
     }
+
+    [ContextMenu(ApplicationCommandType.MessageContextMenu, "Report Message")]
+    public async Task ReportMessage(ContextMenuContext ctx)
+    {
+        await using LiveBotDbContext dbContext = await DbContextFactory.CreateDbContextAsync();
+        Guild guild = await dbContext.Guilds.FindAsync(ctx.Guild.Id);
+        if (guild?.UserReportsChannelId is null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This server is not set up for reporting messages."));
+            await ctx.CreateResponseAsync(
+                InteractionResponseType.ChannelMessageWithSource,
+                new DiscordInteractionResponseBuilder()
+                    .WithContent("This server is not set up for reporting messages.")
+                    .AsEphemeral()
+                );
+            return;
+        }
+        
+        DiscordInteractionResponseBuilder modal = new DiscordInteractionResponseBuilder()
+            .WithTitle("Report Message")
+            .WithCustomId("report_message")
+            .AddComponents(new TextInputComponent("Complaint","Complaint","What is your complaint?",null,true,TextInputStyle.Paragraph)
+            );
+        await ctx.CreateResponseAsync(InteractionResponseType.Modal, modal);
+        
+        InteractivityExtension interactivity = ctx.Client.GetInteractivity();
+        var response = await interactivity.WaitForModalAsync(modal.CustomId, ctx.User);
+        if (response.TimedOut) return;
+
+        DiscordEmbedBuilder reportEmbed = new DiscordEmbedBuilder()
+            .WithTitle("Message reported")
+            .WithDescription($"# Contents:\n`{ctx.TargetMessage.Content}`")
+            .WithAuthor($"{ctx.User.Username}({ctx.User.Id})", null, ctx.User.AvatarUrl);
+
+        var raiseHandButton = new DiscordButtonComponent(ButtonStyle.Primary, $"raiseHand-report-{ctx.TargetMessage.ChannelId}-{ctx.TargetMessage.Id}", "Raise Hand", false, new DiscordComponentEmoji("✋"));
+        
+        DiscordMessageBuilder reportMessage = new DiscordMessageBuilder()
+            .AddEmbed(reportEmbed)
+            .AddComponents(raiseHandButton);
+            
+        DiscordChannel reportChannel = ctx.Guild.GetChannel(guild.UserReportsChannelId.Value);
+        await reportChannel.SendMessageAsync(reportMessage);
+        await response.Result.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Report sent. A Moderator will review it soon. *If actions are taken, you wil NOT be informed*").AsEphemeral());
+    }
 }

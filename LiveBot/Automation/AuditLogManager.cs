@@ -45,7 +45,7 @@ public sealed class AuditLogManager
     private async Task KickManager(DiscordClient client, DiscordGuild guild, DiscordAuditLogKickEntry logEntry)
     {
         await using LiveBotDbContext liveBotDbContext = await _dbContextFactory.CreateDbContextAsync();
-        Guild guildSettings = await liveBotDbContext.Guilds.FindAsync(guild.Id) ??
+        Guild guildSettings = await liveBotDbContext.Guilds.AsNoTracking().FirstOrDefaultAsync(x=>x.Id == guild.Id) ??
                               await _databaseMethodService.AddGuildAsync(new Guild(guild.Id));
         if (guildSettings.ModerationLogChannelId is null) return;
         DiscordChannel modLogChannel = guild.GetChannel(guildSettings.ModerationLogChannelId.Value);
