@@ -95,9 +95,7 @@ internal sealed class SlashModeratorCommands : ApplicationCommandModule
             messageCount = 100;
         }
 
-        var messageList = ctx.Channel.GetMessagesAsync((int)messageCount)
-            .ToBlockingEnumerable();
-        
+        var messageList = ctx.Channel.GetMessagesAsync((int)messageCount);
         await ctx.Channel.DeleteMessagesAsync(messageList);
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Selected messages have been pruned"));
     }

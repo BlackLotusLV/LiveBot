@@ -8,6 +8,7 @@
     <Platform>x64</Platform>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,10 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-01918" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="5.0.0-nightly-01918" />
-    <PackageReference Include="DSharpPlus.Interactivity" Version="5.0.0-nightly-01918" />
-    <PackageReference Include="DSharpPlus.SlashCommands" Version="5.0.0-nightly-01918" />
+    <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-01930" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="5.0.0-nightly-01930" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="5.0.0-nightly-01930" />
+    <PackageReference Include="DSharpPlus.SlashCommands" Version="5.0.0-nightly-01930" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
